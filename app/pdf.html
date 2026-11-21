@@ -1,0 +1,1362 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Page & Document Pen</title>
+<script src="lib/pdf.min.js"></script>
+<script src="lib/pdf-lib.min.js"></script>
+<style>
+  :root{
+    --bg:#e9ebef; --bar:#ffffff; --ink:#1d2433; --mut:#6b7385; --line:#d9dde5;
+    --acc:#2457d6; --accbg:#e8eefc;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;color:var(--ink);background:var(--bg)}
+  body{display:flex;flex-direction:row;overflow:hidden;box-sizing:border-box;height:100vh}
+  #bar{flex:none;background:linear-gradient(180deg,#f8f9fc,#eef1f7);border-right:1px solid var(--line);z-index:5;box-shadow:2px 0 8px rgba(0,0,0,.05);overflow-y:auto;overflow-x:hidden;scrollbar-width:thin}
+  #barIn{width:142px;box-sizing:border-box;display:flex;flex-direction:column;gap:2px;padding:8px 8px 10px}
+  #barIn .g2>*,#barIn .g3>*,#reactions>*,#colours>*{min-width:0}
+  #bar button.rx{padding:3px 0!important}
+  #barIn .sec{min-width:0}
+  #barIn.cols2{display:block;width:276px;column-count:2;column-gap:8px;column-fill:balance}
+  #barIn.cols2 .sec{break-inside:avoid;-webkit-column-break-inside:avoid;display:flex}
+  #barIn.cols2 .sec:nth-last-child(1){border-bottom:0}
+  #bar::-webkit-scrollbar{width:4px}#bar::-webkit-scrollbar-thumb{background:#c8d0de;border-radius:3px}
+  #main{flex:1;min-width:0;display:flex;flex-direction:column;position:relative;box-sizing:border-box}
+  .sec{display:flex;flex-direction:column;gap:4px;padding:3px 2px 5px;border-bottom:1px solid #e1e5ee}
+  .sec.last{border-bottom:0;padding-top:8px;gap:5px}
+  .sec .h{line-height:11px;font-size:9.5px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:#8a93a6;padding:0 3px}
+  .g3{display:grid;grid-template-columns:1fr 1fr;gap:5px}
+  #bar button.tile.span2{grid-column:1/-1;flex-direction:row;gap:7px;min-height:38px;font-size:12.5px}
+  #bar button.tile.span2 svg{width:20px;height:20px}
+  #bar button.tile.cursor{min-height:32px;padding:2px}
+  #bar button.tile.cursor svg{width:22px;height:22px}
+  .g2{display:grid;grid-template-columns:1fr 1fr;gap:5px}
+  #bar button.tile{flex-direction:column;justify-content:center;gap:3px;width:100%;min-height:38px;padding:2px 1px 2px;border-radius:10px;background:#fff;border:1px solid #dde2ec;box-shadow:0 1px 0 rgba(20,30,60,.08);font-size:10.5px;font-weight:600;color:#2a3242;white-space:normal;text-align:center;line-height:1.1;transition:background .12s,transform .08s,box-shadow .12s}
+  #bar button.tile svg{width:18px;height:18px}
+  #bar button.tile span{max-width:100%;overflow:hidden;text-overflow:ellipsis}
+  #bar button.tile:hover{background:#f2f5fb;border-color:#c8d1e2}
+  #bar button.tile:active{transform:scale(.96)}
+  #bar button.tile.on{background:linear-gradient(180deg,#3a6cf0,#2457d6);border-color:#1d48b8;color:#fff;box-shadow:0 2px 8px rgba(36,87,214,.35)}
+  #bar button.tile.wide{flex-direction:row;gap:7px;min-height:40px;font-size:12.5px}
+  #bar button.tile.primary{background:linear-gradient(180deg,#3a6cf0,#2457d6);border-color:#1d48b8;color:#fff}
+  #bar button.tile.primary:hover{background:#1c47b5}
+  #bar button.tile.danger{background:linear-gradient(180deg,#ef4444,#dc2626);border-color:#b91c1c;color:#fff;box-shadow:0 2px 0 #991b1b}
+  #bar button.tile.danger:hover{background:#b91c1c}
+  #bar button.tile:disabled{opacity:.4}
+  #bar button.small{justify-content:center;border:1px solid #dde2ec;background:#fff;border-radius:10px;padding:8px 6px;font-weight:600}
+  #bar select{width:100%;padding:6px;border-radius:9px}
+  #colours{display:grid;grid-template-columns:repeat(6,1fr);row-gap:7px;gap:4px;justify-items:center;padding:2px 0}
+  #colours .sw,#colours .cp{width:18px;height:18px}
+  #colours .cp{font-size:12px}
+  .cp{position:relative;width:26px;height:26px;border-radius:50%;background:conic-gradient(red,yellow,lime,cyan,blue,magenta,red);box-shadow:0 0 0 1px var(--line);cursor:pointer;display:flex;align-items:center;justify-content:center;color:#fff;font-size:15px;text-shadow:0 0 3px #000}
+  .cp.on{box-shadow:0 0 0 2px var(--acc)}
+  .cp input{position:absolute;inset:0;opacity:0;width:100%;height:100%;cursor:pointer}
+  .wrow{display:flex;align-items:center;gap:6px;padding:0 4px}
+  .wrow input{flex:1;width:auto}
+  .dot{border-radius:50%;background:#2a3242;flex:none}.dot.s{width:4px;height:4px}.dot.l{width:12px;height:12px}
+  .pager{display:flex;align-items:center;justify-content:space-between;background:#fff;border:1px solid #dde2ec;border-radius:12px;padding:3px}
+  .pager button{width:30px;height:28px;justify-content:center;font-size:20px;font-weight:700;border-radius:9px}
+  .pager button svg{width:20px;height:20px}
+  .pager span{flex:1;text-align:center;font-weight:700}
+  #compOpts{flex-direction:column;gap:5px;background:#fff;border:1px solid #dde2ec;border-radius:12px;padding:8px}
+  #compOpts label{font-size:12.5px;display:flex;align-items:center;gap:5px}
+  .edge{position:absolute;top:50%;z-index:6;width:58px;height:58px;margin-top:-29px;border-radius:50% !important;justify-content:center;background:rgba(255,255,255,.88) !important;border:1px solid #d4dae6 !important;box-shadow:0 4px 14px rgba(0,0,0,.18);color:#2457d6;display:none !important;opacity:.85}
+  .edge svg{width:30px;height:30px}
+  .edge.l{left:14px}.edge.r{right:24px}
+  .edge:hover{opacity:1}
+  body.multi .edge{display:flex !important}
+  .edge:disabled{opacity:.2 !important}
+  #stage.anim{transition:transform .2s ease-out}
+  #builds{display:flex;gap:4px;justify-content:center;flex-wrap:wrap;min-height:0}
+  #builds:empty{display:none}
+  #builds i{width:9px;height:9px;border-radius:50%;background:#d5dbe7}
+  #builds i.on{background:#2457d6}
+  #fxC{pointer-events:none;display:none}
+  #stage{isolation:isolate}
+  #tint{position:absolute;pointer-events:none;mix-blend-mode:multiply;display:none}
+  body.tinted #tint{display:block}
+  #bar button.tile.on#tintBtn{background:linear-gradient(180deg,#3a6cf0,#2457d6)}
+  #tintMenu{position:fixed;display:none;z-index:40;background:#fff;border:1px solid var(--line);border-radius:14px;box-shadow:0 10px 30px rgba(0,0,0,.18);padding:12px;width:330px}
+  #tintMenu.on{display:block}
+  #tintMenu .th{display:flex;flex-direction:column;margin-bottom:8px}
+  #tintMenu .th small{color:#6b7385;font-size:12px}
+  .tgrid{display:grid;grid-template-columns:repeat(5,1fr);gap:6px}
+  .tsw{display:flex;flex-direction:column;align-items:center;gap:3px;padding:6px 2px;border-radius:10px;border:1.5px solid transparent;background:#f6f7fa;cursor:pointer;font:600 11px system-ui,sans-serif;color:#2a3242}
+  .tsw i{width:30px;height:30px;border-radius:8px;box-shadow:inset 0 0 0 1px rgba(0,0,0,.18);display:block;position:relative;overflow:hidden}
+  .tsw.off i{background:linear-gradient(135deg,#fff 45%,#dc2626 45%,#dc2626 55%,#fff 55%)}
+  .tsw i.pick{background:conic-gradient(red,yellow,lime,cyan,blue,magenta,red)}
+  .tsw i.pick input{position:absolute;inset:0;opacity:0;width:100%;height:100%;cursor:pointer}
+  .tsw.on{border-color:#2457d6;background:#e8eefc}
+  .trow{display:flex;align-items:center;gap:8px;margin-top:10px;font-weight:600;font-size:13px}
+  .trow input{flex:1}
+  .trow b{width:40px;text-align:right}
+  #links{position:absolute;pointer-events:none;z-index:4}
+  #links .lk{position:absolute;border-radius:4px;cursor:pointer;pointer-events:none}
+  body.links-on #links .lk{pointer-events:auto}
+  body.links-on #links .lk:hover,body.links-on #links .lk:active{background:rgba(36,87,214,.12);box-shadow:0 0 0 2px rgba(36,87,214,.45)}
+  #links .vid{position:absolute;pointer-events:none;display:flex;align-items:center;justify-content:center}
+  #links .vid .play,#links .vid.on,#links .vid button{pointer-events:auto}
+  #links .vid .play{width:84px;height:84px;border-radius:50%;border:0;background:rgba(220,38,38,.92);color:#fff;font-size:34px;box-shadow:0 6px 20px rgba(0,0,0,.35);cursor:pointer;display:flex;align-items:center;justify-content:center;padding-left:6px;transition:transform .12s}
+  #links .vid .play:hover{transform:scale(1.07)}
+  #links .vid .tag{position:absolute;left:8px;bottom:8px;background:rgba(0,0,0,.65);color:#fff;font:700 12px system-ui,sans-serif;padding:4px 8px;border-radius:7px}
+  #links .vid.on{background:#000;border-radius:6px;box-shadow:0 6px 24px rgba(0,0,0,.4)}
+  #links .vid iframe,#links .vid video{width:100%;height:100%;border:0;border-radius:6px;background:#000}
+  #links .vid .x{position:absolute;top:-14px;right:-14px;width:34px;height:34px;border-radius:50%;border:2px solid #fff;background:#dc2626;color:#fff;font-size:18px;font-weight:800;cursor:pointer;z-index:2;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(0,0,0,.4)}
+  #links .vid .big{position:absolute;top:-14px;right:26px;width:34px;height:34px;border-radius:50%;border:2px solid #fff;background:#2457d6;color:#fff;font-size:16px;cursor:pointer;z-index:2;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(0,0,0,.4)}
+  .pager button.zl{flex:1;width:auto;flex-direction:column;gap:0;font-size:13px;line-height:1.1}
+  .pager button.zl small{font-size:9px;font-weight:600;color:#8a93a6;text-transform:uppercase;letter-spacing:.05em}
+  #reactions{display:grid;grid-template-columns:repeat(6,1fr);gap:2px}
+  #bar button.rx{flex-direction:column;gap:1px;padding:4px 0 3px;border-radius:11px;background:#fff;border:1px solid #dde2ec;box-shadow:0 1px 0 rgba(20,30,60,.08);min-height:30px;justify-content:center}
+  #bar button.rx b{font-size:17px;line-height:1;font-weight:400}
+  #bar button.rx span{display:none}
+  #bar button.rx:active{transform:scale(.92)}
+  #bar button.rx.playing{background:#fff7d6;border-color:#f2c200;box-shadow:0 0 0 2px #fde68a}
+  body{transition:padding .15s}
+  #main{transition:margin .15s}
+  button,.btn{font:inherit;font-size:13px;border:1px solid transparent;background:transparent;color:var(--ink);border-radius:8px;padding:6px 8px;cursor:pointer;display:inline-flex;align-items:center;gap:5px;white-space:nowrap;line-height:1}
+  button:hover,.btn:hover{background:#f1f3f7}
+  button.on{background:var(--accbg);color:var(--acc);border-color:#c9d6f7}
+  button.primary{background:var(--acc);color:#fff}
+  button.primary:hover{background:#1c47b5}
+  button:disabled{opacity:.4;cursor:default}
+  #clearBtn{background:#dc2626;color:#fff;font-weight:700;padding:7px 12px;box-shadow:0 2px 0 #991b1b}
+  #clearBtn:hover{background:#b91c1c}
+  #modal .card button.danger{background:#dc2626;border-color:#dc2626;color:#fff}
+  button svg{width:18px;height:18px;flex:none}
+  .lbl{font-size:12px;color:var(--mut)}
+  select,input[type=number]{font:inherit;font-size:13px;border:1px solid var(--line);border-radius:7px;padding:4px 6px;background:#fff;color:var(--ink)}
+  input[type=number]{width:62px}
+  .sw{width:22px;height:22px;border-radius:50%;border:2px solid #fff;box-shadow:0 0 0 1px var(--line);cursor:pointer;padding:0}
+  .sw.on{box-shadow:0 0 0 2px var(--acc)}
+  input[type=color]{width:26px;height:26px;border:0;padding:0;background:none;cursor:pointer}
+  input[type=range]{width:80px}
+  #pageInfo{font-size:13px;min-width:46px;text-align:center;font-variant-numeric:tabular-nums}
+  #zoomInfo{font-size:12px;min-width:42px;text-align:center;color:var(--mut);font-variant-numeric:tabular-nums}
+  #wrap{flex:1;overflow:auto;position:relative}
+  #stage{position:relative;margin:0 auto}
+  #stage canvas{position:absolute;display:block}
+  #pdfC{background:#fff;box-shadow:0 2px 10px rgba(0,0,0,.18)}
+  #ui{touch-action:none}
+  #empty{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;padding:20px}
+  .card{background:#fff;border-radius:16px;padding:28px 30px;max-width:520px;text-align:center;box-shadow:0 4px 24px rgba(0,0,0,.08)}
+  .card h1{font-size:22px;margin:0 0 6px}
+  .card p{color:var(--mut);margin:0 0 18px;font-size:14px;line-height:1.5}
+  .card .row{display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
+  .card button{border:1px solid var(--line);padding:10px 14px;font-size:14px}
+  .card button.primary{border-color:var(--acc)}
+  #drop{position:absolute;inset:0;background:rgba(36,87,214,.12);border:3px dashed var(--acc);display:none;align-items:center;justify-content:center;font-size:20px;color:var(--acc);z-index:9;pointer-events:none}
+  #hint{background:var(--bar);border-top:1px solid var(--line);font-size:12px;color:var(--mut);padding:5px 12px;min-height:26px}
+  #toast{position:fixed;left:50%;bottom:44px;transform:translateX(-50%);background:#1d2433;color:#fff;padding:9px 14px;border-radius:10px;font-size:13px;opacity:0;transition:opacity .2s;pointer-events:none;z-index:20}
+  #modal{position:fixed;inset:0;background:rgba(20,25,35,.35);display:none;align-items:center;justify-content:center;z-index:30}
+  #modal .card{max-width:380px}
+  #compOpts{display:none}
+  #busy{position:fixed;inset:0;background:rgba(20,25,35,.35);display:none;align-items:center;justify-content:center;z-index:35}
+  #busy .card{min-width:300px}
+  .spin{width:42px;height:42px;margin:0 auto;border-radius:50%;border:5px solid #dfe6f5;border-top-color:var(--acc);animation:sp 0.8s linear infinite}
+  @keyframes sp{to{transform:rotate(360deg)}}
+  #shapeMenu{position:fixed;display:none;z-index:40;background:#fff;border:1px solid var(--line);border-radius:14px;box-shadow:0 10px 30px rgba(0,0,0,.18);padding:10px;width:450px;max-width:calc(100vw - 12px)}
+  #shapeMenu.on{display:block}
+  #shapeMenu .ttl{font-size:12px;color:var(--mut);margin:2px 4px 6px;font-weight:600}
+  #shapeMenu .row{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:6px}
+  #shapeMenu button.sh{flex:1 1 calc(33.3% - 5px);max-width:calc(33.3% - 3px);justify-content:flex-start;border:1px solid var(--line);border-radius:10px;padding:7px 8px;font-size:13px;min-width:0;white-space:normal;text-align:left;line-height:1.15}
+  #shapeMenu button.sh small{display:block;font-size:10.5px;color:var(--mut)}
+  #shapeMenu button.sh span.t{display:block}
+  #shapeMenu button.sh svg{width:20px;height:20px}
+  #shapeMenu button.sh.on{background:var(--accbg);border-color:#9fb4ee;color:var(--acc)}
+  #shapeMenu .sub{display:none;width:100%;gap:5px;padding:5px;margin:-1px 0 4px;background:#f5f7fb;border-radius:10px}
+  #shapeMenu .sub.open{display:flex}
+  #shapeMenu .sub button{flex:1;border:1px solid var(--line);background:#fff;border-radius:8px;padding:7px 6px;font-size:13px;justify-content:center}
+  #shapeMenu .sub button.on{background:var(--acc);color:#fff;border-color:var(--acc)}
+  #shapeMenu .nrow{display:flex;align-items:center;gap:6px;border-top:1px solid var(--line);padding-top:8px;margin-top:2px;font-size:13px}
+  #shapeMenu .nrow input{width:64px}
+  #shapeMenu .tip{font-size:11.5px;color:var(--mut);margin-top:6px;line-height:1.35}
+  .kbd{font-size:10px;color:var(--mut);border:1px solid var(--line);border-radius:4px;padding:1px 3px;margin-left:2px}
+</style>
+</head>
+<body>
+<div id="bar"><div id="barIn">
+  <div class="sec">
+    <div class="h">File</div>
+    <div class="g3">
+      <button class="tile primary span2" id="openBtn" title="Open a PDF, PowerPoint or Word file"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7h6l2 2h10v10H3z"/><path d="M12 12v5M9.5 14.5L12 12l2.5 2.5"/></svg><span>Open</span></button>
+      <button class="tile" id="newBtn" title="Start a new blank document"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h9l4 4v14H6z"/><path d="M15 3v4h4M12 11v6M9 14h6"/></svg><span>New</span></button>
+      <button class="tile" id="fluBtn" title="Fluency starter: make a recall sheet"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h8M8 12h8M8 16h5"/></svg><span>Starter</span></button>
+      <button class="tile" id="extBtn" title="Extension: make a problem solving sheet"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.5 9a2.5 2.5 0 1 1 3.2 2.4c-.8.3-1.2 1-1.2 1.8v.4"/><path d="M11.5 17.5h.01"/><circle cx="12" cy="12" r="9"/></svg><span>Problems</span></button>
+      <button class="tile" id="addPageBtn" title="Add a blank page at the end"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="3" width="11" height="15" rx="1"/><path d="M19 13v8M15 17h8"/></svg><span>Add page</span></button>
+    </div>
+    <select id="paper" title="Paper for new / added pages">
+      <option value="plain">Plain A4</option>
+      <option value="squared">Squared A4 (1 cm)</option>
+      <option value="graph">Graph A4 (mm)</option>
+      <option value="plainL">Plain A4 landscape</option>
+      <option value="squaredL">Squared A4 landscape</option>
+      <option value="graphL">Graph A4 landscape</option>
+    </select>
+  </div>
+  <div class="sec">
+    <div class="h">Write</div>
+    <button class="tile wide cursor" data-tool="hand" id="swipeBtn" title="Swipe / click mode: tap to move on, swipe to change slides, click links (H)" aria-label="Swipe and click"><svg viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"><path d="M5 2.8l13.2 11.1-6.2.6 3.7 6.9-2.7 1.4-3.7-7-4.3 4.4z"/></svg></button>
+    <div class="g2"><button class="tile" id="calcBtn" title="Open / close the calculator beside the slide"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="2.5" width="14" height="19" rx="2.5"/><rect x="8" y="5.5" width="8" height="4" rx="1"/><path d="M8.5 13h.01M12 13h.01M15.5 13h.01M8.5 16.5h.01M12 16.5h.01M15.5 16.5h.01"/></svg><span>Calculator</span></button><button class="tile" id="tintBtn" title="Coloured overlay for reading (dyslexia friendly) – black text stays black"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><rect x="3" y="5" width="12" height="14" rx="1.5"/><rect x="9" y="3" width="12" height="14" rx="1.5" fill="#fde68a" fill-opacity=".85" stroke="#b45309"/></svg><span>Overlay</span></button></div>
+    <button class="tile wide" id="shapesBtn" title="Open ShapeXplorer (3D solids and 2D shapes)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2.5l8.5 4.8v9.4L12 21.5l-8.5-4.8V7.3z"/><path d="M3.5 7.3L12 12.1l8.5-4.8M12 12.1v9.4"/></svg><span>ShapeXplorer</span></button>
+    <div class="g3" id="tools">
+      <button class="tile" data-tool="pen" title="Pen (P)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20l4-1L19 8l-3-3L5 16z"/><path d="M14 6l3 3"/></svg><span>Pen</span></button>
+      <button class="tile" data-tool="hl" title="Highlighter (G)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 15l-4 5h6l2-2M9 15l8-11 4 3-8 11z"/></svg><span>Highlight</span></button>
+      <button class="tile" data-tool="line" title="Straight line (L)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 19L19 5"/><circle cx="5" cy="19" r="1.6"/><circle cx="19" cy="5" r="1.6"/></svg><span>Line</span></button>
+      <button class="tile" data-tool="shape" id="shapeBtn" title="Draw a shape (S)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 20l5-9 5 9z"/><rect x="13" y="4" width="8" height="8"/><circle cx="17" cy="17" r="3.5"/></svg><span id="shapeLbl">Shapes</span></button>
+      <button class="tile" data-tool="compass" title="Compass (C)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="4" r="2"/><path d="M11 6L6 21M13 6l5 15"/><path d="M4 16a9 6 0 0 0 16 0" stroke-dasharray="2 2"/></svg><span>Compass</span></button>
+      <button class="tile" data-tool="eraser" title="Rubber (E)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 20h12M5 15l9-9 5 5-9 9H8z"/><path d="M9.5 10.5l5 5"/></svg><span>Rubber</span></button>
+    </div>
+    <div id="compOpts">
+      <label>Radius <input type="number" id="radius" step="0.1" min="0.1" value="4.0"> cm</label>
+      <button id="recentre" class="small" title="Pick a new centre point">New centre</button>
+    </div>
+  </div>
+  <div class="sec">
+    <div class="h">Maths tools</div>
+    <div class="g3">
+      <button class="tile" id="rulerBtn" title="Ruler (R)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="8" width="20" height="8" rx="1"/><path d="M6 8v3M10 8v4M14 8v3M18 8v4"/></svg><span>Ruler</span></button>
+      <button class="tile" id="protBtn" title="Protractor (A)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 18h20A10 10 0 0 0 2 18z"/><path d="M12 18l5-6"/></svg><span>Protractor</span></button>
+      <button class="tile span2" id="hideBtn" title="Put away the ruler, protractor and compass (Esc)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3l18 18M10.6 6.1A9.8 9.8 0 0 1 12 6c5 0 9 6 9 6a17 17 0 0 1-3 3.4M6.6 6.6C4.3 8.2 3 12 3 12s4 6 9 6c1.6 0 3-.4 4.3-1.1"/></svg><span>Put away</span></button>
+    </div>
+  </div>
+  <div class="sec">
+    <div class="h">Colour &amp; size</div>
+    <div id="colours">
+      <button class="sw on" data-c="#111111" style="background:#111111" title="Black"></button>
+      <button class="sw" data-c="#1f5fd1" style="background:#1f5fd1" title="Blue"></button>
+      <button class="sw" data-c="#d42a2a" style="background:#d42a2a" title="Red"></button>
+      <button class="sw" data-c="#138a36" style="background:#138a36" title="Green"></button>
+      <button class="sw" data-c="#f2c200" style="background:#f2c200" title="Yellow"></button>
+      <label class="cp" title="Pick any colour"><input type="color" id="colorPick" value="#7a3cc8"><b>+</b></label>
+    </div>
+    <div class="wrow"><span class="dot s"></span><input type="range" id="width" min="0.5" max="8" step="0.25" value="1.5" title="Line thickness"><span class="dot l"></span></div>
+  </div>
+  <div class="sec">
+    <div class="h">Edit</div>
+    <div class="g3">
+      <button class="tile" id="undoBtn" title="Undo (Ctrl+Z)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14L4 9l5-5"/><path d="M4 9h11a5 5 0 0 1 0 10h-3"/></svg><span>Undo</span></button>
+      <button class="tile" id="redoBtn" title="Redo (Ctrl+Y)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 14l5-5-5-5"/><path d="M20 9H9a5 5 0 0 0 0 10h3"/></svg><span>Redo</span></button>
+      <button class="tile danger span2" id="clearBtn" title="Clear the writing on this page (or every page)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></svg><span>Clear all</span></button>
+    </div>
+  </div>
+  <div class="sec">
+    <div class="h">Page &amp; zoom</div>
+    <div class="pager"><button id="prevBtn" title="Previous page"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" stroke-width="2.6"><path d="M15 5l-7 7 7 7"/></svg></button><span id="pageInfo">–</span><button id="nextBtn" title="Next page"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" stroke-width="2.6"><path d="M9 5l7 7-7 7"/></svg></button></div>
+    <div id="builds" title="Animations on this slide"></div>
+    <div class="pager"><button id="zoomOut" title="Zoom out">−</button><button id="fitBtn" class="zl" title="Tap to fit the page"><span id="zoomInfo">–</span><small>fit</small></button><button id="zoomIn" title="Zoom in">+</button></div>
+    <button class="tile wide" id="rotBtn" title="Turn the page a quarter turn (Ctrl+R)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 4v7h-7"/></svg><span>Rotate</span></button>
+  </div>
+  <div class="sec">
+    <div class="h">Reactions</div>
+    <div id="reactions"><button class="rx" data-snd="sad-violin" title="Play Violin"><b>🎻</b><span>Violin</span></button><button class="rx" data-snd="bruh" title="Play Bruh"><b>😐</b><span>Bruh</span></button><button class="rx" data-snd="applause" title="Play Clap"><b>👏</b><span>Clap</span></button><button class="rx" data-snd="oof" title="Play Oof"><b>😖</b><span>Oof</span></button><button class="rx" data-snd="wow" title="Play Wow"><b>🤩</b><span>Wow</span></button><button class="rx" data-snd="really" title="Play Really?"><b>🤨</b><span>Really?</span></button></div>
+  </div>
+  <div class="sec last">
+
+    <button class="tile wide primary" id="saveBtn" title="Save your annotated copy"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></svg><span>Save</span></button>
+  </div>
+</div></div>
+
+<div id="main">
+<button class="edge l" id="edgePrev" title="Previous slide"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" stroke-width="2.6"><path d="M15 5l-7 7 7 7"/></svg></button>
+<button class="edge r" id="edgeNext" title="Next slide (skips any animations left)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" stroke-width="2.6"><path d="M9 5l7 7-7 7"/></svg></button>
+<div id="wrap">
+  <div id="stage">
+    <canvas id="pdfC"></canvas>
+    <canvas id="fxC"></canvas>
+    <div id="tint"></div>
+    <canvas id="ink"></canvas>
+    <canvas id="ui"></canvas>
+    <div id="links"></div>
+  </div>
+  <div id="empty">
+    <div class="card">
+      <h1>Page &amp; Document Pen</h1>
+      <p>Open a PDF, PowerPoint or Word file (or drop one here) – every slide or page becomes a page you can write on – and use a pen with a pen, straight lines, a true-scale ruler, a protractor and a compass. Measurements match the real paper size, so 1&nbsp;cm on the ruler is 1&nbsp;cm when printed.</p>
+      <div class="row">
+        <button class="primary" id="openBtn2">Open a file…</button>
+        <button data-blank="plain">Blank A4</button>
+        <button data-blank="squared">Squared A4</button>
+        <button data-blank="graph">Graph paper</button>
+      </div>
+    </div>
+  </div>
+  <div id="drop">Drop a PDF, PowerPoint or Word file to open</div>
+</div>
+<div id="hint"></div>
+</div>
+<div id="toast"></div>
+<div id="modal"><div class="card"><p id="modalText" style="color:var(--ink)"></p><div class="row"><button id="modalNo">Cancel</button><button class="primary" id="modalYes">OK</button></div></div></div>
+<div id="shapeMenu"></div>
+<div id="tintMenu">
+  <div class="th"><b>Coloured overlay</b><small>Tints the slide – black text stays black</small></div>
+  <div class="tgrid"><button class="tsw off" data-t="" title="No overlay"><i></i><span>Off</span></button><button class="tsw" data-t="#fff59d" title="Yellow"><i style="background:#fff59d"></i><span>Yellow</span></button><button class="tsw" data-t="#c5e1a5" title="Green"><i style="background:#c5e1a5"></i><span>Green</span></button><button class="tsw" data-t="#b3e5fc" title="Light blue"><i style="background:#b3e5fc"></i><span>Light blue</span></button><button class="tsw" data-t="#7f9cd8" title="Dark blue"><i style="background:#7f9cd8"></i><span>Dark blue</span></button><button class="tsw" data-t="#f8bbd0" title="Pink"><i style="background:#f8bbd0"></i><span>Pink</span></button><button class="tsw" data-t="#d1c4e9" title="Lilac"><i style="background:#d1c4e9"></i><span>Lilac</span></button><button class="tsw" data-t="#ffcc80" title="Orange"><i style="background:#ffcc80"></i><span>Orange</span></button><button class="tsw" data-t="#ef9a9a" title="Red"><i style="background:#ef9a9a"></i><span>Red</span></button><label class="tsw" title="Pick any colour"><i class="pick"><input type="color" id="tintPick" value="#fff59d"></i><span>Any</span></label></div>
+  <div class="trow"><span>Strength</span><input type="range" id="tintOp" min="10" max="100" step="5" value="100"><b id="tintOpV">100%</b></div>
+</div>
+<div id="busy"><div class="card"><div class="spin"></div><p id="busyMsg" style="color:var(--ink);margin:12px 0 0">Opening…</p><p style="font-size:12px;margin:6px 0 0">Big slide shows can take a few seconds.</p></div></div>
+<input type="file" id="file" accept=".pdf,.pptx,.ppt,.ppsx,.pps,.pptm,.docx,.doc,.docm,.rtf,.odt,.odp,application/pdf" hidden>
+
+<script>
+(() => {
+'use strict';
+const CM = 72 / 2.54;              // PDF points per centimetre
+const MARGIN = 3 * CM;             // workspace margin around the page (pt)
+const $ = id => document.getElementById(id);
+const wrap = $('wrap'), stage = $('stage'), pdfC = $('pdfC'), inkC = $('ink'), ui = $('ui');
+const inkX = inkC.getContext('2d'), uiX = ui.getContext('2d');
+
+if (window.pdfjsLib) pdfjsLib.GlobalWorkerOptions.workerSrc = 'lib/pdf.worker.min.js';
+const dlPromise = (window.claude && typeof window.claude.use === 'function')
+  ? window.claude.use('downloads').catch(() => null) : Promise.resolve(null);
+
+const S = {
+  bytes: null, name: 'document.pdf', doc: null, page: 1, n: 0, pw: 595.28, ph: 841.89,
+  zoom: 1, ann: {}, undo: [], redo: [], dirty: false,
+  rot: 0, dim: {},          // quarter turns applied to the view, and each page's size as last shown
+  tool: 'pen', color: '#111111', width: 1.5, sawPen: false,
+  ruler: { on: false, x: 0, y: 0, a: 0, L: 30 },
+  prot: { on: false, x: 0, y: 0, a: 0, arm: 60 },
+  comp: { placed: false, cx: 0, cy: 0, r: 4 * CM, ang: 0 },
+};
+window.__isDirty = () => S.dirty;
+window.__t = { S, save: () => savePdf(), build: () => buildAnnotated(), rotate: q => rotateDoc(q), load: (b, n) => loadBytes(b, n) };   // test hook
+S.groups = null; let pendingBuilds = null;
+const G = (p = S.page) => S.groups && S.groups[p - 1];
+const AK = (p = S.page) => { const g = G(p); return g ? g.key : p; };
+const sameSlide = (a, b) => { const x = G(a), y = G(b); return !!(x && y && x.slide === y.slide); };
+function setGroups(list) {
+  S.groups = null; if (!list) return;
+  const vis = list.filter(b => !b.hidden), use = vis.length === S.n ? vis : list.length === S.n ? list : null;
+  if (!use) return;
+  let n = 0, last = null; S.groups = use.map(b => { if (b.slide !== last) { n++; last = b.slide; } return { ...b, slide: n }; });
+  keyGroups();
+}
+function keyGroups() { if (!S.groups) return; while (S.groups.length < S.n) { const l = S.groups[S.groups.length - 1]; S.groups.push({ slide: (l ? l.slide : 0) + 1, step: 1, steps: 1, fx: [] }); }
+  S.groups.forEach((g, i) => { let j = i; while (j + 1 < S.groups.length && S.groups[j + 1].slide === g.slide) j++; g.key = j + 1; }); }
+let drag = null, hover = null, renderTok = 0;
+
+/* ---------- helpers ---------- */
+const sc = () => S.zoom;                       // css px per pt
+const dpr = () => window.devicePixelRatio || 1;
+const dist = (ax, ay, bx, by) => Math.hypot(bx - ax, by - ay);
+const toLocal = (o, px, py) => { const dx = px - o.x, dy = py - o.y, c = Math.cos(o.a), s = Math.sin(o.a); return [dx * c + dy * s, -dx * s + dy * c]; };
+const toWorld = (o, lx, ly) => { const c = Math.cos(o.a), s = Math.sin(o.a); return [o.x + lx * c - ly * s, o.y + lx * s + ly * c]; };
+const tol = () => 11 / sc();
+const fmtCm = v => (v / CM).toFixed(1) + ' cm';
+const mathDeg = a => { let d = -a * 180 / Math.PI; d = ((d % 360) + 360) % 360; return d; };
+function toast(msg) { const t = $('toast'); t.textContent = msg; t.style.opacity = 1; clearTimeout(toast.t); toast.t = setTimeout(() => t.style.opacity = 0, 2200); }
+function ask(text) { return new Promise(res => { $('modalText').textContent = text; $('modal').style.display = 'flex';
+  const done = v => { $('modal').style.display = 'none'; $('modalYes').onclick = $('modalNo').onclick = null; res(v); };
+  $('modalYes').onclick = () => done(true); $('modalNo').onclick = () => done(false); }); }
+
+/* ---------- loading ---------- */
+async function loadBytes(bytes, name, keepAnn, gotoPage, fit) {
+  if (!window.pdfjsLib) { toast('PDF library failed to load'); return; }
+  try {
+    const doc = await pdfjsLib.getDocument({ data: bytes.slice() }).promise;
+    if (S.doc) S.doc.destroy();
+    S.doc = doc; S.bytes = bytes; S.n = doc.numPages; S.name = name || S.name;
+    // a new document always opens the right way up
+    if (!keepAnn) { S.ann = {}; S.undo = []; S.redo = []; S.dirty = false; S.rot = 0; S.dim = {}; setGroups(pendingBuilds); S.orig = { bytes, groups: S.groups ? JSON.parse(JSON.stringify(S.groups)) : null, n: S.n, name: S.name }; } else keyGroups();
+    pendingBuilds = null;
+    $('empty').style.display = 'none';
+    S.page = Math.min(gotoPage || 1, S.n);
+    const pg = await doc.getPage(S.page); const vp = pg.getViewport(vpOpts(pg, 1));
+    S.pw = vp.width; S.ph = vp.height; S.dim[S.page] = [S.pw, S.ph];
+    if (!keepAnn) (fit === 'page' ? fitPage() : fitWidth(true)); else await renderPage();
+    updateBar();
+  } catch (e) { console.error(e); toast('Could not open that PDF' + (e && e.name === 'PasswordException' ? ' (it is password protected)' : '')); }
+}
+const OFFICE = /\.(pptx?|ppsx?|pptm|docx?|docm|rtf|odt|odp)$/i;
+async function openFile(f) {
+  if (!f) return;
+  const office = OFFICE.test(f.name);
+  if (!office && !/\.pdf$/i.test(f.name) && f.type !== 'application/pdf') { toast('ClassTools can open PDF, PowerPoint and Word files.'); return; }
+  if (S.dirty && !(await ask('Open a new file? Unsaved writing on the current one will be lost.'))) return;
+  let buf;
+  try { buf = new Uint8Array(await f.arrayBuffer()); } catch (e) { toast('Could not read that file – is it still open somewhere else?'); return; }
+  if (!office) { await loadBytes(buf, f.name, false); return; }
+  if (!window.cc || !cc.convertDoc) { toast('Opening PowerPoint and Word files works in the ClassTools app.'); return; }
+  busy(/\.(docx?|docm|rtf|odt)$/i.test(f.name) ? 'Opening the document…' : 'Opening the slides…');
+  let r; try { r = await cc.convertDoc(f.name, buf); } catch (e) { r = { error: String(e) }; }
+  busy(null);
+  if (!r || r.error || !r.pdf) { await ask((r && r.error) || 'Could not open that file.'); return; }
+  const isSlides = !/\.(docx?|docm|rtf|odt)$/i.test(f.name);
+  pendingBuilds = r.builds || null;
+  await loadBytes(new Uint8Array(r.pdf), f.name.replace(OFFICE, '.pdf'), false, 1, isSlides ? 'page' : undefined);
+  if (isSlides) setTool('hand');
+  const nSlides = S.groups ? S.groups[S.groups.length - 1].slide : S.n, builds = S.groups ? S.groups.filter(g => g.step > 1).length : 0;
+  if (builds) { toast(`${nSlides} slides opened with ${builds} animation step${builds === 1 ? '' : 's'} – tap or swipe to play them, tap Pen to write`); return; }
+  toast(`${S.n} ${isSlides ? 'slide' : 'page'}${S.n === 1 ? '' : 's'} opened – swipe to change ${isSlides ? 'slide' : 'page'}, tap Pen to write${r.approx ? ' (simple preview – install PowerPoint/Word or LibreOffice for exact layout)' : ''}`);
+}
+function busy(msg) { const b = $('busy'); if (!msg) { b.style.display = 'none'; return; } $('busyMsg').textContent = msg; b.style.display = 'flex'; }
+if (window.cc) cc.on('doc-progress', m => { if ($('busy').style.display === 'flex') $('busyMsg').textContent = m; });
+function paperSize(kind) { return kind.endsWith('L') ? [841.89, 595.28] : [595.28, 841.89]; }
+function addBlankPage(d, kind) {
+  const { rgb } = PDFLib; const [w, h] = paperSize(kind); const p = d.addPage([w, h]); const k = kind.replace(/L$/, '');
+  const vline = (x, t, c) => p.drawLine({ start: { x, y: 0 }, end: { x, y: h }, thickness: t, color: c });
+  const hline = (y, t, c) => p.drawLine({ start: { x: 0, y }, end: { x: w, y }, thickness: t, color: c });
+  if (k === 'squared') {
+    const c = rgb(.66, .78, .92);
+    for (let i = 0; i * CM <= w; i++) vline(i * CM, .5, c);
+    for (let i = 0; i * CM <= h; i++) hline(h - i * CM, .5, c);
+  } else if (k === 'graph') {
+    const step = CM / 10;
+    for (let i = 0; i * step <= w; i++) vline(i * step, i % 10 ? (i % 5 ? .2 : .4) : .7, i % 10 ? (i % 5 ? rgb(.86, .92, .97) : rgb(.72, .84, .94)) : rgb(.52, .7, .88));
+    for (let i = 0; i * step <= h; i++) hline(h - i * step, i % 10 ? (i % 5 ? .2 : .4) : .7, i % 10 ? (i % 5 ? rgb(.86, .92, .97) : rgb(.72, .84, .94)) : rgb(.52, .7, .88));
+  }
+}
+async function newBlank(kind) {
+  if (S.dirty && !(await ask('Start a new blank document? Unsaved writing will be lost.'))) return;
+  const d = await PDFLib.PDFDocument.create(); addBlankPage(d, kind);
+  await loadBytes(await d.save(), 'worksheet.pdf', false);
+}
+async function addPage() {
+  if (!S.doc) return newBlank($('paper').value);
+  const d = await PDFLib.PDFDocument.create(); addBlankPage(d, $('paper').value);
+  await insertPdfPages(await d.save(), 'Blank page added');
+}
+
+/* ---------- layout & rendering ---------- */
+function layout() {
+  const s = sc(), d = dpr();
+  const W = (S.pw + 2 * MARGIN) * s, H = (S.ph + 2 * MARGIN) * s;
+  stage.style.width = W + 'px'; stage.style.height = H + 'px';
+  for (const c of [pdfC, inkC, $('tint')]) { c.style.left = c.style.top = MARGIN * s + 'px'; c.style.width = S.pw * s + 'px'; c.style.height = S.ph * s + 'px'; }
+  inkC.width = Math.round(S.pw * s * d); inkC.height = Math.round(S.ph * s * d);
+  ui.style.left = ui.style.top = '0px'; ui.style.width = W + 'px'; ui.style.height = H + 'px';
+  ui.width = Math.round(W * d); ui.height = Math.round(H * d);
+  $('zoomInfo').textContent = Math.round(s / (96 / 72) * 100) + '%';
+  wrap.style.overflowX = S.pw * s <= wrap.clientWidth ? 'hidden' : 'auto';
+  wrap.style.overflowY = S.ph * s <= wrap.clientHeight - 8 ? 'hidden' : 'auto';
+  redrawInk(); redrawUI();
+}
+async function renderPage() {
+  if (!S.doc) return;
+  const tok = ++renderTok;
+  const pg = await S.doc.getPage(S.page);
+  const vp1 = pg.getViewport(vpOpts(pg, 1)); S.pw = vp1.width; S.ph = vp1.height; S.dim[S.page] = [S.pw, S.ph];
+  layout();
+  let rs = sc() * dpr(); const maxPx = 14e6;
+  if (S.pw * S.ph * rs * rs > maxPx) rs = Math.sqrt(maxPx / (S.pw * S.ph));
+  const vp = pg.getViewport(vpOpts(pg, rs));
+  const off = document.createElement('canvas'); off.width = Math.floor(vp.width); off.height = Math.floor(vp.height);
+  const ox = off.getContext('2d'); ox.fillStyle = '#fff'; ox.fillRect(0, 0, off.width, off.height);
+  try { await pg.render({ canvasContext: ox, viewport: vp }).promise; } catch (e) { return; }
+  if (tok !== renderTok) return;
+  pdfC.width = off.width; pdfC.height = off.height; pdfC.getContext('2d').drawImage(off, 0, 0);
+  paintLinks(pg, tok);
+}
+// A page can be read a quarter turn round – handy for a portrait worksheet on a wide board, or a
+// scan that came in sideways. The writing already on the page turns with it, and so do the
+// instruments, so nothing drifts out of place; the saved copy keeps the turn too.
+function vpOpts(pg, scale) { return { scale, rotation: (((pg.rotate || 0) + S.rot) % 360 + 360) % 360 }; }
+function rotateDoc(step) {
+  if (!S.doc) return;
+  finishBuild();
+  const q = ((step / 90) % 4 + 4) % 4;                 // quarter turns clockwise
+  for (let t = 0; t < q; t++) {
+    for (const key of Object.keys(S.ann)) {
+      const d = S.dim[key]; if (!d) continue;          // a page never shown has nothing drawn on it
+      const H = d[1];
+      for (const k of (S.ann[key] || [])) { const p = k.p; for (let i = 0; i < p.length; i += 2) { const x = p[i], y = p[i + 1]; p[i] = H - y; p[i + 1] = x; } }
+      S.dim[key] = [d[1], d[0]];
+    }
+    const H = S.ph;
+    for (const o of [S.ruler, S.prot]) { const x = o.x, y = o.y; o.x = H - y; o.y = x; o.a += Math.PI / 2; }
+    { const x = S.comp.cx, y = S.comp.cy; S.comp.cx = H - y; S.comp.cy = x; S.comp.ang += Math.PI / 2; }
+    const pw = S.pw; S.pw = S.ph; S.ph = pw;           // so the next turn uses the right height
+  }
+  S.rot = (S.rot + q * 90) % 360;
+  if (Object.keys(S.ann).length) S.dirty = true;
+  fitPage();
+  toast('Turned a quarter turn' + (S.rot ? '  \u00b7  ' + S.rot + '\u00b0 from the original' : '  \u00b7  back to the original way up'));
+}
+function setZoom(z, cx, cy) {
+  finishBuild();
+  z = Math.max(0.3, Math.min(6, z));
+  const r = wrap.getBoundingClientRect();
+  if (cx == null) { cx = r.left + wrap.clientWidth / 2; cy = r.top + wrap.clientHeight / 2; }
+  const old = sc(), sx = (wrap.scrollLeft + cx - r.left) / old, sy = (wrap.scrollTop + cy - r.top) / old;
+  S.zoom = z; renderPage().then(() => {});
+  layout();
+  wrap.scrollLeft = sx * z - (cx - r.left); wrap.scrollTop = sy * z - (cy - r.top);
+}
+function fitWidth(top) {
+  finishBuild();
+  const z = Math.max(0.3, (wrap.clientWidth - 20) / (S.pw + 2 * MARGIN * 0.35));
+  S.zoom = z; layout(); renderPage();
+  wrap.scrollLeft = MARGIN * z - (wrap.clientWidth - S.pw * z) / 2;
+  if (top) wrap.scrollTop = MARGIN * z - 16;
+}
+function fitPage() {
+  finishBuild();
+  const z = Math.max(0.3, Math.min((wrap.clientWidth - 24) / S.pw, (wrap.clientHeight - 24) / S.ph));
+  S.zoom = z; layout(); renderPage();
+  wrap.scrollLeft = MARGIN * z - (wrap.clientWidth - S.pw * z) / 2;
+  wrap.scrollTop = MARGIN * z - (wrap.clientHeight - S.ph * z) / 2;
+}
+function finishSwipe(d) {
+  const dt = performance.now() - d.t0, W = wrap.clientWidth, dir = d.dx < 0 ? 1 : -1;
+  if (Math.abs(d.dx) < 6 && dt < 350) { stage.classList.add('anim'); stage.style.transform = ''; nextStep(); return; }   // a tap moves on: next animation, or next slide
+  const go = (Math.abs(d.dx) > Math.max(60, W * 0.12) || (Math.abs(d.dx) > 30 && dt < 260)) && S.page + dir >= 1 && S.page + dir <= S.n;
+  stage.classList.add('anim');
+  if (!go) { stage.style.transform = ''; return; }
+  if (sameSlide(S.page, S.page + dir)) { stage.style.transform = ''; dir > 0 ? nextStep() : prevStep(); return; }
+  slideTo(S.page + dir, dir, true);
+}
+let slideBusy = false;
+function slideTo(n, dir, fromSwipe) {
+  if (!S.doc || n < 1 || n > S.n || slideBusy) return;
+  finishBuild();
+  const W = wrap.clientWidth; slideBusy = true;
+  stage.classList.add('anim');
+  if (!fromSwipe) stage.style.transform = 'translateX(0)';
+  requestAnimationFrame(() => {
+    stage.style.transform = `translateX(${-dir * W}px)`;
+    setTimeout(async () => {
+      stage.classList.remove('anim'); stage.style.transform = `translateX(${dir * W}px)`;
+      goPage(n); await new Promise(r => setTimeout(r, 30));
+      stage.classList.add('anim'); requestAnimationFrame(() => { stage.style.transform = ''; setTimeout(() => { slideBusy = false; stage.classList.remove('anim'); }, 220); });
+    }, 190);
+  });
+}
+/* ---------- PowerPoint animations ---------- */
+let buildBusy = null;
+function nextStep() { if (!S.doc) return; if (buildBusy) { finishBuild(); return; } const n = S.page + 1; if (n > S.n) return; if (sameSlide(S.page, n)) playBuild(n); else slideTo(n, 1); }
+function prevStep() { if (!S.doc) return; finishBuild(); const n = S.page - 1; if (n < 1) return; if (sameSlide(S.page, n)) goPage(n); else slideTo(n, -1); }
+function finishBuild() { if (!buildBusy) return; cancelAnimationFrame(buildBusy.raf); buildBusy.done = true; buildBusy = null; fxC.style.display = 'none'; }
+const fxC = document.getElementById('fxC');
+function cloneCanvas(c) { const o = document.createElement('canvas'); o.width = c.width; o.height = c.height; o.getContext('2d').drawImage(c, 0, 0); return o; }
+function fxKind(id) {
+  if (id === 1) return 'appear';
+  if ([2, 7, 12].includes(id)) return 'fly';
+  if (id === 26) return 'bounce';
+  if ([3, 4, 5, 6, 8, 13, 14, 16, 18, 20, 21, 22, 24, 25].includes(id)) return 'wipe';
+  if ([11, 17, 23, 31, 49, 53, 55].includes(id)) return 'zoom';
+  if ([30, 37, 42, 47].includes(id)) return 'float';
+  return 'fade';
+}
+function prepFx(oldC, newC, list) {
+  const W = newC.width, H = newC.height, A = oldC.getContext('2d').getImageData(0, 0, W, H).data, B = newC.getContext('2d').getImageData(0, 0, W, H).data, out = [];
+  for (const f of list) {
+    const pad = Math.round(W * 0.004) + 2;
+    const x0 = Math.max(0, Math.floor(f.box[0] * W) - pad), y0 = Math.max(0, Math.floor(f.box[1] * H) - pad);
+    const x1 = Math.min(W, Math.ceil((f.box[0] + f.box[2]) * W) + pad), y1 = Math.min(H, Math.ceil((f.box[1] + f.box[3]) * H) + pad);
+    let bx0 = x1, by0 = y1, bx1 = -1, by1 = -1;
+    for (let y = y0; y < y1; y++) for (let x = x0; x < x1; x++) { const i = (y * W + x) * 4; if (Math.abs(A[i] - B[i]) + Math.abs(A[i + 1] - B[i + 1]) + Math.abs(A[i + 2] - B[i + 2]) > 36) { if (x < bx0) bx0 = x; if (x > bx1) bx1 = x; if (y < by0) by0 = y; if (y > by1) by1 = y; } }
+    if (bx1 < 0) continue;
+    const g = 3; bx0 = Math.max(0, bx0 - g); by0 = Math.max(0, by0 - g); bx1 = Math.min(W - 1, bx1 + g); by1 = Math.min(H - 1, by1 + g);
+    const w = bx1 - bx0 + 1, h = by1 - by0 + 1, m = new Uint8Array(w * h);
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { const i = ((y + by0) * W + x + bx0) * 4; if (Math.abs(A[i] - B[i]) + Math.abs(A[i + 1] - B[i + 1]) + Math.abs(A[i + 2] - B[i + 2]) > 18) m[y * w + x] = 1; }
+    const dil = new Uint8Array(w * h);                 // grow the mask a little so soft edges come along
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { if (!m[y * w + x]) continue; for (let dy = -2; dy <= 2; dy++) for (let dx = -2; dx <= 2; dx++) { const yy = y + dy, xx = x + dx; if (yy >= 0 && yy < h && xx >= 0 && xx < w) dil[yy * w + xx] = 1; } }
+    const sprite = src => { const c = document.createElement('canvas'); c.width = w; c.height = h; const cx = c.getContext('2d'), id = cx.createImageData(w, h), d = id.data;
+      for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { if (!dil[y * w + x]) continue; const i = ((y + by0) * W + x + bx0) * 4, o = (y * w + x) * 4; d[o] = src[i]; d[o + 1] = src[i + 1]; d[o + 2] = src[i + 2]; d[o + 3] = 255; }
+      cx.putImageData(id, 0, 0); return c; };
+    out.push({ ...f, kind: fxKind(f.id), x: bx0, y: by0, w, h, oldS: sprite(A), newS: sprite(B), dur: f.dur <= 1 ? 0 : Math.max(250, Math.min(2000, f.dur)) });
+  }
+  return out;
+}
+function drawSprite(cx, sp, f, q, entering, W, H) {
+  if (q <= 0) return;
+  const off = entering ? Math.pow(1 - q, 3) : Math.pow(1 - q, 2), sub = f.sub || (f.kind === 'wipe' ? 8 : 4);
+  cx.save();
+  let x = f.x, y = f.y;
+  switch (f.kind) {
+    case 'appear': if (q < 1) { cx.restore(); return; } break;
+    case 'fade': cx.globalAlpha = q; break;
+    case 'fly':
+      if (sub & 8) x -= (f.x + f.w) * off; else if (sub & 2) x += (W - f.x) * off;
+      if (sub & 1) y -= (f.y + f.h) * off; else if (sub & 4) y += (H - f.y) * off;
+      break;
+    case 'bounce': { const b = t => { const n = 7.5625, d = 2.75; if (t < 1 / d) return n * t * t; if (t < 2 / d) return n * (t -= 1.5 / d) * t + .75; if (t < 2.5 / d) return n * (t -= 2.25 / d) * t + .9375; return n * (t -= 2.625 / d) * t + .984375; };
+      y -= (f.y + f.h) * (1 - (entering ? b(q) : q)); break; }
+    case 'wipe': { const e = entering ? 1 - off : q; cx.beginPath();
+      if (sub & 8) cx.rect(f.x, f.y, f.w * e, f.h); else if (sub & 2) cx.rect(f.x + f.w * (1 - e), f.y, f.w * e, f.h);
+      else if (sub & 1) cx.rect(f.x, f.y, f.w, f.h * e); else cx.rect(f.x, f.y + f.h * (1 - e), f.w, f.h * e);
+      cx.clip(); break; }
+    case 'zoom': { const s2 = 0.25 + 0.75 * (1 - off); cx.globalAlpha = q; cx.translate(f.x + f.w / 2, f.y + f.h / 2); cx.scale(s2, s2); cx.translate(-(f.x + f.w / 2), -(f.y + f.h / 2)); break; }
+    case 'float': cx.globalAlpha = q; y += H * 0.06 * off; break;
+  }
+  cx.drawImage(sp, x, y); cx.restore();
+}
+async function playBuild(n) {
+  if (!S.doc) return;
+  finishBuild();
+  const g = G(n), oldC = cloneCanvas(pdfC);
+  // freeze the current picture while the next build renders underneath
+  fxC.width = oldC.width; fxC.height = oldC.height;
+  for (const k of ['left', 'top', 'width', 'height']) fxC.style[k] = pdfC.style[k];
+  fxC.getContext('2d').drawImage(oldC, 0, 0); fxC.style.display = 'block';
+  const me = buildBusy = { raf: 0 };
+  S.page = n; drag = null; updateBar(); redrawInk();
+  await renderPage();
+  if (me.done) return;
+  const fail = () => { if (buildBusy === me) { buildBusy = null; fxC.style.display = 'none'; } };
+  if (!g || !g.fx || !g.fx.length || oldC.width !== pdfC.width || oldC.height !== pdfC.height) return fail();
+  const newC = cloneCanvas(pdfC), fx = prepFx(oldC, newC, g.fx);
+  if (!fx.length) return fail();
+  const cx = fxC.getContext('2d'), W = newC.width, H = newC.height, total = Math.max(...fx.map(f => f.delay + f.dur)) + 30, t0 = performance.now();
+  const frame = () => {
+    if (me.done) return;
+    const t = performance.now() - t0;
+    cx.clearRect(0, 0, W, H); cx.drawImage(newC, 0, 0);
+    const prog = f => f.dur ? Math.max(0, Math.min(1, (t - f.delay) / f.dur)) : (t >= f.delay ? 1 : 0);
+    for (const f of fx) if (f.cls === 'entr' && prog(f) < 1) cx.drawImage(f.oldS, f.x, f.y);      // hide everything still to come…
+    for (const f of fx) { const p = prog(f); if (p >= 1) continue;                                    // …then draw the moving pieces on top
+      if (f.cls === 'entr') drawSprite(cx, f.newS, f, p, true, W, H); else drawSprite(cx, f.oldS, f, 1 - p, false, W, H); }
+    if (t >= total) { buildBusy = null; fxC.style.display = 'none'; return; }
+    me.raf = requestAnimationFrame(frame);
+  };
+  frame();
+}
+/* ---------- hyperlinks and videos ---------- */
+const linksEl = document.getElementById('links');
+function ytId(u) { const m = /(?:youtube(?:-nocookie)?\.com\/(?:embed\/|watch\?(?:.*&)?v=|v\/|shorts\/)|youtu\.be\/)([\w-]{6,})/i.exec(u || ''); return m ? m[1] : null; }
+function ytStart(u) { const m = /[?&](?:start|t)=(\d+)/.exec(u || ''); return m ? +m[1] : 0; }
+async function paintLinks(pg, tok) {
+  linksEl.innerHTML = '';
+  for (const k of ['left', 'top', 'width', 'height']) linksEl.style[k] = pdfC.style[k];
+  const s = sc(), vp = pg.getViewport(vpOpts(pg, s));
+  try {
+    const anns = await pg.getAnnotations({ intent: 'display' });
+    if (tok !== renderTok) return;
+    for (const a of anns) {
+      if (a.subtype !== 'Link' || (!a.url && !a.unsafeUrl && a.dest == null)) continue;
+      const [x1, y1, x2, y2] = vp.convertToViewportRectangle(a.rect);
+      const d = document.createElement('div'); d.className = 'lk';
+      Object.assign(d.style, { left: Math.min(x1, x2) + 'px', top: Math.min(y1, y2) + 'px', width: Math.abs(x2 - x1) + 'px', height: Math.abs(y2 - y1) + 'px' });
+      const url = a.url || a.unsafeUrl; d.title = url ? url : 'Go to slide';
+      d.addEventListener('click', e => { e.stopPropagation(); followLink(url, a.dest); });
+      linksEl.appendChild(d);
+    }
+  } catch (e) {}
+  // videos on this slide
+  const g = G(); if (!g || !g.videos) return;
+  const W = S.pw * s, H = S.ph * s;
+  for (const v of g.videos) {
+    const id = v.url ? ytId(v.url) : null; if (!id && !v.file && !v.url) continue;
+    const b = document.createElement('div'); b.className = 'vid';
+    const place = (bx) => Object.assign(b.style, { left: bx[0] * W + 'px', top: bx[1] * H + 'px', width: Math.max(80, bx[2] * W) + 'px', height: Math.max(60, bx[3] * H) + 'px' });
+    place(v.box);
+    b.innerHTML = `<button class="play" title="Play video">▶</button><span class="tag">${id ? 'YouTube' : v.file ? 'Video' : 'Online video'}</span>`;
+    b.querySelector('.play').onclick = e => {
+      e.stopPropagation();
+      if (!id && !v.file) { followLink(v.url); return; }
+      b.classList.add('on'); let big = false;
+      b.innerHTML = (id ? `<iframe src="https://www.youtube-nocookie.com/embed/${id}?autoplay=1&rel=0&modestbranding=1&playsinline=1${ytStart(v.url) ? '&start=' + ytStart(v.url) : ''}" allow="autoplay; encrypted-media; fullscreen; picture-in-picture" allowfullscreen referrerpolicy="strict-origin-when-cross-origin"></iframe>`
+        : `<video src="${v.file}" controls autoplay></video>`) + '<button class="big" title="Make the video bigger / smaller">⤢</button><button class="x" title="Close video">✕</button>';
+      b.querySelector('.x').onclick = ev => { ev.stopPropagation(); paintLinks(pg, renderTok); };
+      b.querySelector('.big').onclick = ev => { ev.stopPropagation(); big = !big; place(big ? [0.04, 0.04, 0.92, 0.92] : v.box); };
+    };
+    linksEl.appendChild(b);
+  }
+}
+async function followLink(url, dest) {
+  if (url) { if (window.cc && cc.openLink) cc.openLink(url); else window.open(url, '_blank'); return; }
+  try {
+    let d = dest; if (typeof d === 'string') d = await S.doc.getDestination(d);
+    if (!Array.isArray(d)) return;
+    let n = (typeof d[0] === 'number' ? d[0] : await S.doc.getPageIndex(d[0])) + 1;
+    if (S.groups && G(n)) { while (n > 1 && sameSlide(n - 1, n)) n--; }    // a slide link starts the slide from the top of its animations
+    if (n >= 1 && n <= S.n && n !== S.page) slideTo(n, n > S.page ? 1 : -1);
+  } catch (e) {}
+}
+function goPage(n) {
+  if (!S.doc || n < 1 || n > S.n) return;
+  S.page = n; drag = null; renderPage(); updateBar(); wrap.scrollTop = MARGIN * sc() - 16;
+}
+
+/* ---------- strokes ---------- */
+function strokePath(c, k) {
+  const p = k.p; c.beginPath(); c.moveTo(p[0], p[1]);
+  if (p.length === 2) c.lineTo(p[0] + 0.01, p[1]);
+  else if (k.sm && p.length > 4) {
+    for (let i = 2; i < p.length - 2; i += 2) c.quadraticCurveTo(p[i], p[i + 1], (p[i] + p[i + 2]) / 2, (p[i + 1] + p[i + 3]) / 2);
+    c.lineTo(p[p.length - 2], p[p.length - 1]);
+  } else for (let i = 2; i < p.length; i += 2) c.lineTo(p[i], p[i + 1]);
+}
+function drawStroke(c, k) {
+  c.save(); c.globalAlpha = k.a; c.strokeStyle = k.c; c.lineWidth = k.w; c.lineCap = 'round'; c.lineJoin = 'round';
+  strokePath(c, k); c.stroke(); c.restore();
+}
+function redrawInk() {
+  const s = sc(), d = dpr();
+  inkX.setTransform(1, 0, 0, 1, 0, 0); inkX.clearRect(0, 0, inkC.width, inkC.height);
+  inkX.setTransform(s * d, 0, 0, s * d, 0, 0);
+  for (const k of (S.ann[AK()] || [])) drawStroke(inkX, k);
+}
+function snapshot() {
+  S.undo.push({ pg: AK(), list: (S.ann[AK()] || []).slice() }); if (S.undo.length > 300) S.undo.shift();
+  S.redo = []; S.dirty = true; updateBar();
+}
+function addStroke(k) { snapshot(); (S.ann[AK()] = S.ann[AK()] || []).push(k); drawStroke(inkX, k); }
+function restore(from, to) {
+  const u = from.pop(); if (!u) return;
+  if (u.all) { to.push({ all: { ...S.ann } }); S.ann = { ...u.all }; S.dirty = true; redrawInk(); updateBar(); return; }
+  to.push({ pg: u.pg, list: (S.ann[u.pg] || []).slice() }); S.ann[u.pg] = u.list; S.dirty = true;
+  if (u.pg !== S.page) goPage(u.pg); else redrawInk(); updateBar();
+}
+function newStroke(kind, pts) {
+  const hl = kind === 'hl';
+  return { c: S.color, w: hl ? Math.max(6, S.width * 5) : S.width, a: hl ? 0.35 : 1, p: pts, sm: false };
+}
+function segDist(px, py, ax, ay, bx, by) {
+  const dx = bx - ax, dy = by - ay, l = dx * dx + dy * dy; let t = l ? ((px - ax) * dx + (py - ay) * dy) / l : 0;
+  t = Math.max(0, Math.min(1, t)); return Math.hypot(px - ax - t * dx, py - ay - t * dy);
+}
+function eraseAt(x, y) {
+  const list = S.ann[AK()]; if (!list || !list.length) return;
+  const r = 16 / sc(); const keep = [];
+  for (const k of list) {
+    const p = k.p, lim = r + k.w / 2; let hit = false;
+    if (p.length === 2) hit = dist(x, y, p[0], p[1]) < lim;
+    for (let i = 0; i < p.length - 2 && !hit; i += 2) if (segDist(x, y, p[i], p[i + 1], p[i + 2], p[i + 3]) < lim) hit = true;
+    if (!hit) keep.push(k);
+  }
+  if (keep.length !== list.length) { if (!drag.erased) { snapshot(); drag.erased = true; } S.ann[AK()] = keep; redrawInk(); }
+}
+function lineEndpoints() {
+  const out = []; for (const k of (S.ann[AK()] || [])) if (!k.sm) { out.push([k.p[0], k.p[1]]); out.push([k.p[k.p.length - 2], k.p[k.p.length - 1]]); }
+  if (S.comp.placed) out.push([S.comp.cx, S.comp.cy]);
+  return out;
+}
+function snapPoint(x, y, skip) {
+  if (skip) return [x, y, false];
+  let best = null, bd = 9 / sc();
+  for (const [ex, ey] of lineEndpoints()) { const d = dist(x, y, ex, ey); if (d < bd) { bd = d; best = [ex, ey]; } }
+  return best ? [best[0], best[1], true] : [x, y, false];
+}
+
+/* ---------- instruments: geometry ---------- */
+const RUL = { m: 0.8 * CM, W: 3.2 * CM };
+const rulerHandle = () => [S.ruler.L * CM - 0.9 * CM, RUL.W - 0.95 * CM];
+const PR = { R: 5.5 * CM, b: 0.5 * CM };
+const protRotHandle = () => [0, PR.b + 0.6 * CM];
+const protArmKnob = () => { const t = S.prot.arm * Math.PI / 180, r = PR.R + 0.75 * CM; return [r * Math.cos(t), -r * Math.sin(t)]; };
+const compPencil = () => [S.comp.cx + S.comp.r * Math.cos(S.comp.ang), S.comp.cy + S.comp.r * Math.sin(S.comp.ang)];
+function compHinge() { const C = S.comp, [px, py] = compPencil(), r = C.r, L = Math.max(r * 0.6, r / 2 + 2.8 * CM), h = Math.sqrt(Math.max(0, L * L - (r / 2) * (r / 2)));
+  return [(C.cx + px) / 2 + Math.sin(C.ang) * h, (C.cy + py) / 2 - Math.cos(C.ang) * h]; }
+const COMP_X = () => 11 / sc();   // radius of the red close button on the hinge
+
+function hitInstrument(x, y) {
+  const T = tol();
+  if (S.tool === 'compass' && S.comp.placed) { const [qx, qy] = compHinge(); if (dist(x, y, qx, qy) < COMP_X() * 1.35) return { m: 'compClose' }; }
+  if (S.tool === 'compass' && S.comp.placed) {
+    const [px, py] = compPencil();
+    if (dist(x, y, px, py) < T * 1.2) return { m: 'compR' };
+    if (dist(x, y, S.comp.cx, S.comp.cy) < T * 1.2) return { m: 'compMove', ox: x - S.comp.cx, oy: y - S.comp.cy };
+  }
+  if (S.prot.on) {
+    const P = S.prot; const [lx, ly] = toLocal(P, x, y);
+    const [kx, ky] = protArmKnob(); if (dist(lx, ly, kx, ky) < Math.max(T, 0.35 * CM)) return { m: 'protArm' };
+    const [hx, hy] = protRotHandle(); if (dist(lx, ly, hx, hy) < Math.max(T, 0.4 * CM)) return { m: 'protRot' };
+    if (lx * lx + ly * ly <= PR.R * PR.R && ly <= PR.b || (Math.abs(lx) <= PR.R && ly >= 0 && ly <= PR.b)) return { m: 'protMove', ox: x - P.x, oy: y - P.y };
+  }
+  if (S.ruler.on) {
+    const R = S.ruler; const [u, v] = toLocal(R, x, y);
+    const [hx, hy] = rulerHandle(); if (dist(u, v, hx, hy) < Math.max(T, 0.45 * CM)) return { m: 'rulRot' };
+    if (u >= -RUL.m && u <= R.L * CM + RUL.m && v >= 0 && v <= RUL.W) return { m: 'rulMove', ox: x - R.x, oy: y - R.y };
+  }
+  return null;
+}
+function rulerSnap(x, y) {
+  if (!S.ruler.on) return null; const R = S.ruler; const [u, v] = toLocal(R, x, y);
+  if (v >= -tol() * 1.6 && v < 0.02 * CM && u >= -RUL.m && u <= R.L * CM + RUL.m) return u;
+  return null;
+}
+function visibleCentre() {
+  const s = sc(); return [(wrap.scrollLeft + wrap.clientWidth / 2) / s - MARGIN, (wrap.scrollTop + wrap.clientHeight / 2) / s - MARGIN];
+}
+
+/* ---------- instruments: drawing ---------- */
+function roundRect(c, x, y, w, h, r) { c.beginPath(); c.moveTo(x + r, y); c.arcTo(x + w, y, x + w, y + h, r); c.arcTo(x + w, y + h, x, y + h, r); c.arcTo(x, y + h, x, y, r); c.arcTo(x, y, x + w, y, r); c.closePath(); }
+function handleKnob(c, x, y, r, active) {
+  c.beginPath(); c.arc(x, y, r, 0, Math.PI * 2); c.fillStyle = active ? 'rgba(36,87,214,.95)' : 'rgba(36,87,214,.78)'; c.fill();
+  c.strokeStyle = '#fff'; c.lineWidth = r * 0.16; c.beginPath(); c.arc(x, y, r * 0.5, -Math.PI * 0.15, Math.PI * 1.35); c.stroke();
+  const a = Math.PI * 1.35, ax = x + r * 0.5 * Math.cos(a), ay = y + r * 0.5 * Math.sin(a);
+  c.beginPath(); c.moveTo(ax - r * 0.25, ay - r * 0.05); c.lineTo(ax, ay); c.lineTo(ax + r * 0.08, ay - r * 0.28); c.stroke();
+}
+function drawRuler(c) {
+  const R = S.ruler, L = R.L * CM, s = sc();
+  c.save(); c.translate(R.x, R.y); c.rotate(R.a);
+  roundRect(c, -RUL.m, 0, L + 2 * RUL.m, RUL.W, 0.18 * CM);
+  c.fillStyle = 'rgba(232,242,255,0.80)'; c.fill(); c.strokeStyle = 'rgba(40,70,130,.75)'; c.lineWidth = 1.2 / s; c.stroke();
+  c.strokeStyle = 'rgba(20,30,60,.9)'; c.lineWidth = Math.max(0.45, 0.8 / s); c.beginPath();
+  for (let i = 0; i <= R.L * 10; i++) { const u = i * CM / 10, len = i % 10 === 0 ? 0.62 * CM : i % 5 === 0 ? 0.42 * CM : 0.24 * CM; c.moveTo(u, 0); c.lineTo(u, len); }
+  c.stroke();
+  c.fillStyle = 'rgba(20,30,60,.95)'; c.font = `600 ${0.34 * CM}px system-ui,sans-serif`; c.textAlign = 'center'; c.textBaseline = 'top';
+  for (let i = 0; i <= R.L; i++) c.fillText(String(i), i * CM, 0.72 * CM);
+  c.font = `${0.28 * CM}px system-ui,sans-serif`; c.textAlign = 'left'; c.fillStyle = 'rgba(40,60,110,.7)';
+  c.fillText('cm', 0.15 * CM, 1.35 * CM);
+  const [hx, hy] = rulerHandle(); handleKnob(c, hx, hy, 0.42 * CM, drag && drag.m === 'rulRot');
+  c.restore();
+}
+function drawProt(c) {
+  const P = S.prot, R = PR.R, s = sc();
+  c.save(); c.translate(P.x, P.y); c.rotate(P.a);
+  c.beginPath(); c.moveTo(-R, PR.b); c.lineTo(R, PR.b); c.lineTo(R, 0); c.arc(0, 0, R, 0, -Math.PI, true); c.closePath();
+  c.fillStyle = 'rgba(255,246,222,0.80)'; c.fill(); c.strokeStyle = 'rgba(120,80,20,.75)'; c.lineWidth = 1.2 / s; c.stroke();
+  c.strokeStyle = 'rgba(50,35,10,.9)'; c.lineWidth = Math.max(0.4, 0.75 / s); c.beginPath();
+  for (let d = 0; d <= 180; d++) {
+    const t = d * Math.PI / 180, len = d % 10 === 0 ? 0.42 * CM : d % 5 === 0 ? 0.28 * CM : 0.16 * CM, cs = Math.cos(t), sn = Math.sin(t);
+    c.moveTo((R - len) * cs, -(R - len) * sn); c.lineTo(R * cs, -R * sn);
+  }
+  c.moveTo(-R, 0); c.lineTo(R, 0);
+  c.moveTo(0, 0); c.lineTo(0, -0.5 * CM); c.moveTo(-0.3 * CM, 0); c.lineTo(0.3 * CM, 0);
+  c.stroke();
+  c.beginPath(); c.arc(0, 0, R - 1.45 * CM, 0, -Math.PI, true); c.lineWidth = Math.max(0.3, 0.5 / s); c.stroke();
+  c.beginPath(); c.lineWidth = Math.max(0.25, 0.4 / s); c.strokeStyle = 'rgba(50,35,10,.35)';
+  for (let d = 10; d < 180; d += 10) { const t = d * Math.PI / 180; c.moveTo((R - 1.45 * CM) * Math.cos(t), -(R - 1.45 * CM) * Math.sin(t)); c.lineTo(0.9 * CM * Math.cos(t), -0.9 * CM * Math.sin(t)); }
+  c.stroke();
+  c.textAlign = 'center'; c.textBaseline = 'middle';
+  for (let d = 0; d <= 180; d += 10) {
+    const t = d * Math.PI / 180;
+    for (const [r, val, fs, col] of [[R - 0.68 * CM, 180 - d, 0.27 * CM, 'rgba(40,25,5,.95)'], [R - 1.12 * CM, d, 0.22 * CM, 'rgba(160,40,20,.9)']]) {
+      c.save(); c.translate(r * Math.cos(t), -r * Math.sin(t)); c.rotate(Math.PI / 2 - t);
+      c.font = `600 ${fs}px system-ui,sans-serif`; c.fillStyle = col; c.fillText(String(val), 0, 0); c.restore();
+    }
+  }
+  c.beginPath(); c.arc(0, 0, 0.07 * CM, 0, Math.PI * 2); c.fillStyle = 'rgba(200,30,30,.9)'; c.fill();
+  // measuring arm
+  const t = P.arm * Math.PI / 180, ar = PR.R + 0.5 * CM;
+  c.strokeStyle = 'rgba(210,30,30,.9)'; c.lineWidth = Math.max(0.6, 1.2 / s); c.beginPath(); c.moveTo(0, 0); c.lineTo(ar * Math.cos(t), -ar * Math.sin(t)); c.stroke();
+  const [kx, ky] = protArmKnob(); c.beginPath(); c.arc(kx, ky, 0.28 * CM, 0, Math.PI * 2); c.fillStyle = 'rgba(210,30,30,.85)'; c.fill();
+  c.strokeStyle = '#fff'; c.lineWidth = 0.05 * CM; c.stroke();
+  const [hx, hy] = protRotHandle(); handleKnob(c, hx, hy, 0.4 * CM, drag && drag.m === 'protRot');
+  c.restore();
+  const lr = PR.R + 1.45 * CM; const [wx, wy] = toWorld(P, lr * Math.cos(t), -lr * Math.sin(t));
+  pill(c, `${P.arm}°  (${180 - P.arm}°)`, wx, wy, '#c81e1e');
+}
+function drawCompass(c) {
+  const C = S.comp, s = sc();
+  if (!C.placed && !(drag && drag.m === 'compSet')) return;
+  const [px, py] = compPencil(), r = C.r;
+  const L = Math.max(r * 0.6, r / 2 + 2.8 * CM);
+  const h = Math.sqrt(Math.max(0, L * L - (r / 2) * (r / 2)));
+  const mx = (C.cx + px) / 2, my = (C.cy + py) / 2, nx = Math.sin(C.ang), ny = -Math.cos(C.ang);
+  const hx = mx + nx * h, hy = my + ny * h;
+  c.save();
+  c.setLineDash([4 / s, 4 / s]); c.strokeStyle = 'rgba(36,87,214,.7)'; c.lineWidth = 1 / s;
+  c.beginPath(); c.moveTo(C.cx, C.cy); c.lineTo(px, py); c.stroke(); c.setLineDash([]);
+  c.lineCap = 'round';
+  c.strokeStyle = 'rgba(90,100,120,.55)'; c.lineWidth = 0.32 * CM;
+  c.beginPath(); c.moveTo(C.cx, C.cy); c.lineTo(hx, hy); c.lineTo(px, py); c.stroke();
+  c.strokeStyle = 'rgba(160,170,190,.6)'; c.lineWidth = 0.14 * CM;
+  c.beginPath(); c.moveTo(C.cx, C.cy); c.lineTo(hx, hy); c.lineTo(px, py); c.stroke();
+  c.beginPath(); c.arc(hx, hy, 0.38 * CM, 0, Math.PI * 2); c.fillStyle = 'rgba(70,80,100,.75)'; c.fill();
+  c.beginPath(); c.moveTo(hx, hy); c.lineTo(hx + nx * 1.1 * CM, hy + ny * 1.1 * CM); c.strokeStyle = 'rgba(70,80,100,.75)'; c.lineWidth = 0.22 * CM; c.stroke();
+  // pin & pencil tips
+  c.beginPath(); c.arc(C.cx, C.cy, 4 / s, 0, Math.PI * 2); c.fillStyle = '#fff'; c.fill(); c.strokeStyle = '#333'; c.lineWidth = 1.5 / s; c.stroke();
+  c.beginPath(); c.moveTo(C.cx - 7 / s, C.cy); c.lineTo(C.cx + 7 / s, C.cy); c.moveTo(C.cx, C.cy - 7 / s); c.lineTo(C.cx, C.cy + 7 / s); c.lineWidth = 1 / s; c.stroke();
+  c.beginPath(); c.arc(px, py, 5 / s, 0, Math.PI * 2); c.fillStyle = S.color; c.fill(); c.strokeStyle = '#fff'; c.lineWidth = 1.5 / s; c.stroke();
+  { const [qx, qy] = compHinge(), R = COMP_X(); c.beginPath(); c.arc(qx, qy, R, 0, Math.PI * 2); c.fillStyle = '#dc2626'; c.fill(); c.lineWidth = R * 0.22; c.strokeStyle = '#fff'; c.stroke();
+    const a = R * 0.42; c.beginPath(); c.moveTo(qx - a, qy - a); c.lineTo(qx + a, qy + a); c.moveTo(qx + a, qy - a); c.lineTo(qx - a, qy + a); c.lineWidth = R * 0.28; c.lineCap = 'round'; c.stroke(); }
+  c.restore();
+  let lab = 'r = ' + fmtCm(r);
+  if (drag && drag.m === 'compDraw') lab += '  ·  ' + Math.round(Math.abs(drag.acc) * 180 / Math.PI) + '°';
+  pill(c, lab, (C.cx + px) / 2 - ny * 14 / s, (C.cy + py) / 2 + nx * 14 / s);
+}
+function pill(c, text, x, y, bg) {
+  const s = sc(), fs = 12 / s, pad = 5 / s;
+  c.save(); c.font = `600 ${fs}px system-ui,sans-serif`; const w = c.measureText(text).width;
+  roundRect(c, x - w / 2 - pad, y - fs / 2 - pad, w + pad * 2, fs + pad * 2, 5 / s);
+  c.fillStyle = bg || 'rgba(20,28,45,.88)'; c.fill(); c.fillStyle = '#fff'; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText(text, x, y + 0.5 / s); c.restore();
+}
+
+let uiQueued = false;
+function redrawUI() { if (uiQueued) return; uiQueued = true; requestAnimationFrame(() => { uiQueued = false; paintUI(); }); }
+function paintUI() {
+  const s = sc(), d = dpr();
+  uiX.setTransform(1, 0, 0, 1, 0, 0); uiX.clearRect(0, 0, ui.width, ui.height);
+  if (!S.doc) return;
+  uiX.setTransform(s * d, 0, 0, s * d, MARGIN * s * d, MARGIN * s * d);
+  const c = uiX;
+  if (drag && drag.k) drawStroke(c, drag.k);
+  if (S.ruler.on) drawRuler(c);
+  if (S.prot.on) drawProt(c);
+  if (S.tool === 'compass') drawCompass(c);
+  if (drag && drag.k && drag.label) pill(c, drag.label, drag.lx, drag.ly);
+  if (drag && drag.snapMark) { c.beginPath(); c.arc(drag.snapMark[0], drag.snapMark[1], 6 / s, 0, Math.PI * 2); c.strokeStyle = '#2457d6'; c.lineWidth = 2 / s; c.stroke(); }
+  if (drag && (drag.m === 'rulRot' || drag.m === 'protRot')) { const o = drag.m === 'rulRot' ? S.ruler : S.prot; pill(c, mathDeg(o.a).toFixed(1) + '°', o.x, o.y - 22 / s); }
+  if (S.tool === 'eraser' && hover) { c.beginPath(); c.arc(hover[0], hover[1], 16 / s, 0, Math.PI * 2); c.fillStyle = 'rgba(255,255,255,.4)'; c.fill(); c.strokeStyle = 'rgba(0,0,0,.6)'; c.lineWidth = 1.5 / s; c.stroke(); }
+  if (S.tool === 'compass' && !S.comp.placed && !drag && hover) pill(c, 'Press on the centre point, drag out the radius', hover[0], hover[1] - 24 / s);
+}
+
+/* ---------- shapes ---------- */
+const POLY = { 5: 'Pentagon', 6: 'Hexagon', 7: 'Heptagon', 8: 'Octagon', 9: 'Nonagon', 10: 'Decagon', 11: 'Hendecagon', 12: 'Dodecagon' };
+S.shape = { kind: 'circle', n: 0 };
+const shapeName = sh => ({ circle: 'Circle', oval: 'Oval', semi: 'Semicircle', equi: 'Equilateral triangle', isos: 'Isosceles triangle', right: 'Right-angled triangle', square: 'Square', rect: 'Rectangle' })[sh.kind] || (POLY[sh.n] || sh.n + '-sided polygon');
+function shapePts(sh, x0, y0, x1, y1) {
+  let w = x1 - x0, h = y1 - y0; const sg = v => (v < 0 ? -1 : 1);
+  if (sh.kind === 'semi') h = sg(h) * Math.abs(w) / 2;
+  else if (sh.kind === 'equi') h = sg(h) * Math.abs(w) * Math.sqrt(3) / 2;
+  else if (['circle', 'square', 'poly'].includes(sh.kind)) { const m = Math.max(Math.abs(w), Math.abs(h)); w = sg(w) * m; h = sg(h) * m; }
+  const L = Math.min(x0, x0 + w), T = Math.min(y0, y0 + h), Rr = Math.max(x0, x0 + w), B = Math.max(y0, y0 + h), cx = (L + Rr) / 2, cy = (T + B) / 2, rx = (Rr - L) / 2, ry = (B - T) / 2;
+  const p = [];
+  if (sh.kind === 'circle' || sh.kind === 'oval') { for (let i = 0; i <= 120; i++) { const a = i / 120 * 2 * Math.PI; p.push(cx + rx * Math.cos(a), cy + ry * Math.sin(a)); } }
+  else if (sh.kind === 'semi') { for (let i = 0; i <= 64; i++) { const a = Math.PI + Math.PI * i / 64; p.push(cx + rx * Math.cos(a), B + rx * Math.sin(a)); } p.push(L, B); }
+  else if (sh.kind === 'equi' || sh.kind === 'isos') p.push(L, B, Rr, B, cx, T, L, B);
+  else if (sh.kind === 'right') p.push(L, B, Rr, B, L, T, L, B);
+  else if (sh.kind === 'square' || sh.kind === 'rect') p.push(L, T, Rr, T, Rr, B, L, B, L, T);
+  else { const n = sh.n, r = Math.min(rx, ry), a0 = Math.PI / 2 + Math.PI / n; for (let i = 0; i <= n; i++) { const a = a0 + 2 * Math.PI * i / n; p.push(cx + r * Math.cos(a), cy + r * Math.sin(a)); } }
+  let label = shapeName(sh);
+  if (sh.kind === 'circle') label += ' · r = ' + fmtCm(rx);
+  else if (sh.kind === 'semi') label += ' · d = ' + fmtCm(2 * rx);
+  else if (sh.kind === 'oval' || sh.kind === 'rect' || sh.kind === 'isos' || sh.kind === 'right') label += ` · ${fmtCm(2 * rx)} × ${fmtCm(2 * ry)}`;
+  else if (sh.kind === 'square' || sh.kind === 'equi') label += ' · side ' + fmtCm(2 * rx);
+  else label += ' · side ' + fmtCm(2 * Math.min(rx, ry) * Math.sin(Math.PI / sh.n));
+  return { p, label, lx: cx, ly: T - 18 / sc() };
+}
+const ICO = (d) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round">${d}</svg>`;
+const polyIco = n => { let d = ''; const a0 = Math.PI / 2 + Math.PI / n; for (let i = 0; i <= n; i++) { const a = a0 + 2 * Math.PI * i / n; d += (i ? 'L' : 'M') + (12 + 9 * Math.cos(a)).toFixed(1) + ' ' + (12 + 9 * Math.sin(a)).toFixed(1); } return ICO(`<path d="${d}"/>`); };
+function buildShapeMenu() {
+  const on = k => S.shape.kind === k ? ' on' : '';
+  let h = `<div class="ttl">Choose a shape, then drag on the page to draw it</div>
+  <div class="row"><button class="sh${S.shape.kind === 'circle' || S.shape.kind === 'oval' ? ' on' : ''}" data-grp="circ">${ICO('<circle cx="12" cy="12" r="9"/>')}Circle ▸</button>
+  <button class="sh${on('semi')}" data-k="semi">${ICO('<path d="M3 17a9 9 0 0 1 18 0z"/>')}Semicircle</button>
+  <button class="sh${['equi', 'isos', 'right'].includes(S.shape.kind) ? ' on' : ''}" data-grp="tri">${ICO('<path d="M12 3l9 17H3z"/>')}Triangle ▸</button></div>
+  <div class="sub" id="sub-circ"><button data-k="circle" class="${on('circle')}">Circle</button><button data-k="oval" class="${on('oval')}">Oval</button></div>
+  <div class="sub" id="sub-tri"><button data-k="equi" class="${on('equi')}">Equilateral</button><button data-k="isos" class="${on('isos')}">Isosceles</button><button data-k="right" class="${on('right')}">Right-angled</button></div>
+  <div class="row"><button class="sh${S.shape.kind === 'square' || S.shape.kind === 'rect' ? ' on' : ''}" data-grp="quad">${ICO('<rect x="4" y="4" width="16" height="16"/>')}Square ▸</button>`;
+  [5, 6].forEach(n => { h += `<button class="sh${S.shape.kind === 'poly' && S.shape.n === n ? ' on' : ''}" data-n="${n}">${polyIco(n)}${POLY[n]}</button>`; });
+  h += `</div><div class="sub" id="sub-quad"><button data-k="square" class="${on('square')}">Square</button><button data-k="rect" class="${on('rect')}">Rectangle</button></div><div class="row">`;
+  [7, 8, 9, 10, 11, 12].forEach(n => { h += `<button class="sh${S.shape.kind === 'poly' && S.shape.n === n ? ' on' : ''}" data-n="${n}" title="${n} sides">${polyIco(n)}<span class="t">${n === 7 ? 'Heptagon<small>(septagon)</small>' : POLY[n]}</span></button>`; });
+  h += `</div><div class="nrow">Any number of sides: <input type="number" id="nSides" min="3" max="100" value="${S.shape.kind === 'poly' && !POLY[S.shape.n] ? S.shape.n : 20}"><button class="primary" id="nGo">Use</button></div>
+  <div class="tip">Shapes use the pen colour and thickness. Circles, squares, equilateral triangles and polygons stay regular as you drag.</div>`;
+  const m = $('shapeMenu'); m.innerHTML = h;
+  const k = S.shape.kind; if (k === 'circle' || k === 'oval') $('sub-circ').classList.add('open'); if (['equi', 'isos', 'right'].includes(k)) $('sub-tri').classList.add('open'); if (k === 'square' || k === 'rect') $('sub-quad').classList.add('open');
+}
+function pickShape(sh) { S.shape = sh; $('shapeLbl').textContent = shapeName(sh).replace(' triangle', ' △').replace('-sided polygon', '-gon'); setTool('shape'); $('shapeMenu').classList.remove('on'); }
+function openShapeMenu() {
+  buildShapeMenu(); const b = $('shapeBtn').getBoundingClientRect(), m = $('shapeMenu');
+  m.classList.add('on'); m.style.left = ($('bar').getBoundingClientRect().right + 8) + 'px'; m.style.top = Math.max(6, Math.min(b.top - 10, innerHeight - m.offsetHeight - 6)) + 'px';
+}
+$('shapeMenu').addEventListener('click', e => {
+  const g = e.target.closest('[data-grp]'), k = e.target.closest('[data-k]'), n = e.target.closest('[data-n]');
+  if (g) { document.querySelectorAll('#shapeMenu .sub').forEach(x => x.classList.remove('open')); $('sub-' + g.dataset.grp).classList.add('open'); return; }
+  if (k) { pickShape({ kind: k.dataset.k, n: 0 }); return; }
+  if (n) { pickShape({ kind: 'poly', n: +n.dataset.n }); return; }
+  if (e.target.id === 'nGo') { let v = Math.round(+$('nSides').value); if (!(v >= 3)) v = 3; v = Math.min(100, v); pickShape(v === 3 ? { kind: 'equi', n: 0 } : v === 4 ? { kind: 'square', n: 0 } : { kind: 'poly', n: v }); }
+});
+$('shapeMenu').addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.id === 'nSides') $('nGo').click(); });
+document.addEventListener('pointerdown', e => { if ($('shapeMenu').classList.contains('on') && !e.target.closest('#shapeMenu') && !e.target.closest('#shapeBtn')) $('shapeMenu').classList.remove('on'); }, true);
+
+/* ---------- pointer handling ---------- */
+function ptOf(e) { const r = ui.getBoundingClientRect(), s = sc(); return [(e.clientX - r.left) / s - MARGIN, (e.clientY - r.top) / s - MARGIN]; }
+function lineLabel(ax, ay, bx, by) {
+  const len = dist(ax, ay, bx, by); let deg = Math.atan2(-(by - ay), bx - ax) * 180 / Math.PI; if (deg < 0) deg += 180; if (deg >= 180) deg -= 180;
+  return fmtCm(len) + '  ·  ' + deg.toFixed(0) + '°';
+}
+ui.addEventListener('pointerdown', e => {
+  if (!S.doc || drag) return;
+  if (e.pointerType === 'pen') S.sawPen = true;
+  if (e.pointerType === 'mouse' && e.button !== 0 && e.button !== 1) return;
+  ui.setPointerCapture(e.pointerId);
+  const [x, y] = ptOf(e);
+  // grab the ruler, protractor or compass first, whatever the mode: a finger on an instrument moves
+  // it even in swipe mode or after the pen has been used. Middle-click still pans.
+  const h = e.button === 1 ? null : hitInstrument(x, y);
+  if (h && h.m === 'compClose') { S.comp.placed = false; drag = null; setTool('pen'); redrawUI(); return; }
+  if (h) { drag = h; drag.id = e.pointerId; redrawUI(); return; }
+  if (S.tool === 'hand' || e.button === 1 || (e.pointerType === 'touch' && S.sawPen)) {
+    drag = { m: 'pan', id: e.pointerId, sx: e.clientX, sy: e.clientY, sl: wrap.scrollLeft, st: wrap.scrollTop, t0: performance.now(), dx: 0, swipe: S.tool === 'hand' && S.n > 1 && S.pw * sc() <= wrap.clientWidth + 4 }; stage.classList.remove('anim'); return;
+  }
+  const t = S.tool;
+  if ((t === 'pen' || t === 'hl' || t === 'line') && rulerSnap(x, y) != null) {
+    const u = rulerSnap(x, y); drag = { m: 'rline', id: e.pointerId, u0: u, k: newStroke(t, []) }; updRuleLine(u); return;
+  }
+  if (t === 'pen' || t === 'hl') { const k = newStroke(t, [x, y]); k.sm = true; drag = { m: 'pen', id: e.pointerId, k }; }
+  else if (t === 'line') { const [sx, sy, sn] = snapPoint(x, y, e.altKey); drag = { m: 'line', id: e.pointerId, ax: sx, ay: sy, k: newStroke('line', [sx, sy, sx, sy]), snapMark: sn ? [sx, sy] : null }; }
+  else if (t === 'shape') { drag = { m: 'shape', id: e.pointerId, x0: x, y0: y, k: newStroke('line', [x, y]) }; }
+  else if (t === 'eraser') { drag = { m: 'erase', id: e.pointerId }; eraseAt(x, y); }
+  else if (t === 'compass') {
+    const C = S.comp;
+    if (!C.placed) { const [sx, sy] = snapPoint(x, y, e.altKey); C.cx = sx; C.cy = sy; C.r = 0.01; drag = { m: 'compSet', id: e.pointerId }; }
+    else {
+      const a0 = Math.atan2(y - C.cy, x - C.cx); C.ang = a0;
+      const [px, py] = compPencil();
+      drag = { m: 'compDraw', id: e.pointerId, prev: a0, acc: 0, a0, k: newStroke('pen', [px, py]) };
+    }
+  }
+  redrawUI();
+});
+function updRuleLine(u1) {
+  const R = S.ruler, k = drag.k, off = -k.w / 2;
+  const [ax, ay] = toWorld(R, drag.u0, off), [bx, by] = toWorld(R, u1, off);
+  k.p = [ax, ay, bx, by];
+  drag.label = fmtCm(Math.abs(u1 - drag.u0)); const [lx, ly] = toWorld(R, (drag.u0 + u1) / 2, -22 / sc()); drag.lx = lx; drag.ly = ly;
+}
+ui.addEventListener('pointermove', e => {
+  if (!S.doc) return;
+  const [x, y] = ptOf(e);
+  if (!drag || S.tool === 'eraser') hover = [x, y];
+  if (!drag) { setCursor(x, y); if (S.tool === 'eraser' || S.tool === 'compass') redrawUI(); return; }
+  if (e.pointerId !== drag.id) return;
+  const m = drag.m;
+  if (m === 'pan') {
+    if (drag.swipe) { let dx = e.clientX - drag.sx; if ((dx > 0 && S.page <= 1) || (dx < 0 && S.page >= S.n)) dx *= 0.3; drag.dx = dx; stage.style.transform = `translateX(${dx}px)`; wrap.scrollTop = drag.st - (e.clientY - drag.sy); }
+    else { wrap.scrollLeft = drag.sl - (e.clientX - drag.sx); wrap.scrollTop = drag.st - (e.clientY - drag.sy); }
+    return;
+  }
+  if (m === 'pen') {
+    const evs = e.getCoalescedEvents ? e.getCoalescedEvents() : [e]; const p = drag.k.p, minD = 0.7 / sc();
+    for (const ev of (evs.length ? evs : [e])) { const [qx, qy] = ptOf(ev); if (dist(p[p.length - 2], p[p.length - 1], qx, qy) >= minD) p.push(qx, qy); }
+  } else if (m === 'line') {
+    let bx = x, by = y, sn = false;
+    if (e.shiftKey) { const a = Math.round(Math.atan2(y - drag.ay, x - drag.ax) / (Math.PI / 12)) * (Math.PI / 12), l = dist(drag.ax, drag.ay, x, y); bx = drag.ax + l * Math.cos(a); by = drag.ay + l * Math.sin(a); }
+    else [bx, by, sn] = snapPoint(x, y, e.altKey);
+    drag.k.p = [drag.ax, drag.ay, bx, by]; drag.snapMark = sn ? [bx, by] : null;
+    drag.label = lineLabel(drag.ax, drag.ay, bx, by); drag.lx = (drag.ax + bx) / 2; drag.ly = (drag.ay + by) / 2 - 18 / sc();
+  } else if (m === 'rline') { const [u] = toLocal(S.ruler, x, y); updRuleLine(Math.max(-RUL.m, Math.min(S.ruler.L * CM + RUL.m, u))); }
+  else if (m === 'shape') { const r = shapePts(S.shape, drag.x0, drag.y0, x, y); drag.k.p = r.p; drag.label = r.label; drag.lx = r.lx; drag.ly = r.ly; }
+  else if (m === 'erase') { const evs = e.getCoalescedEvents ? e.getCoalescedEvents() : []; for (const ev of evs) { const [qx, qy] = ptOf(ev); eraseAt(qx, qy); } eraseAt(x, y); }
+  else if (m === 'rulMove') { S.ruler.x = x - drag.ox; S.ruler.y = y - drag.oy; }
+  else if (m === 'protMove') { S.prot.x = x - drag.ox; S.prot.y = y - drag.oy; }
+  else if (m === 'rulRot') {
+    const [hu, hv] = rulerHandle(); let a = Math.atan2(y - S.ruler.y, x - S.ruler.x) - Math.atan2(hv, hu);
+    if (e.shiftKey) a = Math.round(a / (Math.PI / 12)) * (Math.PI / 12); S.ruler.a = a;
+  } else if (m === 'protRot') {
+    let a = Math.atan2(y - S.prot.y, x - S.prot.x) - Math.PI / 2;
+    if (e.shiftKey) a = Math.round(a / (Math.PI / 12)) * (Math.PI / 12); S.prot.a = a;
+  } else if (m === 'protArm') {
+    const [lx, ly] = toLocal(S.prot, x, y); let d = Math.atan2(-ly, lx) * 180 / Math.PI;
+    if (d < -90) d = 180; else if (d < 0) d = 0; S.prot.arm = Math.round(Math.max(0, Math.min(180, d)));
+  } else if (m === 'compSet' || m === 'compR') {
+    const C = S.comp; C.r = Math.max(0.01, dist(C.cx, C.cy, x, y)); C.ang = Math.atan2(y - C.cy, x - C.cx);
+    if (e.shiftKey) C.r = Math.round(C.r / (CM / 10)) * (CM / 10) || CM / 10;
+    $('radius').value = (C.r / CM).toFixed(1);
+  } else if (m === 'compMove') { S.comp.cx = x - drag.ox; S.comp.cy = y - drag.oy; }
+  else if (m === 'compDraw') {
+    const C = S.comp, a = Math.atan2(y - C.cy, x - C.cx); let dA = a - drag.prev;
+    while (dA > Math.PI) dA -= 2 * Math.PI; while (dA < -Math.PI) dA += 2 * Math.PI;
+    const target = Math.max(-2 * Math.PI, Math.min(2 * Math.PI, drag.acc + dA));
+    const steps = Math.max(1, Math.ceil(Math.abs(target - drag.acc) / (Math.PI / 180)));
+    for (let i = 1; i <= steps; i++) { const aa = drag.a0 + drag.acc + (target - drag.acc) * i / steps; drag.k.p.push(C.cx + C.r * Math.cos(aa), C.cy + C.r * Math.sin(aa)); }
+    drag.acc = target; drag.prev = a; C.ang = drag.a0 + drag.acc;
+  }
+  redrawUI();
+});
+function endDrag(e) {
+  if (!drag || (e && e.pointerId !== drag.id)) return;
+  const d = drag; drag = null;
+  if (e && e.pointerType !== 'mouse') hover = null;
+  if (d.m === 'pan' && d.swipe) { finishSwipe(d); return; }   // no hover on a whiteboard: don't leave the rubber circle behind
+  if (d.m === 'pen' || d.m === 'line' || d.m === 'rline') { if (d.k.p.length >= 2 && !(d.m !== 'pen' && dist(d.k.p[0], d.k.p[1], d.k.p[2], d.k.p[3]) < 0.5 / sc())) addStroke(d.k); }
+  else if (d.m === 'shape') {         // keep any shape at least 0.1 cm across
+    const xs = d.k.p.filter((_, i) => !(i & 1)), ys = d.k.p.filter((_, i) => i & 1);
+    if (d.k.p.length > 4 && Math.max(Math.max(...xs) - Math.min(...xs), Math.max(...ys) - Math.min(...ys)) >= 0.1 * CM - 1e-6) addStroke(d.k);
+  }
+  else if (d.m === 'compDraw') { if (Math.abs(d.acc) > 0.01) addStroke(d.k); }
+  else if (d.m === 'compSet') { if (S.comp.r > 2 / sc()) { S.comp.placed = true; } else { S.comp.placed = false; } setHint(); }
+  redrawUI();
+}
+ui.addEventListener('pointerup', endDrag);
+ui.addEventListener('pointercancel', endDrag);
+ui.addEventListener('pointerleave', () => { if (!drag) { hover = null; redrawUI(); } });
+function setCursor(x, y) {
+  let c = 'crosshair';
+  const h = hitInstrument(x, y);
+  if (h) c = /Rot|Arm|compR/.test(h.m) ? 'grab' : 'move';
+  else if (S.tool === 'hand') c = 'grab';
+  else if (S.tool === 'eraser') c = 'none';
+  ui.style.cursor = c;
+}
+wrap.addEventListener('wheel', e => { if (!S.doc || !(e.ctrlKey || e.metaKey)) return; e.preventDefault(); setZoom(sc() * Math.exp(-e.deltaY * 0.0025), e.clientX, e.clientY); }, { passive: false });
+
+/* ---------- save ---------- */
+async function buildAnnotated() {
+  const L = PDFLib; const d = await L.PDFDocument.load(S.bytes.slice(), { ignoreEncryption: true });
+  const pages = d.getPages();
+  // Turned on screen, the file saves turned: every page carries the extra rotation, which is also
+  // the space the writing was recorded in, so the ink maths below lands it in the right place.
+  if (S.rot) for (const pg of pages) pg.setRotation(L.degrees((((pg.getRotation().angle || 0) + S.rot) % 360 + 360) % 360));
+  for (const key of Object.keys(S.ann)) {
+    const list = S.ann[key], pg = pages[key - 1]; if (!pg || !list || !list.length) continue;
+    const cb = pg.getCropBox(), rot = (((pg.getRotation().angle || 0) % 360) + 360) % 360;
+    const tf = (vx, vy) => { let px, py;
+      if (rot === 90) { px = vy; py = vx; } else if (rot === 180) { px = cb.width - vx; py = vy; }
+      else if (rot === 270) { px = cb.width - vy; py = cb.height - vx; } else { px = vx; py = cb.height - vy; }
+      return [cb.x + px, -(cb.y + py)]; };
+    if (L.pushGraphicsState && L.setLineJoin && L.LineJoinStyle) pg.pushOperators(L.pushGraphicsState(), L.setLineJoin(L.LineJoinStyle.Round));
+    for (const k of list) {
+      const p = k.p; const f = (i) => tf(p[i], p[i + 1]).map(n => n.toFixed(2)).join(' ');
+      let path = 'M ' + f(0);
+      if (p.length === 2) { const q = tf(p[0] + 0.01, p[1]); path += ' L ' + q[0].toFixed(2) + ' ' + q[1].toFixed(2); }
+      else if (k.sm && p.length > 4) {
+        for (let i = 2; i < p.length - 2; i += 2) { const m = tf((p[i] + p[i + 2]) / 2, (p[i + 1] + p[i + 3]) / 2); path += ' Q ' + f(i) + ' ' + m[0].toFixed(2) + ' ' + m[1].toFixed(2); }
+        path += ' L ' + f(p.length - 2);
+      } else for (let i = 2; i < p.length; i += 2) path += ' L ' + f(i);
+      const n = parseInt(k.c.slice(1), 16);
+      const opts = { x: 0, y: 0, borderColor: L.rgb(((n >> 16) & 255) / 255, ((n >> 8) & 255) / 255, (n & 255) / 255), borderWidth: k.w, borderOpacity: k.a };
+      if (L.LineCapStyle) opts.borderLineCap = L.LineCapStyle.Round;
+      pg.drawSvgPath(path, opts);
+    }
+    if (L.popGraphicsState && L.setLineJoin) pg.pushOperators(L.popGraphicsState());
+  }
+  if (S.groups) for (let i = S.n; i >= 1; i--) { const g = G(i); if (g && g.step < g.steps) d.removePage(i - 1); }
+  return await d.save();
+}
+async function savePdf() {
+  if (!S.doc) return toast('Open a PDF first');
+  // A PowerPoint or Word file gets a choice: back out in its own format, or as a PDF.
+  const src = /\.(pptx?|ppsx?|pps|pptm|odp)$/i.test(S.name) ? 'pptx'
+            : /\.(docx?|docm|rtf|odt)$/i.test(S.name) ? 'docx' : 'pdf';
+  let want = 'pdf';
+  if (src !== 'pdf' && window.cc && cc.reconvertDoc) {
+    const nice = src === 'pptx' ? 'PowerPoint' : 'Word';
+    want = await choose('Save your annotated copy as\u2026', [[nice + ' (.' + src + ')', src, 'primary'], ['PDF', 'pdf', 'primary']]);
+    if (!want) return;
+  }
+  try {
+    const out = await buildAnnotated();
+    const stem = S.name.replace(/\.(pdf|pptx?|ppsx?|pptm|docx?|docm|rtf|odt|odp)$/i, '');
+
+    // Asked for the original format, the annotated pages go back out through the converter:
+    // slides stay slides, with the text still text and the ink as shapes. If that is not
+    // possible the PDF is saved instead and the message says so.
+    let data = out, ext = 'pdf', note = '';
+    if (want !== 'pdf' && window.cc && cc.reconvertDoc) {
+      busy(want === 'pptx' ? 'Saving as PowerPoint…' : 'Saving as Word…');
+      let r = null;
+      try { r = await cc.reconvertDoc(want, out); } catch (e) { r = { error: String(e) }; }
+      busy(false);
+      if (r && r.data && r.data.byteLength > 500) { data = r.data; ext = want; }
+      else note = ' (as a PDF \u2013 ' + (r && r.error === 'no-converter'
+        ? 'LibreOffice is needed to write ' + want.toUpperCase() + ' back out' : 'the ' + want.toUpperCase() + ' could not be written') + ')';
+    }
+    const TYPE = { pdf: 'application/pdf',
+      pptx: 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+      docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' };
+    const name = stem + '-annotated.' + ext;
+    const blob = new Blob([data], { type: TYPE[ext] });
+    const dl = await dlPromise;
+    if (dl) {
+      try { await dl.save({ filename: name, data: blob }); S.dirty = false; toast('Saved ' + name + note); }
+      catch (err) { toast(err && err.code === 'declined' ? 'Save cancelled' : 'Could not save here (' + (err && err.code || 'error') + ')'); }
+      return;
+    }
+    const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name;
+    document.body.appendChild(a); a.click(); a.remove(); S.dirty = false; toast('Saved ' + name + note);
+  } catch (e) { console.error(e); toast('Sorry, saving failed: ' + e.message); }
+}
+
+/* ---------- UI wiring ---------- */
+const HINTS = {
+  pen: 'Pen: draw freely. Start a stroke just above the ruler’s top edge to draw a perfectly straight line along it.',
+  hl: 'Highlighter: see-through marker. Works along the ruler edge too.',
+  line: 'Line: drag to draw a straight line (length and angle shown). Ends snap to other line ends; hold Shift to lock to 15° steps, Alt to stop snapping.',
+  compass: 'Compass: press on the centre and drag out the radius (Shift = whole mm). Then drag anywhere to draw an arc. Drag the pin to move it, or the pencil tip to change the radius.',
+  eraser: 'Eraser: touch any line to remove it.',
+  hand: 'Swipe: drag left or right to change slide/page (or tap the big arrows). Tap Pen to write. Ctrl + scroll to zoom.',
+  shape: 'Shapes: drag on the page to draw the chosen shape (it uses the pen colour and thickness). Click Shapes ▾ to choose another.',
+};
+function setHint() {
+  let h = HINTS[S.tool] || '';
+  if (S.tool === 'compass' && S.comp.placed) h = 'Compass set: drag anywhere around the pin to draw an arc. Drag the pin to move it, drag the pencil tip to change the radius, or type an exact radius above.';
+  if (S.ruler.on || S.prot.on) h += '  ·  Drag an instrument to move it; drag its blue ⟳ knob to rotate (Shift = 15° steps).' + (S.prot.on ? ' Drag the red knob to read an angle.' : '');
+  $('hint').textContent = S.doc ? h : 'Open a PDF or start with blank paper.';
+}
+function setTool(t) {
+  document.body.classList.toggle('links-on', t === 'hand'); S.tool = t; document.querySelectorAll('#bar [data-tool]').forEach(b => b.classList.toggle('on', b.dataset.tool === t));
+  $('compOpts').style.display = t === 'compass' ? 'flex' : 'none'; setHint(); redrawUI();
+}
+function updateBar() {
+  const g = G(), last = S.groups && S.groups[S.groups.length - 1];
+  $('pageInfo').textContent = !S.doc ? '–' : g ? `${g.slide} / ${last.slide}` : `${S.page} / ${S.n}`;
+  $('pageInfo').title = g && g.steps > 1 ? `Slide ${g.slide}, animation ${g.step - 1} of ${g.steps - 1}` : '';
+  $('builds').innerHTML = g && g.steps > 1 ? Array.from({ length: g.steps - 1 }, (_, i) => `<i class="${i < g.step - 1 ? 'on' : ''}"></i>`).join('') : '';
+  $('prevBtn').disabled = !S.doc || S.page <= 1; $('nextBtn').disabled = !S.doc || S.page >= S.n;
+  { let a = S.page; while (a > 1 && sameSlide(a - 1, S.page)) a--; let b = S.page; while (b < S.n && sameSlide(b + 1, S.page)) b++; $('edgePrev').disabled = !S.doc || a <= 1; $('edgeNext').disabled = !S.doc || b >= S.n; }
+  document.body.classList.toggle('multi', !!S.doc && S.n > 1);
+  $('undoBtn').disabled = !S.undo.length; $('redoBtn').disabled = !S.redo.length;
+  $('rulerBtn').classList.toggle('on', S.ruler.on); $('protBtn').classList.toggle('on', S.prot.on);
+  setHint();
+}
+function toggleRuler() {
+  if (!S.doc) return; S.ruler.on = !S.ruler.on;
+  if (S.ruler.on) { const [cx, cy] = visibleCentre(); S.ruler.a = 0; S.ruler.L = Math.max(10, Math.min(50, Math.floor(S.pw / CM - 1))); S.ruler.x = cx - Math.min(S.ruler.L * CM, S.pw * 0.9) / 2; S.ruler.y = cy; }
+  updateBar(); redrawUI();
+}
+function toggleProt() {
+  if (!S.doc) return; S.prot.on = !S.prot.on;
+  if (S.prot.on) { const [cx, cy] = visibleCentre(); S.prot.a = 0; S.prot.x = cx; S.prot.y = cy + PR.R / 2; }
+  updateBar(); redrawUI();
+}
+function setColour(c) {
+  S.color = c; let hit = false; document.querySelectorAll('#colours .sw').forEach(b => { const on = b.dataset.c === c; hit = hit || on; b.classList.toggle('on', on); }); const cp = document.querySelector('.cp'); if (cp) { cp.classList.toggle('on', !hit); if (!hit) cp.style.background = c; } redrawUI();
+}
+
+$('openBtn').onclick = $('openBtn2').onclick = () => $('file').click();
+// The same two sheet makers the dock has, so a lesson can be topped up without leaving the page.
+$('fluBtn').onclick = () => { if (window.cc && cc.dock) cc.dock('flu'); else toast('Question sheets open in the ClassTools app.'); };
+$('extBtn').onclick = () => { if (window.cc && cc.dock) cc.dock('ext'); else toast('Question sheets open in the ClassTools app.'); };
+// The folder button on the dock opens this window straight into the file chooser.
+if (window.cc && cc.on) cc.on('doc-open', () => $('file').click());
+// The pencil case drives the tools from outside the window.
+if (window.cc && cc.on) cc.on('doc-tool', id => setTool(id));
+if (window.cc && cc.on) cc.on('doc-colour', c => setColour(c));
+$('file').onchange = e => { openFile(e.target.files[0]); e.target.value = ''; };
+$('newBtn').onclick = () => newBlank($('paper').value);
+$('edgePrev').onclick = () => prevSlide();
+$('edgeNext').onclick = () => nextSlide();
+function nextSlide() { if (!S.doc) return; finishBuild(); let n = S.page + 1; while (n <= S.n && sameSlide(S.page, n)) n++; if (n <= S.n) slideTo(n, 1); }
+function prevSlide() { if (!S.doc) return; finishBuild(); let n = S.page; while (n > 1 && sameSlide(n - 1, S.page)) n--; n--; if (n >= 1) slideTo(n, -1); }
+$('addPageBtn').onclick = addPage;
+document.querySelectorAll('[data-blank]').forEach(b => b.onclick = () => { $('paper').value = b.dataset.blank; newBlank(b.dataset.blank); });
+document.querySelectorAll('#bar [data-tool]').forEach(b => b.onclick = () => { if (b.dataset.tool === 'shape') { if ($('shapeMenu').classList.contains('on')) $('shapeMenu').classList.remove('on'); else openShapeMenu(); return; } setTool(b.dataset.tool); });
+document.querySelectorAll('#colours .sw').forEach(b => b.onclick = () => setColour(b.dataset.c));
+$('colorPick').oninput = e => setColour(e.target.value);
+$('width').oninput = e => S.width = +e.target.value;
+$('rulerBtn').onclick = toggleRuler; $('protBtn').onclick = toggleProt;
+function hideTools() {
+  drag = null; S.ruler.on = false; S.prot.on = false; S.comp.placed = false;
+  if (S.tool === 'compass') setTool('pen');
+  updateBar(); redrawUI();
+}
+$('hideBtn').onclick = hideTools;
+$('undoBtn').onclick = () => restore(S.undo, S.redo); $('redoBtn').onclick = () => restore(S.redo, S.undo);
+$('clearBtn').onclick = async () => {
+  const pages = Object.keys(S.ann).filter(k => (S.ann[k] || []).length);
+  const added = !!(S.orig && S.n !== S.orig.n);
+  if (!pages.length && !added) { toast('Nothing to clear – there is no writing yet.'); return; }
+  const here = (S.ann[AK()] || []).length, word = S.groups ? 'slide' : 'page';
+  const r = await choose('Clear…', [[here ? `This ${word}` : null, 'page'], [pages.length ? `Every ${word}` : null, 'all'], [added ? `Reset ${word}s (remove added pages too)` : null, 'reset']]);
+  if (!r) return;
+  if (r === 'reset') { await resetDoc(); return; }
+  if (r === 'all') { S.undo.push({ all: { ...S.ann } }); S.redo = []; S.dirty = true; for (const k of pages) S.ann[k] = []; } else { snapshot(); S.ann[AK()] = []; }
+  redrawInk(); toast(r === 'all' ? `All ${word}s cleared.` : `${word[0].toUpperCase() + word.slice(1)} cleared.`);
+};
+async function resetDoc() {
+  if (!S.orig) return;
+  finishBuild(); pendingBuilds = null;
+  const o = S.orig;
+  await loadBytes(o.bytes.slice(), o.name, false, 1, 'page');
+  S.groups = o.groups ? JSON.parse(JSON.stringify(o.groups)) : null; keyGroups();
+  S.orig = o; fitPage(); updateBar(); redrawInk();
+  toast('Back to the original – added pages and all writing removed.');
+}
+function choose(text, opts) { return new Promise(res => {
+  const m = $('modal'), row = m.querySelector('.row'), old = row.innerHTML; $('modalText').textContent = text;
+  row.innerHTML = '<button data-v="">Cancel</button>' + opts.filter(o => o[0]).map(([l, v, cls]) => `<button class="${cls || 'danger'}" data-v="${v}">${l}</button>`).join('');
+  m.style.display = 'flex';
+  row.onclick = e => { const b = e.target.closest('button'); if (!b) return; m.style.display = 'none'; row.onclick = null; row.innerHTML = old; res(b.dataset.v || null); };
+}); }
+$('prevBtn').onclick = () => prevStep(); $('nextBtn').onclick = () => nextStep();
+$('zoomIn').onclick = () => setZoom(sc() * 1.2); $('zoomOut').onclick = () => setZoom(sc() / 1.2);
+$('fitBtn').onclick = () => S.doc && fitPage();
+$('saveBtn').onclick = savePdf;
+$('rotBtn').onclick = () => rotateDoc(90);
+/* ---------- size the tools to the screen ---------- */
+let barW = 0;
+function fitBar() {
+  const bar = $('bar'), inn = $('barIn');
+  inn.classList.remove('cols2'); inn.style.zoom = 1;
+  const A = bar.clientHeight - 2; let H = inn.scrollHeight, z;
+  if (H * 0.8 <= A) z = Math.min(1.3, A / H);                 // shrink (not below 80%) or grow a little on big screens
+  else { inn.classList.add('cols2'); H = inn.scrollHeight; z = Math.max(0.6, Math.min(1, A / H)); }   // short screens: two columns
+  z = Math.floor(z * 100) / 100; inn.style.zoom = z;
+  const w = Math.round(bar.getBoundingClientRect().width);
+  if (w !== barW) { barW = w; if (window.cc && cc.docSidebar) cc.docSidebar(w); }
+  const m = $('shapeMenu'); if (m.classList.contains('on')) m.style.left = (bar.getBoundingClientRect().right + 8) + 'px';
+}
+let fitBarT; addEventListener('resize', () => { clearTimeout(fitBarT); fitBarT = setTimeout(fitBar, 60); });
+/* ---------- coloured reading overlay ---------- */
+const TINT = (() => { try { return JSON.parse(localStorage.getItem('ct-tint')) || {}; } catch (e) { return {}; } })();
+function applyTint() {
+  const on = !!TINT.c; document.body.classList.toggle('tinted', on);
+  $('tint').style.background = TINT.c || 'transparent'; $('tint').style.opacity = (TINT.op || 100) / 100;
+  $('tintBtn').classList.toggle('on', on);
+  let hit = false; document.querySelectorAll('#tintMenu .tsw[data-t]').forEach(b => { const o = (b.dataset.t || '') === (TINT.c || ''); hit = hit || o; b.classList.toggle('on', o); });
+  const pk = document.querySelector('#tintMenu label.tsw'); pk.classList.toggle('on', on && !hit); if (on && !hit) pk.querySelector('i').style.background = TINT.c; else pk.querySelector('i').style.background = '';
+  $('tintOp').value = TINT.op || 100; $('tintOpV').textContent = (TINT.op || 100) + '%';
+  try { localStorage.setItem('ct-tint', JSON.stringify(TINT)); } catch (e) {}
+}
+$('tintBtn').onclick = e => {
+  e.stopPropagation(); const m = $('tintMenu');
+  if (m.classList.toggle('on')) { const b = $('tintBtn').getBoundingClientRect(); m.style.left = ($('bar').getBoundingClientRect().right + 8) + 'px'; m.style.top = Math.max(6, Math.min(b.top - 20, innerHeight - m.offsetHeight - 6)) + 'px'; }
+};
+$('tintMenu').addEventListener('click', e => { e.stopPropagation(); const b = e.target.closest('.tsw[data-t]'); if (b) { TINT.c = b.dataset.t; applyTint(); } });
+$('tintPick').oninput = e => { TINT.c = e.target.value; applyTint(); };
+$('tintOp').oninput = e => { TINT.op = +e.target.value; applyTint(); };
+document.addEventListener('pointerdown', e => { if (!e.target.closest('#tintMenu,#tintBtn')) $('tintMenu').classList.remove('on'); });
+applyTint();
+fitBar(); setTimeout(fitBar, 300);
+$('shapesBtn').onclick = () => { if (window.cc && cc.dock) cc.dock('shapes'); else toast('ShapeXplorer opens in the ClassTools app.'); };
+$('calcBtn').onclick = () => { if (window.cc && cc.dock) cc.dock('calc'); else toast('The calculator opens in the ClassTools app.'); };
+if (window.cc) cc.on('calc-open', on => $('calcBtn').classList.toggle('on', !!on));
+$('radius').onchange = e => { const v = parseFloat(e.target.value); if (v > 0) { S.comp.r = v * CM; if (!S.comp.placed) { const [cx, cy] = visibleCentre(); S.comp.cx = cx - S.comp.r / 2; S.comp.cy = cy; S.comp.ang = 0; S.comp.placed = true; } setHint(); redrawUI(); } };
+$('recentre').onclick = () => { S.comp.placed = false; setHint(); redrawUI(); };
+
+document.addEventListener('keydown', e => {
+  if (e.target.matches('input,select,textarea')) return;
+  const k = e.key.toLowerCase();
+  if ((e.ctrlKey || e.metaKey) && k === 'z') { e.preventDefault(); e.shiftKey ? restore(S.redo, S.undo) : restore(S.undo, S.redo); return; }
+  if ((e.ctrlKey || e.metaKey) && k === 'y') { e.preventDefault(); restore(S.redo, S.undo); return; }
+  if ((e.ctrlKey || e.metaKey) && k === 's') { e.preventDefault(); savePdf(); return; }
+  if ((e.ctrlKey || e.metaKey) && k === 'r') { e.preventDefault(); rotateDoc(90); return; }
+  if (e.ctrlKey || e.metaKey || e.altKey) return;
+  if (k === 's') { openShapeMenu(); return; }
+  const map = { p: 'pen', g: 'hl', l: 'line', c: 'compass', e: 'eraser', h: 'hand' };
+  if (map[k]) setTool(map[k]);
+  else if (k === 'r') toggleRuler(); else if (k === 'a') toggleProt();
+  else if (e.key === 'ArrowRight' || e.key === 'PageDown' || (e.key === ' ' && S.tool === 'hand')) nextStep();
+  else if (e.key === 'ArrowLeft' || e.key === 'PageUp') prevStep();
+  else if (k === 'escape') hideTools();
+});
+let dragDepth = 0;
+window.addEventListener('dragenter', e => { e.preventDefault(); dragDepth++; $('drop').style.display = 'flex'; });
+window.addEventListener('dragleave', () => { if (--dragDepth <= 0) { dragDepth = 0; $('drop').style.display = 'none'; } });
+window.addEventListener('dragover', e => e.preventDefault());
+window.addEventListener('drop', e => { e.preventDefault(); dragDepth = 0; $('drop').style.display = 'none'; const f = e.dataTransfer.files[0]; if (f) openFile(f); });
+let rzT; window.addEventListener('resize', () => { clearTimeout(rzT); rzT = setTimeout(() => S.doc && renderPage(), 150); });
+
+if (window.cc) window.cc.on('load-pdf', async (bytes, name, insert) => {
+  if (insert && S.doc) { await insertPdfPages(new Uint8Array(bytes)); setTool('pen'); return; }
+  if (S.dirty && !(await ask('Open the new questions? Unsaved writing on the current page will be lost.'))) return;
+  await loadBytes(new Uint8Array(bytes), name, false, 1, 'page');
+  setTool('pen');
+});
+/* starter / problem-solving questions slot in straight after the slide you're on */
+async function insertPdfPages(bytes, msg) {
+  finishBuild();
+  const at = AK(), g = G(at), slideAt = g ? g.slide : at;
+  const d = await PDFLib.PDFDocument.load(S.bytes.slice(), { ignoreEncryption: true });
+  const src = await PDFLib.PDFDocument.load(bytes, { ignoreEncryption: true });
+  const pages = await d.copyPages(src, src.getPageIndices()), k = pages.length;
+  pages.forEach((p, i) => d.insertPage(at + i, p));
+  const mv = n => (+n > at ? +n + k : +n);
+  const ann = {}; for (const key of Object.keys(S.ann)) ann[mv(key)] = S.ann[key]; S.ann = ann;
+  for (const st of [S.undo, S.redo]) for (const u of st) { if (u.all) { const a = {}; for (const key of Object.keys(u.all)) a[mv(key)] = u.all[key]; u.all = a; } else u.pg = mv(u.pg); }
+  if (S.groups) { for (const x of S.groups) if (x.slide > slideAt) x.slide += k; S.groups.splice(at, 0, ...Array.from({ length: k }, (_, i) => ({ slide: slideAt + 1 + i, step: 1, steps: 1, fx: [] }))); }
+  pendingBuilds = null;
+  await loadBytes(await d.save(), S.name, true, at + 1);
+  fitPage(); updateBar(); S.dirty = true;
+  toast(msg || `${k} question page${k === 1 ? '' : 's'} added after ${S.groups ? 'slide' : 'page'} ${slideAt}`);
+}
+/* room for the calculator (left) and the objective ticker (bottom) */
+if (window.cc) window.cc.on('insets', o => {
+  const L = Math.max(0, o.left | 0), B = Math.max(0, o.bottom | 0);
+  if ($('main').style.marginLeft === L + 'px' && document.body.style.paddingBottom === B + 'px') return;
+  $('main').style.marginLeft = L + 'px'; document.body.style.paddingBottom = B + 'px';
+  fitBar();
+  setTimeout(() => { if (S.doc) fitPage(); }, 200);
+});
+/* reaction sounds */
+let rxAudio = null, rxBtn = null;
+$('reactions').addEventListener('click', e => {
+  const b = e.target.closest('.rx'); if (!b) return;
+  const same = rxBtn === b && rxAudio && !rxAudio.paused;
+  if (rxAudio) { rxAudio.pause(); rxAudio = null; } if (rxBtn) rxBtn.classList.remove('playing'); rxBtn = null;
+  if (same) return;                                  // tap again to stop
+  const a = new Audio(`sounds/${b.dataset.snd}.mp3`); rxAudio = a; rxBtn = b; b.classList.add('playing');
+  a.onended = () => { if (rxBtn === b) { b.classList.remove('playing'); rxBtn = null; rxAudio = null; } };
+  a.play().catch(() => { b.classList.remove('playing'); toast('Could not play that sound'); });
+});
+setTool('pen'); updateBar();
+})();
+</script>
+</body>
+</html>

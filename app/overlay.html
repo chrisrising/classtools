@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<title>ClassTools screen pen</title>
+<style>
+html,body{margin:0;height:100%;overflow:hidden;background:transparent;user-select:none;-webkit-user-select:none;touch-action:none}
+canvas{position:absolute;left:0;top:0;width:100%;height:100%;display:block}
+#ui{touch-action:none;cursor:crosshair}
+body.pointer #ui{cursor:default}
+/* a barely-visible tint so the layer catches clicks on Windows while drawing */
+body.drawing{background:rgba(255,255,255,.004)}
+#hint{position:absolute;left:50%;top:14px;transform:translateX(-50%);background:rgba(20,28,45,.9);color:#fff;font:600 15px "Segoe UI",system-ui,sans-serif;padding:8px 16px;border-radius:999px;pointer-events:none;opacity:0;transition:opacity .3s;white-space:nowrap}
+#hint.on{opacity:1}
+</style>
+</head>
+<body class="drawing">
+<canvas id="ink"></canvas>
+<canvas id="ui"></canvas>
+<div id="hint"></div>
+<script>
+(() => {
+'use strict';
+const CM = 38;                       // screen pixels per "centimetre" on the instruments
+const $ = id => document.getElementById(id);
+const inkC = $('ink'), ui = $('ui'), inkX = inkC.getContext('2d'), uiX = ui.getContext('2d');
+const S = {
+  strokes: [], undo: [], tool: 'pen', color: '#7a3cc8', width: 4,
+  ruler: { on: false, x: 0, y: 0, a: 0, L: 30 },
+  prot: { on: false, x: 0, y: 0, a: 0, arm: 60 },
+  comp: { placed: false, cx: 0, cy: 0, r: 4 * CM, ang: 0 },
+};
+let drag = null, hover = null;
+const ER = 22;                       // eraser radius in screen pixels
+const sc = () => 1, dpr = () => window.devicePixelRatio || 1;
+const dist = (ax, ay, bx, by) => Math.hypot(bx - ax, by - ay);
+const toLocal = (o, px, py) => { const dx = px - o.x, dy = py - o.y, c = Math.cos(o.a), s = Math.sin(o.a); return [dx * c + dy * s, -dx * s + dy * c]; };
+const toWorld = (o, lx, ly) => { const c = Math.cos(o.a), s = Math.sin(o.a); return [o.x + lx * c - ly * s, o.y + lx * s + ly * c]; };
+const tol = () => 14;
+const fmtCm = v => (v / CM).toFixed(1) + ' cm';
+const mathDeg = a => { let d = -a * 180 / Math.PI; d = ((d % 360) + 360) % 360; return d; };
+let hintT; function hint(t, ms) { const h = $('hint'); h.textContent = t; h.classList.add('on'); clearTimeout(hintT); hintT = setTimeout(() => h.classList.remove('on'), ms || 3500); }
+
+/* ---------- canvas sizing ---------- */
+function size() {
+  const d = dpr();
+  for (const c of [inkC, ui]) { c.width = Math.round(innerWidth * d); c.height = Math.round(innerHeight * d); }
+  redrawInk(); redrawUI();
+}
+addEventListener('resize', size);
+
+/* ---------- strokes ---------- */
+function strokePath(c, k) {
+  const p = k.p; c.beginPath(); c.moveTo(p[0], p[1]);
+  if (p.length === 2) c.lineTo(p[0] + 0.01, p[1]);
+  else if (k.sm && p.length > 4) { for (let i = 2; i < p.length - 2; i += 2) c.quadraticCurveTo(p[i], p[i + 1], (p[i] + p[i + 2]) / 2, (p[i + 1] + p[i + 3]) / 2); c.lineTo(p[p.length - 2], p[p.length - 1]); }
+  else for (let i = 2; i < p.length; i += 2) c.lineTo(p[i], p[i + 1]);
+}
+function drawStroke(c, k) { c.save(); c.globalAlpha = k.a; c.strokeStyle = k.c; c.lineWidth = k.w; c.lineCap = 'round'; c.lineJoin = 'round'; strokePath(c, k); c.stroke(); c.restore(); }
+function redrawInk() { const d = dpr(); inkX.setTransform(1, 0, 0, 1, 0, 0); inkX.clearRect(0, 0, inkC.width, inkC.height); inkX.setTransform(d, 0, 0, d, 0, 0); for (const k of S.strokes) drawStroke(inkX, k); }
+function addStroke(k) { S.strokes.push(k); drawStroke(inkX, k); if (window.cc) cc.overlayDrawn(); }
+const newStroke = pts => ({ c: S.color, w: S.width, a: 1, p: pts, sm: false });
+
+/* ---------- instruments (same as PDF Pen) ---------- */
+const RUL = { m: 0.8 * CM, W: 3.2 * CM };
+const rulerHandle = () => [S.ruler.L * CM - 0.9 * CM, RUL.W - 0.95 * CM];
+const PR = { R: 5.5 * CM, b: 0.5 * CM };
+const protRotHandle = () => [0, PR.b + 0.6 * CM];
+const protArmKnob = () => { const t = S.prot.arm * Math.PI / 180, r = PR.R + 0.75 * CM; return [r * Math.cos(t), -r * Math.sin(t)]; };
+const compPencil = () => [S.comp.cx + S.comp.r * Math.cos(S.comp.ang), S.comp.cy + S.comp.r * Math.sin(S.comp.ang)];
+function compHinge() { const C = S.comp, [px, py] = compPencil(), r = C.r, L = Math.max(r * 0.6, r / 2 + 2.8 * CM), h = Math.sqrt(Math.max(0, L * L - (r / 2) * (r / 2)));
+  return [(C.cx + px) / 2 + Math.sin(C.ang) * h, (C.cy + py) / 2 - Math.cos(C.ang) * h]; }
+const COMP_X = () => 13;   // radius of the red close button on the hinge
+function hitInstrument(x, y) {
+  const T = tol();
+  if (S.tool === 'compass' && S.comp.placed) { const [qx, qy] = compHinge(); if (dist(x, y, qx, qy) < COMP_X() * 1.35) return { m: 'compClose' }; }
+  if (S.tool === 'compass' && S.comp.placed) {
+    const [px, py] = compPencil();
+    if (dist(x, y, px, py) < T * 1.4) return { m: 'compR' };
+    if (dist(x, y, S.comp.cx, S.comp.cy) < T * 1.4) return { m: 'compMove', ox: x - S.comp.cx, oy: y - S.comp.cy };
+  }
+  if (S.prot.on) {
+    const P = S.prot; const [lx, ly] = toLocal(P, x, y);
+    const [kx, ky] = protArmKnob(); if (dist(lx, ly, kx, ky) < Math.max(T, 0.4 * CM)) return { m: 'protArm' };
+    const [hx, hy] = protRotHandle(); if (dist(lx, ly, hx, hy) < Math.max(T, 0.45 * CM)) return { m: 'protRot' };
+    if (lx * lx + ly * ly <= PR.R * PR.R && ly <= PR.b || (Math.abs(lx) <= PR.R && ly >= 0 && ly <= PR.b)) return { m: 'protMove', ox: x - P.x, oy: y - P.y };
+  }
+  if (S.ruler.on) {
+    const R = S.ruler; const [u, v] = toLocal(R, x, y);
+    const [hx, hy] = rulerHandle(); if (dist(u, v, hx, hy) < Math.max(T, 0.5 * CM)) return { m: 'rulRot' };
+    if (u >= -RUL.m && u <= R.L * CM + RUL.m && v >= 0 && v <= RUL.W) return { m: 'rulMove', ox: x - R.x, oy: y - R.y };
+  }
+  return null;
+}
+function rulerSnap(x, y) { if (!S.ruler.on) return null; const R = S.ruler; const [u, v] = toLocal(R, x, y); if (v >= -tol() * 1.6 && v < 0.02 * CM && u >= -RUL.m && u <= R.L * CM + RUL.m) return u; return null; }
+function roundRect(c, x, y, w, h, r) { c.beginPath(); c.moveTo(x + r, y); c.arcTo(x + w, y, x + w, y + h, r); c.arcTo(x + w, y + h, x, y + h, r); c.arcTo(x, y + h, x, y, r); c.arcTo(x, y, x + w, y, r); c.closePath(); }
+function handleKnob(c, x, y, r, active) {
+  c.beginPath(); c.arc(x, y, r, 0, Math.PI * 2); c.fillStyle = active ? 'rgba(36,87,214,.95)' : 'rgba(36,87,214,.8)'; c.fill();
+  c.strokeStyle = '#fff'; c.lineWidth = r * 0.16; c.beginPath(); c.arc(x, y, r * 0.5, -Math.PI * 0.15, Math.PI * 1.35); c.stroke();
+  const a = Math.PI * 1.35, ax = x + r * 0.5 * Math.cos(a), ay = y + r * 0.5 * Math.sin(a);
+  c.beginPath(); c.moveTo(ax - r * 0.25, ay - r * 0.05); c.lineTo(ax, ay); c.lineTo(ax + r * 0.08, ay - r * 0.28); c.stroke();
+}
+function drawRuler(c) {
+  const R = S.ruler, L = R.L * CM;
+  c.save(); c.translate(R.x, R.y); c.rotate(R.a);
+  roundRect(c, -RUL.m, 0, L + 2 * RUL.m, RUL.W, 0.18 * CM);
+  c.fillStyle = 'rgba(232,242,255,0.86)'; c.fill(); c.strokeStyle = 'rgba(40,70,130,.8)'; c.lineWidth = 1.4; c.stroke();
+  c.strokeStyle = 'rgba(20,30,60,.9)'; c.lineWidth = 1; c.beginPath();
+  for (let i = 0; i <= R.L * 10; i++) { const u = i * CM / 10, len = i % 10 === 0 ? 0.62 * CM : i % 5 === 0 ? 0.42 * CM : 0.24 * CM; c.moveTo(u, 0); c.lineTo(u, len); }
+  c.stroke();
+  c.fillStyle = 'rgba(20,30,60,.95)'; c.font = `600 ${0.34 * CM}px system-ui,sans-serif`; c.textAlign = 'center'; c.textBaseline = 'top';
+  for (let i = 0; i <= R.L; i++) c.fillText(String(i), i * CM, 0.72 * CM);
+  c.font = `${0.28 * CM}px system-ui,sans-serif`; c.textAlign = 'left'; c.fillStyle = 'rgba(40,60,110,.7)'; c.fillText('cm', 0.15 * CM, 1.35 * CM);
+  const [hx, hy] = rulerHandle(); handleKnob(c, hx, hy, 0.46 * CM, drag && drag.m === 'rulRot');
+  c.restore();
+}
+function drawProt(c) {
+  const P = S.prot, R = PR.R;
+  c.save(); c.translate(P.x, P.y); c.rotate(P.a);
+  c.beginPath(); c.moveTo(-R, PR.b); c.lineTo(R, PR.b); c.lineTo(R, 0); c.arc(0, 0, R, 0, -Math.PI, true); c.closePath();
+  c.fillStyle = 'rgba(255,246,222,0.86)'; c.fill(); c.strokeStyle = 'rgba(120,80,20,.8)'; c.lineWidth = 1.4; c.stroke();
+  c.strokeStyle = 'rgba(50,35,10,.9)'; c.lineWidth = 1; c.beginPath();
+  for (let d = 0; d <= 180; d++) { const t = d * Math.PI / 180, len = d % 10 === 0 ? 0.42 * CM : d % 5 === 0 ? 0.28 * CM : 0.16 * CM, cs = Math.cos(t), sn = Math.sin(t); c.moveTo((R - len) * cs, -(R - len) * sn); c.lineTo(R * cs, -R * sn); }
+  c.moveTo(-R, 0); c.lineTo(R, 0); c.moveTo(0, 0); c.lineTo(0, -0.5 * CM); c.moveTo(-0.3 * CM, 0); c.lineTo(0.3 * CM, 0); c.stroke();
+  c.beginPath(); c.arc(0, 0, R - 1.45 * CM, 0, -Math.PI, true); c.lineWidth = 0.8; c.stroke();
+  c.textAlign = 'center'; c.textBaseline = 'middle';
+  for (let d = 0; d <= 180; d += 10) {
+    const t = d * Math.PI / 180;
+    for (const [r, val, fs, col] of [[R - 0.68 * CM, 180 - d, 0.27 * CM, 'rgba(40,25,5,.95)'], [R - 1.12 * CM, d, 0.22 * CM, 'rgba(160,40,20,.9)']]) {
+      c.save(); c.translate(r * Math.cos(t), -r * Math.sin(t)); c.rotate(Math.PI / 2 - t); c.font = `600 ${fs}px system-ui,sans-serif`; c.fillStyle = col; c.fillText(String(val), 0, 0); c.restore();
+    }
+  }
+  c.beginPath(); c.arc(0, 0, 0.07 * CM, 0, Math.PI * 2); c.fillStyle = 'rgba(200,30,30,.9)'; c.fill();
+  const t = P.arm * Math.PI / 180, ar = PR.R + 0.5 * CM;
+  c.strokeStyle = 'rgba(210,30,30,.9)'; c.lineWidth = 1.6; c.beginPath(); c.moveTo(0, 0); c.lineTo(ar * Math.cos(t), -ar * Math.sin(t)); c.stroke();
+  const [kx, ky] = protArmKnob(); c.beginPath(); c.arc(kx, ky, 0.3 * CM, 0, Math.PI * 2); c.fillStyle = 'rgba(210,30,30,.85)'; c.fill(); c.strokeStyle = '#fff'; c.lineWidth = 2; c.stroke();
+  const [hx, hy] = protRotHandle(); handleKnob(c, hx, hy, 0.44 * CM, drag && drag.m === 'protRot');
+  c.restore();
+  const lr = PR.R + 1.45 * CM; const [wx, wy] = toWorld(P, lr * Math.cos(t), -lr * Math.sin(t));
+  pill(c, `${P.arm}°  (${180 - P.arm}°)`, wx, wy, '#c81e1e');
+}
+function drawCompass(c) {
+  const C = S.comp; if (!C.placed && !(drag && drag.m === 'compSet')) return;
+  const [px, py] = compPencil(), r = C.r, L = Math.max(r * 0.6, r / 2 + 2.8 * CM), h = Math.sqrt(Math.max(0, L * L - (r / 2) * (r / 2)));
+  const mx = (C.cx + px) / 2, my = (C.cy + py) / 2, nx = Math.sin(C.ang), ny = -Math.cos(C.ang), hx = mx + nx * h, hy = my + ny * h;
+  c.save(); c.setLineDash([5, 5]); c.strokeStyle = 'rgba(36,87,214,.75)'; c.lineWidth = 1.2; c.beginPath(); c.moveTo(C.cx, C.cy); c.lineTo(px, py); c.stroke(); c.setLineDash([]);
+  c.lineCap = 'round'; c.strokeStyle = 'rgba(90,100,120,.6)'; c.lineWidth = 0.32 * CM; c.beginPath(); c.moveTo(C.cx, C.cy); c.lineTo(hx, hy); c.lineTo(px, py); c.stroke();
+  c.strokeStyle = 'rgba(160,170,190,.65)'; c.lineWidth = 0.14 * CM; c.beginPath(); c.moveTo(C.cx, C.cy); c.lineTo(hx, hy); c.lineTo(px, py); c.stroke();
+  c.beginPath(); c.arc(hx, hy, 0.38 * CM, 0, Math.PI * 2); c.fillStyle = 'rgba(70,80,100,.8)'; c.fill();
+  c.beginPath(); c.moveTo(hx, hy); c.lineTo(hx + nx * 1.1 * CM, hy + ny * 1.1 * CM); c.strokeStyle = 'rgba(70,80,100,.8)'; c.lineWidth = 0.22 * CM; c.stroke();
+  c.beginPath(); c.arc(C.cx, C.cy, 5, 0, Math.PI * 2); c.fillStyle = '#fff'; c.fill(); c.strokeStyle = '#333'; c.lineWidth = 2; c.stroke();
+  c.beginPath(); c.arc(px, py, 6, 0, Math.PI * 2); c.fillStyle = S.color; c.fill(); c.strokeStyle = '#fff'; c.lineWidth = 2; c.stroke();
+  { const [qx, qy] = compHinge(), R = COMP_X(); c.beginPath(); c.arc(qx, qy, R, 0, Math.PI * 2); c.fillStyle = '#dc2626'; c.fill(); c.lineWidth = R * 0.22; c.strokeStyle = '#fff'; c.stroke();
+    const a = R * 0.42; c.beginPath(); c.moveTo(qx - a, qy - a); c.lineTo(qx + a, qy + a); c.moveTo(qx + a, qy - a); c.lineTo(qx - a, qy + a); c.lineWidth = R * 0.28; c.lineCap = 'round'; c.stroke(); }
+  c.restore();
+  let lab = 'r = ' + fmtCm(r); if (drag && drag.m === 'compDraw') lab += '  ·  ' + Math.round(Math.abs(drag.acc) * 180 / Math.PI) + '°';
+  pill(c, lab, (C.cx + px) / 2 - ny * 16, (C.cy + py) / 2 + nx * 16);
+}
+function pill(c, text, x, y, bg) {
+  const fs = 14, pad = 6; c.save(); c.font = `600 ${fs}px system-ui,sans-serif`; const w = c.measureText(text).width;
+  roundRect(c, x - w / 2 - pad, y - fs / 2 - pad, w + pad * 2, fs + pad * 2, 6); c.fillStyle = bg || 'rgba(20,28,45,.9)'; c.fill();
+  c.fillStyle = '#fff'; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText(text, x, y + 0.5); c.restore();
+}
+function redrawUI() { paintUI(); }
+function paintUI() {
+  const d = dpr(); uiX.setTransform(1, 0, 0, 1, 0, 0); uiX.clearRect(0, 0, ui.width, ui.height); uiX.setTransform(d, 0, 0, d, 0, 0);
+  const c = uiX;
+  if (drag && drag.k) drawStroke(c, drag.k);
+  if (S.ruler.on) drawRuler(c);
+  if (S.prot.on) drawProt(c);
+  if (S.tool === 'compass') drawCompass(c);
+  if (drag && drag.k && drag.label) pill(c, drag.label, drag.lx, drag.ly);
+  if (drag && (drag.m === 'rulRot' || drag.m === 'protRot')) { const o = drag.m === 'rulRot' ? S.ruler : S.prot; pill(c, mathDeg(o.a).toFixed(1) + '°', o.x, o.y - 26); }
+  if (S.tool === 'eraser' && hover) { c.save(); c.beginPath(); c.arc(hover[0], hover[1], ER, 0, Math.PI * 2); c.fillStyle = 'rgba(255,255,255,.35)'; c.fill(); c.lineWidth = 2; c.strokeStyle = 'rgba(0,0,0,.6)'; c.stroke(); c.lineWidth = 1; c.strokeStyle = 'rgba(255,255,255,.9)'; c.beginPath(); c.arc(hover[0], hover[1], ER - 2, 0, Math.PI * 2); c.stroke(); c.restore(); }
+  if (S.tool === 'compass' && !S.comp.placed && !drag && hover) pill(c, 'Press on the centre, drag out the radius', hover[0], hover[1] - 28);
+}
+
+/* ---------- eraser: removes any line it touches ---------- */
+function segDist(px, py, ax, ay, bx, by) { const dx = bx - ax, dy = by - ay, L = dx * dx + dy * dy; let t = L ? ((px - ax) * dx + (py - ay) * dy) / L : 0; t = Math.max(0, Math.min(1, t)); return dist(px, py, ax + t * dx, ay + t * dy); }
+function hitsStroke(k, x, y) { const p = k.p, r = ER + k.w / 2; if (p.length === 2) return dist(x, y, p[0], p[1]) <= r; for (let i = 0; i + 3 < p.length; i += 2) if (segDist(x, y, p[i], p[i + 1], p[i + 2], p[i + 3]) <= r) return true; return false; }
+function eraseAt(x, y) { const keep = S.strokes.filter(k => !hitsStroke(k, x, y)); if (keep.length !== S.strokes.length) { S.strokes = keep; redrawInk(); } }
+/* ---------- pointer handling ---------- */
+const ptOf = e => [e.clientX, e.clientY];
+ui.addEventListener('pointerdown', e => {
+  if (drag || (e.pointerType === 'mouse' && e.button !== 0)) return;
+  try { ui.setPointerCapture(e.pointerId); } catch (_) {}
+  const [x, y] = ptOf(e);
+  const h = hitInstrument(x, y);
+  if (h && h.m === 'compClose') { S.comp.placed = false; drag = null; S.tool = 'pen'; hint('Compass put away – back to the pen.'); redrawUI(); return; }
+  if (h) { drag = h; drag.id = e.pointerId; redrawUI(); return; }
+  if (S.tool === 'eraser') { hover = [x, y]; drag = { m: 'erase', id: e.pointerId }; eraseAt(x, y); redrawUI(); return; }
+  if ((S.tool === 'pen') && rulerSnap(x, y) != null) { const u = rulerSnap(x, y); drag = { m: 'rline', id: e.pointerId, u0: u, k: newStroke([]) }; updRuleLine(u); return; }
+  if (S.tool === 'pen') { const k = newStroke([x, y]); k.sm = true; drag = { m: 'pen', id: e.pointerId, k }; }
+  else if (S.tool === 'compass') {
+    const C = S.comp;
+    if (!C.placed) { C.cx = x; C.cy = y; C.r = 0.01; drag = { m: 'compSet', id: e.pointerId }; }
+    else { const a0 = Math.atan2(y - C.cy, x - C.cx); C.ang = a0; const [px, py] = compPencil(); drag = { m: 'compDraw', id: e.pointerId, prev: a0, acc: 0, a0, k: newStroke([px, py]) }; }
+  }
+  redrawUI();
+});
+function updRuleLine(u1) {
+  const R = S.ruler, k = drag.k, off = -k.w / 2; const [ax, ay] = toWorld(R, drag.u0, off), [bx, by] = toWorld(R, u1, off);
+  k.p = [ax, ay, bx, by]; drag.label = fmtCm(Math.abs(u1 - drag.u0)); const [lx, ly] = toWorld(R, (drag.u0 + u1) / 2, -26); drag.lx = lx; drag.ly = ly;
+}
+window.addEventListener('pointermove', e => {
+  const [x, y] = ptOf(e);
+  if (!drag) { hover = [x, y]; const h = hitInstrument(x, y); ui.style.cursor = h ? (/Rot|Arm|compR/.test(h.m) ? 'grab' : 'move') : (S.tool === 'eraser' ? 'none' : 'crosshair'); if (S.tool === 'compass' || S.tool === 'eraser') redrawUI(); return; }
+  if (e.pointerId !== drag.id) return;
+  const m = drag.m;
+  if (m === 'pen') { const evs = e.getCoalescedEvents ? e.getCoalescedEvents() : [e]; const p = drag.k.p; for (const ev of (evs.length ? evs : [e])) { const [qx, qy] = ptOf(ev); if (dist(p[p.length - 2], p[p.length - 1], qx, qy) >= 1) p.push(qx, qy); } }
+  else if (m === 'erase') { hover = [x, y]; const evs = e.getCoalescedEvents ? e.getCoalescedEvents() : []; for (const ev of evs) eraseAt(ev.clientX, ev.clientY); eraseAt(x, y); }
+  else if (m === 'rline') { const [u] = toLocal(S.ruler, x, y); updRuleLine(Math.max(-RUL.m, Math.min(S.ruler.L * CM + RUL.m, u))); }
+  else if (m === 'rulMove') { S.ruler.x = x - drag.ox; S.ruler.y = y - drag.oy; }
+  else if (m === 'protMove') { S.prot.x = x - drag.ox; S.prot.y = y - drag.oy; }
+  else if (m === 'rulRot') { const [hu, hv] = rulerHandle(); let a = Math.atan2(y - S.ruler.y, x - S.ruler.x) - Math.atan2(hv, hu); if (e.shiftKey) a = Math.round(a / (Math.PI / 12)) * (Math.PI / 12); S.ruler.a = a; }
+  else if (m === 'protRot') { let a = Math.atan2(y - S.prot.y, x - S.prot.x) - Math.PI / 2; if (e.shiftKey) a = Math.round(a / (Math.PI / 12)) * (Math.PI / 12); S.prot.a = a; }
+  else if (m === 'protArm') { const [lx, ly] = toLocal(S.prot, x, y); let d = Math.atan2(-ly, lx) * 180 / Math.PI; if (d < -90) d = 180; else if (d < 0) d = 0; S.prot.arm = Math.round(Math.max(0, Math.min(180, d))); }
+  else if (m === 'compSet' || m === 'compR') { const C = S.comp; C.r = Math.max(0.01, dist(C.cx, C.cy, x, y)); C.ang = Math.atan2(y - C.cy, x - C.cx); C.r = Math.round(C.r / (CM / 10)) * (CM / 10) || CM / 10; }
+  else if (m === 'compMove') { S.comp.cx = x - drag.ox; S.comp.cy = y - drag.oy; }
+  else if (m === 'compDraw') {
+    const C = S.comp, a = Math.atan2(y - C.cy, x - C.cx); let dA = a - drag.prev; while (dA > Math.PI) dA -= 2 * Math.PI; while (dA < -Math.PI) dA += 2 * Math.PI;
+    const target = Math.max(-2 * Math.PI, Math.min(2 * Math.PI, drag.acc + dA)), steps = Math.max(1, Math.ceil(Math.abs(target - drag.acc) / (Math.PI / 180)));
+    for (let i = 1; i <= steps; i++) { const aa = drag.a0 + drag.acc + (target - drag.acc) * i / steps; drag.k.p.push(C.cx + C.r * Math.cos(aa), C.cy + C.r * Math.sin(aa)); }
+    drag.acc = target; drag.prev = a; C.ang = drag.a0 + drag.acc;
+  }
+  redrawUI();
+});
+function endDrag(e) {
+  if (!drag || (e && e.pointerId !== drag.id)) return;
+  const d = drag; drag = null;
+  if (e && e.pointerType !== 'mouse') hover = null;
+  if (d.m === 'pen' || d.m === 'rline') { if (d.k.p.length >= 2 && !(d.m === 'rline' && dist(d.k.p[0], d.k.p[1], d.k.p[2], d.k.p[3]) < 1)) addStroke(d.k); }
+  else if (d.m === 'compDraw') { if (Math.abs(d.acc) > 0.01) addStroke(d.k); }
+  else if (d.m === 'compSet') { S.comp.placed = S.comp.r > 4; if (S.comp.placed) hint('Now drag anywhere around the pin to draw. Drag the pin to move it, the pencil tip to change the radius.'); }
+  redrawUI();
+}
+window.addEventListener('pointerup', endDrag);
+window.addEventListener('pointercancel', endDrag);
+ui.addEventListener('pointerleave', () => { if (!drag) { hover = null; redrawUI(); } });
+window.addEventListener('blur', () => { if (!drag) { hover = null; redrawUI(); } });
+document.addEventListener('contextmenu', e => e.preventDefault());
+
+/* ---------- commands from the dock / radial menu ---------- */
+function centre() { return [innerWidth / 2, innerHeight / 2]; }
+function useTool(t) {
+  if (t === 'pen') { S.tool = 'pen'; hint('Pen: draw anywhere. Tap the pointer on the dock to click normally again.'); }
+  else if (t === 'ruler') { S.ruler.on = !S.ruler.on; if (S.tool !== 'eraser') S.tool = 'pen'; if (S.ruler.on) { const [cx, cy] = centre(); S.ruler.a = 0; S.ruler.L = Math.max(10, Math.min(30, Math.floor((innerWidth * 0.8) / CM))); S.ruler.x = cx - S.ruler.L * CM / 2; S.ruler.y = cy; hint('Ruler: drag to move, blue knob to turn. Draw just above its edge for a straight line.'); } }
+  else if (t === 'protractor') { S.prot.on = !S.prot.on; if (S.tool !== 'eraser') S.tool = 'pen'; if (S.prot.on) { const [cx, cy] = centre(); S.prot.a = 0; S.prot.x = cx; S.prot.y = cy + PR.R / 2; hint('Protractor: drag to move, blue knob to turn, red knob to measure.'); } }
+  else if (t === 'eraser') { S.tool = 'eraser'; hint('Rubber: rub over any line to remove it. Pick the pen to write again.'); }
+  else if (t === 'compass') { S.tool = 'compass'; S.comp.placed = false; hint('Compass: press on the centre point and drag out the radius.'); }
+  redrawUI();
+}
+function clearAll() { S.strokes = []; S.ruler.on = false; S.prot.on = false; S.comp.placed = false; S.tool = 'pen'; drag = null; redrawInk(); redrawUI(); }
+if (window.cc) {
+  cc.on('ov-tool', t => useTool(t));
+  cc.on('ov-color', c => { S.color = c; redrawUI(); });
+  cc.on('ov-clear', () => clearAll());
+  cc.on('ov-mode', m => { document.body.classList.toggle('pointer', m === 'pointer'); document.body.classList.toggle('drawing', m !== 'pointer'); });
+}
+function exportState() { return JSON.stringify({ strokes: S.strokes, tool: S.tool, color: S.color, ruler: S.ruler, prot: S.prot, comp: S.comp }); }
+function importState(j) { try { const o = JSON.parse(j); Object.assign(S, { strokes: o.strokes || [], tool: o.tool || 'pen', color: o.color || S.color }); Object.assign(S.ruler, o.ruler || {}); Object.assign(S.prot, o.prot || {}); Object.assign(S.comp, o.comp || {}); } catch (_) {} drag = null; redrawInk(); redrawUI(); }
+window.__ov = { S, useTool, clearAll, exportState, importState };
+size();
+})();
+</script>
+</body>
+</html>

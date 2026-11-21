@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<title>Lesson objectives</title>
+<style>
+*{box-sizing:border-box}
+html,body{margin:0;background:transparent;font-family:"Segoe UI",system-ui,sans-serif;color:#1d2433;overflow:hidden}
+#card{margin:10px;background:#fff;border-radius:20px;box-shadow:0 10px 34px rgba(0,0,0,.35);border:1px solid #d9dde5;overflow:hidden}
+header{display:flex;align-items:center;gap:12px;padding:16px 18px 12px;background:linear-gradient(180deg,#f3f6fd,#fff);border-bottom:1px solid #e6e9f0}
+header .ic{width:42px;height:42px;border-radius:12px;background:linear-gradient(180deg,#3a6cf0,#2457d6);display:flex;align-items:center;justify-content:center;flex:none}
+header .ic svg{width:26px;height:26px}
+header h1{margin:0;font-size:21px}
+header p{margin:2px 0 0;font-size:13px;color:#6b7385}
+#count{margin-left:auto;font-weight:800;font-size:14px;color:#2457d6;background:#e8eefc;border-radius:999px;padding:6px 12px;white-space:nowrap}
+#count.all{background:#dcfce7;color:#15803d}
+#list{padding:8px 14px 4px;overflow-y:auto}
+.row{display:flex;align-items:flex-start;gap:10px;padding:7px 6px;border-radius:14px;transition:background .15s}
+.row.done{background:#f0fdf4}
+.num{flex:none;width:22px;padding-top:12px;text-align:right;font-weight:800;color:#8a93a6;font-size:15px}
+.chk{flex:none;width:44px;height:44px;border-radius:12px;border:2.5px solid #b8c1d3;background:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0;transition:all .12s}
+.chk svg{width:28px;height:28px;opacity:0;transform:scale(.5);transition:all .15s}
+.row.done .chk{background:#22c55e;border-color:#16a34a;box-shadow:0 0 0 3px #bbf7d0}
+.row.done .chk svg{opacity:1;transform:none}
+.row.blank .chk{border-style:dashed;opacity:.45;cursor:default}
+textarea{flex:1;min-width:0;border:1.5px solid transparent;border-radius:12px;padding:10px 12px;font:600 18px/1.35 "Segoe UI",system-ui,sans-serif;color:#1d2433;resize:none;background:#f5f7fb;outline:none;overflow:hidden;min-height:44px}
+textarea:focus{border-color:#2457d6;background:#fff}
+.row.done textarea{color:#15803d;text-decoration:line-through;text-decoration-color:rgba(21,128,61,.45)}
+.row.blank textarea{background:#fff;border:1.5px dashed #c8d1e2;font-weight:500}
+.del{flex:none;width:36px;height:36px;margin-top:4px;border:0;border-radius:10px;background:transparent;color:#9aa3b5;font-size:22px;cursor:pointer}
+.del:hover{background:#fee2e2;color:#dc2626}
+.row.blank .del{visibility:hidden}
+footer{display:flex;gap:8px;padding:10px 14px 14px;border-top:1px solid #eef0f5;align-items:center}
+footer button{font:700 14px "Segoe UI",system-ui,sans-serif;border-radius:12px;padding:11px 16px;cursor:pointer;border:1px solid #d9dde5;background:#fff;color:#2a3242}
+footer button:hover{background:#f2f5fb}
+#new.sure{background:#dc2626;color:#fff;border-color:#b91c1c}
+#sty.on{background:#e8eefc;border-color:#9fb4ee;color:#2457d6}
+#settings{display:none;border-top:1px solid #eef0f5;padding:12px 18px 6px;background:#fafbfd}
+#settings.on{display:block}
+.srow{display:flex;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap}
+.srow>label{width:96px;font-weight:700;font-size:13.5px;color:#4b5468;flex:none}
+.seg{display:flex;gap:6px;flex-wrap:wrap}
+.seg button{display:flex;flex-direction:column;align-items:center;gap:3px;width:92px;padding:8px 4px 6px;border-radius:12px;border:1.5px solid #d9dde5;background:#fff;font:700 12.5px "Segoe UI",system-ui,sans-serif;color:#2a3242;cursor:pointer}
+.seg button svg{width:30px;height:22px}
+.seg button.on{border-color:#2457d6;background:#e8eefc;color:#2457d6;box-shadow:0 0 0 2px #c7d5fb}
+.sws{display:flex;gap:7px;align-items:center;flex-wrap:wrap}
+.sw{width:30px;height:30px;border-radius:50%;border:2px solid #fff;box-shadow:0 0 0 1.5px #c3cad8;cursor:pointer;padding:0}
+.sw.on{box-shadow:0 0 0 3px #2457d6}
+.cpk{position:relative;width:30px;height:30px;border-radius:50%;background:conic-gradient(red,yellow,lime,cyan,blue,magenta,red);box-shadow:0 0 0 1.5px #c3cad8;cursor:pointer;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;text-shadow:0 0 3px #000}
+.cpk.on{box-shadow:0 0 0 3px #2457d6}
+.cpk input{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%}
+input[type=range]{width:160px;accent-color:#2457d6}
+#opv{font-weight:700;font-size:13px;width:42px}
+select{font:600 14px "Segoe UI",system-ui,sans-serif;padding:7px 10px;border-radius:10px;border:1.5px solid #d9dde5;background:#fff}
+#done{margin-left:auto;background:linear-gradient(180deg,#3a6cf0,#2457d6);color:#fff;border-color:#1d48b8;padding:11px 26px}
+#done:hover{background:#1c47b5}
+</style>
+</head>
+<body>
+<div id="card">
+  <header>
+    <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.4" fill="#fff"/></svg></div>
+    <div><h1>Lesson objectives</h1><p>Tick them off as you go – they turn green on the objective ticker.</p></div>
+    <span id="count"></span>
+  </header>
+  <div id="list"></div>
+  <div id="settings">
+    <div class="srow"><label>Animation</label><div class="seg" id="anims"><button data-anim="swipe"><svg viewBox="0 0 30 22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11h17M15 6l5 5-5 5"/><path d="M24 4v14" opacity=".5"/></svg>Swipe</button><button data-anim="fade"><svg viewBox="0 0 30 22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="5" width="22" height="12" rx="2" stroke-dasharray="2.5 2.5"/><path d="M10 11h10" opacity=".5"/></svg>Fade</button><button data-anim="flip"><svg viewBox="0 0 30 22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="2" width="20" height="18" rx="2.5"/><path d="M5 11h20"/><path d="M9 7h12M9 15h12" opacity=".5"/></svg>Flip clock</button><button data-anim="reel"><svg viewBox="0 0 30 22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="7" y="1.5" width="16" height="19" rx="2"/><path d="M10 6h10M10 11h10M10 16h10" opacity=".6"/><path d="M27 4v14M25 16l2 2 2-2"/></svg>Reel</button></div></div>
+    <div class="srow"><label>Background</label><div class="sws" id="bgs"><button class="sw" data-bg="#121826" style="background:#121826"></button><button class="sw" data-bg="#000000" style="background:#000000"></button><button class="sw" data-bg="#1e3a8a" style="background:#1e3a8a"></button><button class="sw" data-bg="#4c1d95" style="background:#4c1d95"></button><button class="sw" data-bg="#14532d" style="background:#14532d"></button><button class="sw" data-bg="#7f1d1d" style="background:#7f1d1d"></button><button class="sw" data-bg="#ffffff" style="background:#ffffff"></button><button class="sw" data-bg="#fef3c7" style="background:#fef3c7"></button><label class="cpk" title="Any colour"><input type="color" id="bgPick">+</label></div></div>
+    <div class="srow"><label>See-through</label><input type="range" id="op" min="0" max="70" step="5"><span id="opv"></span></div>
+    <div class="srow"><label>Text colour</label><div class="sws" id="fgs"><button class="sw" data-fg="#ffffff" style="background:#ffffff"></button><button class="sw" data-fg="#fde047" style="background:#fde047"></button><button class="sw" data-fg="#67e8f9" style="background:#67e8f9"></button><button class="sw" data-fg="#86efac" style="background:#86efac"></button><button class="sw" data-fg="#000000" style="background:#000000"></button><button class="sw" data-fg="#1e3a8a" style="background:#1e3a8a"></button><label class="cpk" title="Any colour"><input type="color" id="fgPick">+</label></div></div>
+    <div class="srow"><label>At start-up</label><select id="start"><option value="ask">Show the objective ticker with “Add objectives”</option><option value="show">Carry on with the saved objectives</option><option value="off">Don't show the objective ticker</option></select></div>
+  </div>
+  <footer>
+    <button id="new" title="Clear the list for a new lesson">New lesson</button>
+    <button id="hide" title="Hide the objective ticker (bring it back with the target button on the dock)">Hide ticker</button>
+    <button id="sty" title="Animation, colours and start-up">⚙ Style</button>
+    <button id="done">Done</button>
+  </footer>
+</div>
+<script>
+(() => {
+const cc = window.cc, listEl = document.getElementById('list');
+const TICK = '<svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>';
+let sendT;
+function data() { return [...listEl.querySelectorAll('.row')].map(r => ({ text: r.querySelector('textarea').value.trim(), done: r.classList.contains('done') })).filter(o => o.text); }
+function send(now) { clearTimeout(sendT); const go = () => cc && cc.obj('set', data()); if (now) go(); else sendT = setTimeout(go, 350); count(); }
+function count() { const d = data(), n = d.filter(o => o.done).length, c = document.getElementById('count'); c.textContent = d.length ? (n === d.length ? 'All done! ✓' : `${n} of ${d.length} done`) : 'None yet'; c.classList.toggle('all', !!d.length && n === d.length); }
+function grow(t) { t.style.height = 'auto'; t.style.height = t.scrollHeight + 'px'; }
+function renumber() { [...listEl.querySelectorAll('.row')].forEach((r, i) => r.querySelector('.num').textContent = (i + 1) + '.'); fit(); }
+function fit() { listEl.style.maxHeight = Math.max(160, Math.round(screen.availHeight * 0.8) - 200) + 'px'; requestAnimationFrame(() => cc && cc.obj('size', document.getElementById('card').offsetHeight + 20)); }
+function makeRow(o) {
+  const r = document.createElement('div'); r.className = 'row' + (o ? (o.done ? ' done' : '') : ' blank');
+  r.innerHTML = `<span class="num"></span><button class="chk" title="Tick when met">${TICK}</button><textarea rows="1" placeholder="${o ? '' : 'Type an objective…'}"></textarea><button class="del" title="Remove">×</button>`;
+  const t = r.querySelector('textarea'); t.value = o ? o.text : '';
+  t.addEventListener('input', () => {
+    grow(t);
+    if (r.classList.contains('blank') && t.value.trim()) { r.classList.remove('blank'); t.placeholder = ''; listEl.appendChild(makeRow(null)); renumber(); }
+    send(); fit();
+  });
+  t.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); const nx = r.nextElementSibling; if (nx) nx.querySelector('textarea').focus(); } });
+  t.addEventListener('blur', () => { if (!r.classList.contains('blank') && !t.value.trim() && r.nextElementSibling) { r.remove(); renumber(); send(true); } });
+  r.querySelector('.chk').addEventListener('click', () => { if (r.classList.contains('blank')) return; r.classList.toggle('done'); send(true); });
+  r.querySelector('.del').addEventListener('click', () => { r.remove(); if (!listEl.querySelector('.row.blank')) listEl.appendChild(makeRow(null)); renumber(); send(true); });
+  requestAnimationFrame(() => grow(t));
+  return r;
+}
+function build(list, focusBlank) {
+  listEl.innerHTML = ''; for (const o of list) listEl.appendChild(makeRow(o)); listEl.appendChild(makeRow(null));
+  renumber(); count();
+  setTimeout(() => listEl.querySelector('.row.blank textarea').focus(), 60);   // always ready to type a new objective
+}
+const nb = document.getElementById('new'); let sureT;
+nb.onclick = () => { if (!nb.classList.contains('sure')) { nb.classList.add('sure'); nb.textContent = 'Tap again to clear'; clearTimeout(sureT); sureT = setTimeout(() => { nb.classList.remove('sure'); nb.textContent = 'New lesson'; }, 3000); return; }
+  nb.classList.remove('sure'); nb.textContent = 'New lesson'; build([], true); send(true); };
+document.getElementById('hide').onclick = () => { send(true); cc && cc.obj('hide-ticker'); };
+document.getElementById('done').onclick = () => { send(true); cc && cc.obj('close'); };
+addEventListener('keydown', e => { if (e.key === 'Escape') { send(true); cc && cc.obj('close'); } });
+let ST = { anim: 'swipe', bg: '#121826', op: 95, fg: '#ffffff', start: 'ask' };
+function paintStyle() {
+  document.querySelectorAll('[data-anim]').forEach(b => b.classList.toggle('on', b.dataset.anim === ST.anim));
+  let hb = false; document.querySelectorAll('[data-bg]').forEach(b => { const on = b.dataset.bg.toLowerCase() === (ST.bg || '').toLowerCase(); hb = hb || on; b.classList.toggle('on', on); });
+  let hf = false; document.querySelectorAll('[data-fg]').forEach(b => { const on = b.dataset.fg.toLowerCase() === (ST.fg || '').toLowerCase(); hf = hf || on; b.classList.toggle('on', on); });
+  const bp = document.getElementById('bgPick').parentNode, fp = document.getElementById('fgPick').parentNode;
+  bp.classList.toggle('on', !hb); fp.classList.toggle('on', !hf); if (!hb) bp.style.background = ST.bg; if (!hf) fp.style.background = ST.fg;
+  document.getElementById('op').value = 100 - ST.op; document.getElementById('opv').textContent = (100 - ST.op) + '%';
+  document.getElementById('start').value = ST.start;
+}
+function setStyle(o) { Object.assign(ST, o); paintStyle(); cc && cc.obj('style', ST); }
+document.getElementById('anims').onclick = e => { const b = e.target.closest('[data-anim]'); if (b) setStyle({ anim: b.dataset.anim }); };
+document.getElementById('bgs').onclick = e => { const b = e.target.closest('[data-bg]'); if (b) setStyle({ bg: b.dataset.bg }); };
+document.getElementById('fgs').onclick = e => { const b = e.target.closest('[data-fg]'); if (b) setStyle({ fg: b.dataset.fg }); };
+document.getElementById('bgPick').oninput = e => setStyle({ bg: e.target.value });
+document.getElementById('fgPick').oninput = e => setStyle({ fg: e.target.value });
+document.getElementById('op').oninput = e => setStyle({ op: 100 - e.target.value });
+document.getElementById('start').onchange = e => setStyle({ start: e.target.value });
+document.getElementById('sty').onclick = () => { const on = document.getElementById('settings').classList.toggle('on'); document.getElementById('sty').classList.toggle('on', on); fit(); };
+if (cc) cc.on('obj-open', o => { if (Array.isArray(o)) o = { list: o }; if (o.style) { Object.assign(ST, o.style); paintStyle(); } build(o.list || [], o.focus); });
+window.__obj = { build, data, setStyle };
+paintStyle();
+build([]);
+})();
+</script>
+</body>
+</html>

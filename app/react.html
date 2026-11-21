@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<title>ClassTools reactions</title>
+<style>
+*{box-sizing:border-box;-webkit-user-drag:none}
+html,body{margin:0;height:100%;overflow:hidden;background:transparent;user-select:none;-webkit-user-select:none;touch-action:none;font-family:"Segoe UI",system-ui,sans-serif}
+.item{position:absolute;width:76px;height:76px;margin:-38px 0 0 -38px;border-radius:50%;border:0;padding:0;cursor:pointer;
+  background:radial-gradient(circle at 50% 30%,#fff,#dfe3ea);box-shadow:0 4px 0 rgba(0,0,0,.45),0 6px 14px rgba(0,0,0,.35);display:flex;flex-direction:column;align-items:center;justify-content:center;
+  transform:scale(.2);opacity:0;transition:transform .18s cubic-bezier(.2,1.5,.4,1),opacity .15s}
+body.open .item{transform:scale(1);opacity:1}
+.item b{font-size:32px;line-height:1;font-weight:400}
+.item span{font-size:10.5px;font-weight:800;color:#222;margin-top:2px}
+.item:active{transform:scale(.92)}
+.item.playing{background:radial-gradient(circle at 50% 30%,#fffbe6,#fde68a);box-shadow:0 0 0 3px #22c55e,0 0 16px 4px rgba(34,197,94,.7),0 4px 0 rgba(0,0,0,.45)}
+#hub{position:absolute;width:56px;height:56px;margin:-28px 0 0 -28px;border-radius:50%;background:rgba(18,22,30,.92);border:2px solid rgba(255,255,255,.3);color:#fff;font-size:20px;display:flex;align-items:center;justify-content:center;cursor:pointer}
+</style>
+</head>
+<body>
+<div id="fan"></div>
+<script>
+(() => {
+const cc = window.cc, fan = document.getElementById('fan');
+const R = [['sad-violin', '🎻', 'Violin'], ['bruh', '😐', 'Bruh'], ['applause', '👏', 'Clap'], ['oof', '😖', 'Oof'], ['wow', '🤩', 'Wow'], ['really', '🤨', 'Really?']];
+let audio = null, playingBtn = null;
+function build(side) {
+  const W = innerWidth, H = innerHeight, cx = side === 'right' ? W - 36 : 36, cy = H / 2, n = R.length, span = 156, r = 138;
+  fan.innerHTML = `<div id="hub" style="left:${cx}px;top:${cy}px">✕</div>` + R.map(([k, e, l], i) => {
+    const a = (-span / 2 + i * span / (n - 1)) * Math.PI / 180, x = cx + (side === 'right' ? -1 : 1) * r * Math.cos(a), y = cy + r * Math.sin(a);
+    return `<button class="item" data-k="${k}" style="left:${x.toFixed(1)}px;top:${y.toFixed(1)}px;transition-delay:${i * 18}ms"><b>${e}</b><span>${l}</span></button>`;
+  }).join('');
+}
+function play(k, btn) {
+  const same = playingBtn && playingBtn.dataset.k === k && audio && !audio.paused;
+  if (audio) { audio.pause(); audio = null; }
+  document.querySelectorAll('.playing').forEach(b => b.classList.remove('playing')); playingBtn = null;
+  if (same) return;
+  const a = new Audio(`sounds/${k}.mp3`); audio = a; playingBtn = btn; btn.classList.add('playing');
+  a.onended = () => { if (audio === a) { btn.classList.remove('playing'); audio = null; playingBtn = null; } };
+  a.play().catch(() => {});
+}
+fan.addEventListener('pointerup', e => {
+  const b = e.target.closest('.item');
+  if (b) { play(b.dataset.k, b); setTimeout(() => cc && cc.reactClose(), 160); return; }   // the sound keeps playing after the fan closes
+  cc && cc.reactClose();
+});
+if (cc) cc.on('react-open', o => { document.body.classList.remove('open'); build(o.side); requestAnimationFrame(() => requestAnimationFrame(() => document.body.classList.add('open'))); });
+document.addEventListener('contextmenu', e => e.preventDefault());
+})();
+</script>
+</body>
+</html>

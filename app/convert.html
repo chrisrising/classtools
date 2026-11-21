@@ -1,0 +1,491 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<title>ClassTools document converter</title>
+<script src="lib/jszip.min.js"></script>
+<script src="lib/mammoth.browser.min.js"></script>
+<style id="pageCss"></style>
+<style>
+html,body{margin:0;padding:0;background:#fff}
+*{box-sizing:border-box}
+/* Word */
+.docx{font-family:Calibri,Carlito,"Segoe UI",Arial,sans-serif;font-size:11pt;line-height:1.35;color:#000}
+.docx h1{font-size:20pt;margin:0 0 8pt}.docx h2{font-size:16pt;margin:12pt 0 6pt}.docx h3{font-size:13pt;margin:10pt 0 4pt}
+.docx p{margin:0 0 8pt}.docx img{max-width:100%;height:auto}
+.docx table{border-collapse:collapse;margin:0 0 8pt;max-width:100%}.docx td,.docx th{border:1px solid #888;padding:3pt 5pt;vertical-align:top}
+.docx table p{margin:0}
+.docx hr.pb{border:0;margin:0;break-after:page;page-break-after:always}
+.docx h1.title{font-size:26pt;font-weight:normal}
+/* PowerPoint */
+.slide{position:relative;overflow:hidden;break-after:page;page-break-after:always;background:#fff}
+.slide:last-child{break-after:auto;page-break-after:auto}
+.sh{position:absolute;overflow:visible}
+.tx{position:absolute;inset:0;display:flex;flex-direction:column;overflow:visible;word-wrap:break-word}
+.tx p{margin:0;white-space:pre-wrap}
+.sh img{position:absolute;inset:0;width:100%;height:100%;display:block}
+.sh table{border-collapse:collapse;width:100%;height:100%;table-layout:fixed}
+.sh td{padding:3.6pt 7.2pt;vertical-align:top;border:1pt solid #fff;overflow:hidden}
+</style>
+</head>
+<body>
+<div id="out"></div>
+<script>
+'use strict';
+const out = document.getElementById('out');
+const b64ToBytes = b => { const s = atob(b), a = new Uint8Array(s.length); for (let i = 0; i < s.length; i++) a[i] = s.charCodeAt(i); return a; };
+const waitImages = () => Promise.all([...document.images].map(i => i.complete ? 0 : new Promise(r => { i.onload = i.onerror = r; })));
+
+/* ================= Word (.docx) ================= */
+async function renderDocx(bytes) {
+  const r = await mammoth.convertToHtml({ arrayBuffer: bytes.buffer }, { styleMap: ["br[type='page'] => hr.pb", "p[style-name='Title'] => h1.title:fresh"] });
+  document.getElementById('pageCss').textContent = '@page{size:A4 portrait;margin:2cm}';
+  out.innerHTML = `<div class="docx">${r.value || '<p>(This document has no text.)</p>'}</div>`;
+  await waitImages();
+  return { w: 8.27, h: 11.69 };
+}
+
+/* ================= PowerPoint (.pptx) ================= */
+const EMU_PT = 12700;
+const pt = v => (v / EMU_PT).toFixed(2) + 'pt';
+const kid = (el, n) => { if (!el) return null; for (const c of el.children) if (c.localName === n) return c; return null; };
+const kids = (el, n) => el ? [...el.children].filter(c => c.localName === n) : [];
+const path1 = (el, ...ns) => { for (const n of ns) { el = kid(el, n); if (!el) return null; } return el; };
+const deep = (el, n) => el ? el.getElementsByTagNameNS('*', n)[0] || null : null;
+const attr = (el, a) => el ? el.getAttribute(a) : null;
+const rid = (el, a) => el ? (el.getAttributeNS('http://schemas.openxmlformats.org/officeDocument/2006/relationships', a) || el.getAttribute('r:' + a)) : null;
+const esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+function resolvePath(base, target) {
+  if (target.startsWith('/')) return target.slice(1);
+  const parts = base.split('/'); parts.pop();
+  for (const t of target.split('/')) { if (t === '..') parts.pop(); else if (t !== '.') parts.push(t); }
+  return parts.join('/');
+}
+
+async function renderPptx(bytes) {
+  const zip = await JSZip.loadAsync(bytes);
+  const cache = {};
+  const xml = async p => { if (p in cache) return cache[p]; const f = zip.file(p); cache[p] = f ? new DOMParser().parseFromString(await f.async('string'), 'application/xml') : null; return cache[p]; };
+  const rels = async p => { const i = p.lastIndexOf('/'); const d = await xml(p.slice(0, i) + '/_rels/' + p.slice(i + 1) + '.rels'); const m = {};
+    if (d) for (const r of d.getElementsByTagNameNS('*', 'Relationship')) { const ext = r.getAttribute('TargetMode') === 'External'; m[r.getAttribute('Id')] = { type: r.getAttribute('Type'), target: ext ? null : resolvePath(p, r.getAttribute('Target')), url: ext ? r.getAttribute('Target') : null }; }
+    return m; };
+  const byType = (m, t) => Object.values(m).find(r => r.type && r.type.endsWith('/' + t));
+  const media = {};
+  const dataUri = async p => { if (!p) return null; if (media[p]) return media[p]; const f = zip.file(p); if (!f) return null;
+    const ext = p.split('.').pop().toLowerCase(), mime = { png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', gif: 'image/gif', bmp: 'image/bmp', svg: 'image/svg+xml', webp: 'image/webp', tif: 'image/tiff', tiff: 'image/tiff' }[ext];
+    if (!mime) return null; media[p] = `data:${mime};base64,` + await f.async('base64'); return media[p]; };
+
+  const pres = await xml('ppt/presentation.xml'), presRels = await rels('ppt/presentation.xml');
+  const sz = deep(pres, 'sldSz'), SW = +attr(sz, 'cx') || 9144000, SH = +attr(sz, 'cy') || 6858000;
+  const slideIds = [...pres.getElementsByTagNameNS('*', 'sldId')].map(s => presRels[rid(s, 'id')]).filter(Boolean).map(r => r.target);
+
+  let html = '';
+  for (const sp of slideIds) {
+    const slide = await xml(sp); if (!slide) continue;
+    if (attr(slide.documentElement, 'show') === '0') continue;           // hidden slide
+    const sRels = await rels(sp), lp = byType(sRels, 'slideLayout'), layoutP = lp && lp.target;
+    const layout = layoutP ? await xml(layoutP) : null, lRels = layoutP ? await rels(layoutP) : {};
+    const mp = byType(lRels, 'slideMaster'), masterP = mp && mp.target;
+    const master = masterP ? await xml(masterP) : null, mRels = masterP ? await rels(masterP) : {};
+    const tp = byType(mRels, 'theme'), theme = tp ? await xml(tp.target) : null;
+    const ctx = await makeCtx({ slide, layout, master, theme, sRels, lRels, mRels });
+    let body = '';
+    // background
+    const bg = await background(ctx);
+    // master and layout decorations (non-placeholder shapes)
+    const showM = n => !n || attr(n.documentElement, 'showMasterSp') !== '0';
+    if (master && showM(slide) && showM(layout)) body += await tree(path1(master.documentElement, 'cSld', 'spTree'), ctx, ctx.mRels, 'master');
+    if (layout && showM(slide)) body += await tree(path1(layout.documentElement, 'cSld', 'spTree'), ctx, ctx.lRels, 'layout');
+    body += await tree(path1(slide.documentElement, 'cSld', 'spTree'), ctx, ctx.sRels, 'slide');
+    html += `<div class="slide" style="width:${pt(SW)};height:${pt(SH)};${bg}">${body}</div>`;
+  }
+  if (!html) html = `<div class="slide" style="width:${pt(SW)};height:${pt(SH)};display:flex;align-items:center;justify-content:center;font:24pt sans-serif">(No slides found)</div>`;
+  document.getElementById('pageCss').textContent = `@page{size:${(SW / 914400).toFixed(3)}in ${(SH / 914400).toFixed(3)}in;margin:0}`;
+  out.innerHTML = html;
+  await document.fonts.ready; await waitImages();
+  return { w: SW / 914400, h: SH / 914400 };
+
+  /* ---------- context: theme colours, fonts, text styles ---------- */
+  async function makeCtx(o) {
+    const scheme = {}, cs = deep(o.theme, 'clrScheme');
+    if (cs) for (const c of cs.children) { const v = kid(c, 'srgbClr'), s = kid(c, 'sysClr'); scheme[c.localName] = v ? attr(v, 'val') : s ? (attr(s, 'lastClr') || '000000') : '000000'; }
+    const map = { bg1: 'lt1', tx1: 'dk1', bg2: 'lt2', tx2: 'dk2' }, cm = o.master && kid(o.master.documentElement, 'clrMap');
+    if (cm) for (const k of Object.keys(map)) if (attr(cm, k)) map[k] = attr(cm, k);
+    const fs = deep(o.theme, 'fontScheme'), font = n => attr(path1(deep(fs, n), 'latin'), 'typeface');
+    const major = fs ? font('majorFont') : null, minor = fs ? font('minorFont') : null;
+    const txS = o.master && kid(o.master.documentElement, 'txStyles');
+    return { ...o, scheme, map, major, minor, title: kid(txS, 'titleStyle'), bodyS: kid(txS, 'bodyStyle'), other: kid(txS, 'otherStyle') };
+  }
+  function colour(ctx, el, ph) {   // el = solidFill / a gradient stop / fillRef etc.
+    if (!el) return null;
+    const c = [...el.children].find(x => /Clr$/.test(x.localName)); if (!c) return null;
+    let hex = '000000';
+    if (c.localName === 'srgbClr') hex = attr(c, 'val');
+    else if (c.localName === 'sysClr') hex = attr(c, 'lastClr') || '000000';
+    else if (c.localName === 'prstClr') hex = ({ black: '000000', white: 'FFFFFF', red: 'FF0000', blue: '0000FF', green: '008000', yellow: 'FFFF00', gray: '808080', grey: '808080' })[attr(c, 'val')] || '000000';
+    else if (c.localName === 'schemeClr') { let v = attr(c, 'val'); if (v === 'phClr') return ph || null; v = ctx.map[v] || v; hex = ctx.scheme[v] || '000000'; }
+    let r = parseInt(hex.slice(0, 2), 16), g = parseInt(hex.slice(2, 4), 16), b = parseInt(hex.slice(4, 6), 16), a = 1;
+    for (const m of c.children) {
+      const v = +attr(m, 'val') / 100000;
+      if (m.localName === 'alpha') a = v;
+      else if (m.localName === 'lumMod' || m.localName === 'lumOff' || m.localName === 'tint' || m.localName === 'shade') {
+        let [h, s, l] = rgb2hsl(r, g, b);
+        if (m.localName === 'lumMod') l *= v; else if (m.localName === 'lumOff') l += v;
+        else if (m.localName === 'tint') l = l + (1 - l) * (1 - v); else l = l * v;
+        [r, g, b] = hsl2rgb(h, s, Math.max(0, Math.min(1, l)));
+      }
+    }
+    return `rgba(${r},${g},${b},${a})`;
+  }
+  function rgb2hsl(r, g, b) { r /= 255; g /= 255; b /= 255; const mx = Math.max(r, g, b), mn = Math.min(r, g, b); let h = 0, s = 0; const l = (mx + mn) / 2;
+    if (mx !== mn) { const d = mx - mn; s = l > .5 ? d / (2 - mx - mn) : d / (mx + mn); h = mx === r ? (g - b) / d + (g < b ? 6 : 0) : mx === g ? (b - r) / d + 2 : (r - g) / d + 4; h /= 6; } return [h, s, l]; }
+  function hsl2rgb(h, s, l) { if (!s) { const v = Math.round(l * 255); return [v, v, v]; } const q = l < .5 ? l * (1 + s) : l + s - l * s, p = 2 * l - q;
+    const f = t => { t = (t + 1) % 1; return t < 1 / 6 ? p + (q - p) * 6 * t : t < .5 ? q : t < 2 / 3 ? p + (q - p) * (2 / 3 - t) * 6 : p; };
+    return [f(h + 1 / 3), f(h), f(h - 1 / 3)].map(v => Math.round(v * 255)); }
+  async function fillCss(ctx, spPr, relMap, styleRef) {
+    if (!spPr) spPr = null;
+    const sf = kid(spPr, 'solidFill'), gf = kid(spPr, 'gradFill'), bf = kid(spPr, 'blipFill');
+    if (kid(spPr, 'noFill')) return '';
+    if (sf) return `background:${colour(ctx, sf)};`;
+    if (gf) { const st = kids(kid(gf, 'gsLst'), 'gs').map(g => `${colour(ctx, g)} ${(+attr(g, 'pos') / 1000).toFixed(0)}%`);
+      const lin = kid(gf, 'lin'), ang = lin ? (+attr(lin, 'ang') / 60000 + 90) : 180; return st.length ? `background:linear-gradient(${ang}deg,${st.join(',')});` : ''; }
+    if (bf) { const u = await dataUri((relMap[rid(kid(bf, 'blip'), 'embed')] || {}).target); return u ? `background:url(${u}) center/100% 100% no-repeat;` : ''; }
+    if (styleRef && +attr(styleRef, 'idx') > 0) { const c = colour(ctx, styleRef); return c ? `background:${c};` : ''; }
+    return '';
+  }
+  async function background(ctx) {
+    for (const [doc, relMap] of [[ctx.slide, ctx.sRels], [ctx.layout, ctx.lRels], [ctx.master, ctx.mRels]]) {
+      const bg = doc && path1(doc.documentElement, 'cSld', 'bg'); if (!bg) continue;
+      const pr = kid(bg, 'bgPr'); if (pr) return await fillCss(ctx, pr, relMap);
+      const ref = kid(bg, 'bgRef'); if (ref) { const c = colour(ctx, ref); return c ? `background:${c};` : ''; }
+    }
+    return 'background:#fff;';
+  }
+
+  /* ---------- placeholders: inherit position and text style from layout / master ---------- */
+  function phOf(sp) { const nv = kid(sp, 'nvSpPr') || kid(sp, 'nvPicPr') || kid(sp, 'nvGraphicFramePr'); return nv ? deep(nv, 'ph') : null; }
+  function findPh(doc, ph, loose) {
+    if (!doc || !ph) return null;
+    const type = attr(ph, 'type') || 'body', idx = attr(ph, 'idx');
+    const all = [...doc.getElementsByTagNameNS('*', 'sp')].map(s => [s, phOf(s)]).filter(x => x[1]);
+    const norm = t => (t === 'ctrTitle' ? 'title' : t === 'subTitle' || t === 'obj' ? 'body' : t);
+    let m = idx != null && all.find(([, p]) => attr(p, 'idx') === idx && (attr(p, 'type') || 'body') === type);
+    if (!m && idx != null) m = all.find(([, p]) => attr(p, 'idx') === idx);
+    if (!m) m = all.find(([, p]) => (attr(p, 'type') || 'body') === type);
+    if (!m && loose) m = all.find(([, p]) => norm(attr(p, 'type') || 'body') === norm(type));
+    return m ? m[0] : null;
+  }
+  function inheritChain(sp, ctx, level) {   // shapes to inherit from, nearest first
+    const ph = phOf(sp); if (!ph) return [];
+    if (level === 'slide') { const l = findPh(ctx.layout, ph, true), m = findPh(ctx.master, l ? phOf(l) : ph, true); return [l, m].filter(Boolean); }
+    if (level === 'layout') { const m = findPh(ctx.master, ph, true); return [m].filter(Boolean); }
+    return [];
+  }
+  function xfrmOf(sp) { const pr = kid(sp, 'spPr') || kid(sp, 'grpSpPr'); return kid(pr, 'xfrm') || kid(sp, 'xfrm'); }
+
+  /* ---------- shape tree ---------- */
+  async function tree(spTree, ctx, relMap, level, T) {
+    if (!spTree) return '';
+    T = T || (v => v);
+    let h = '';
+    for (let el of spTree.children) {
+      if (el.localName === 'AlternateContent') { const fb = kid(el, 'Fallback') || kid(el, 'Choice'); if (!fb) continue; for (const c of fb.children) h += await shape(c); continue; }
+      h += await shape(el);
+    }
+    return h;
+    async function shape(el) {
+      const n = el.localName;
+      if (!['sp', 'pic', 'grpSp', 'cxnSp', 'graphicFrame'].includes(n)) return '';
+      const ph = phOf(el);
+      if (ph && level !== 'slide') return '';            // layout/master placeholders are just prompts
+      const chain = inheritChain(el, ctx, level);
+      let xf = xfrmOf(el); for (const c of chain) if (!xf || !kid(xf, 'off')) xf = xfrmOf(c);
+      const off = kid(xf, 'off'), ext = kid(xf, 'ext');
+      if (!off || !ext) return '';
+      let x = +attr(off, 'x'), y = +attr(off, 'y'), w = +attr(ext, 'cx'), hh = +attr(ext, 'cy');
+      [x, y, w, hh] = T([x, y, w, hh]);
+      const rot = (+attr(xf, 'rot') || 0) / 60000, fh = attr(xf, 'flipH') === '1', fv = attr(xf, 'flipV') === '1';
+      const tf = (rot || fh || fv) ? `transform:rotate(${rot}deg)${fh ? ' scaleX(-1)' : ''}${fv ? ' scaleY(-1)' : ''};` : '';
+      const box = `left:${pt(x)};top:${pt(y)};width:${pt(w)};height:${pt(hh)};${tf}`;
+      if (n === 'grpSp') {
+        const chOff = kid(xf, 'chOff'), chExt = kid(xf, 'chExt');
+        const cx0 = +attr(chOff, 'x') || 0, cy0 = +attr(chOff, 'y') || 0, cw = +attr(chExt, 'cx') || w, ch = +attr(chExt, 'cy') || hh;
+        const sx = cw ? w / cw : 1, sy = ch ? hh / ch : 1;
+        const inner = await tree(el, ctx, relMap, level, ([a, b, c, d]) => [(a - cx0) * sx, (b - cy0) * sy, c * sx, d * sy]);
+        return `<div class="sh" style="${box}">${inner}</div>`;
+      }
+      if (n === 'pic') {
+        const blip = deep(el, 'blip'), u = await dataUri((relMap[rid(blip, 'embed')] || {}).target);
+        const phl = deep(kid(el, 'nvPicPr'), 'hlinkClick'), phref = phl && (relMap[rid(phl, 'id')] || {}).url;
+        const plk = phref && /^(https?:|mailto:)/i.test(phref) ? `<a href="${esc(phref)}" style="position:absolute;inset:0"></a>` : '';
+        return u ? `<div class="sh" style="${box}"><img src="${u}">${plk}</div>` : '';
+      }
+      if (n === 'cxnSp') {
+        const ln = kid(kid(el, 'spPr'), 'ln'), st = kid(el, 'style');
+        const col = colour(ctx, kid(ln, 'solidFill')) || colour(ctx, kid(st, 'lnRef')) || '#000';
+        const lw = Math.max(0.75, (+attr(ln, 'w') || 12700) / EMU_PT);
+        return `<svg class="sh" style="${box}" viewBox="0 0 ${w} ${hh || 1}" preserveAspectRatio="none" overflow="visible"><line x1="0" y1="0" x2="${w}" y2="${hh}" stroke="${col}" stroke-width="${lw}pt" vector-effect="non-scaling-stroke"/></svg>`;
+      }
+      if (n === 'graphicFrame') {
+        const tbl = deep(el, 'tbl');
+        if (!tbl) return `<div class="sh" style="${box};border:1pt dashed #bbb;display:flex;align-items:center;justify-content:center;color:#999;font:12pt sans-serif">Chart / object not shown</div>`;
+        const cols = kids(kid(tbl, 'tblGrid'), 'gridCol').map(g => +attr(g, 'w'));
+        let t = '<table><colgroup>' + cols.map(c => `<col style="width:${pt(c)}">`).join('') + '</colgroup>';
+        for (const [ri, tr] of kids(tbl, 'tr').entries()) {
+          t += `<tr style="height:${pt(+attr(tr, 'h') || 0)}">`;
+          for (const tc of kids(tr, 'tc')) {
+            if (attr(tc, 'hMerge') === '1' || attr(tc, 'vMerge') === '1') continue;
+            const tcPr = kid(tc, 'tcPr'), f = await fillCss(ctx, tcPr, relMap);
+            const bgc = f || (ri === 0 ? `background:${colour(ctx, { children: [mk('schemeClr', 'accent1')] }) || '#4472c4'};` : 'background:#e9edf4;');
+            t += `<td${attr(tc, 'gridSpan') ? ` colspan="${attr(tc, 'gridSpan')}"` : ''}${attr(tc, 'rowSpan') ? ` rowspan="${attr(tc, 'rowSpan')}"` : ''} style="${bgc}${ri === 0 ? 'color:#fff;font-weight:bold;' : ''}">${paras(kid(tc, 'txBody'), ctx, [], 'other', 1)}</td>`;
+          }
+          t += '</tr>';
+        }
+        return `<div class="sh" style="${box}">${t}</table></div>`;
+      }
+      // sp
+      const spPr = kid(el, 'spPr'), style = kid(el, 'style');
+      const geom = kid(spPr, 'prstGeom'), prst = geom ? attr(geom, 'prst') : (kid(spPr, 'custGeom') ? 'cust' : 'rect');
+      const fill = await fillCss(ctx, spPr, relMap, kid(style, 'fillRef'));
+      const ln = kid(spPr, 'ln');
+      let border = '';
+      if (ln && kid(ln, 'noFill')) border = '';
+      else { const c = colour(ctx, kid(ln, 'solidFill')) || (kid(style, 'lnRef') && +attr(kid(style, 'lnRef'), 'idx') > 0 ? colour(ctx, kid(style, 'lnRef')) : null);
+        if (c) border = `border:${Math.max(0.5, (+attr(ln, 'w') || 9525) / EMU_PT).toFixed(2)}pt solid ${c};`; }
+      const radius = prst === 'ellipse' ? 'border-radius:50%;' : prst === 'roundRect' ? `border-radius:${pt(Math.min(w, hh) * 0.16)};` : '';
+      const clip = { triangle: 'polygon(50% 0,100% 100%,0 100%)', rtTriangle: 'polygon(0 0,100% 100%,0 100%)', diamond: 'polygon(50% 0,100% 50%,50% 100%,0 50%)', rightArrow: 'polygon(0 25%,60% 25%,60% 0,100% 50%,60% 100%,60% 75%,0 75%)', leftArrow: 'polygon(100% 25%,40% 25%,40% 0,0 50%,40% 100%,40% 75%,100% 75%)', hexagon: 'polygon(25% 0,75% 0,100% 50%,75% 100%,25% 100%,0 50%)', pentagon: 'polygon(50% 0,100% 38%,82% 100%,18% 100%,0 38%)', parallelogram: 'polygon(25% 0,100% 0,75% 100%,0 100%)', chevron: 'polygon(0 0,75% 0,100% 50%,75% 100%,0 100%,25% 50%)', star5: 'polygon(50% 0,61% 35%,98% 35%,68% 57%,79% 91%,50% 70%,21% 91%,32% 57%,2% 35%,39% 35%)' }[prst];
+      const shapeBg = clip ? `<div style="position:absolute;inset:0;${fill}clip-path:${clip}"></div>` : '';
+      const txBody = kid(el, 'txBody');
+      let text = '';
+      if (txBody && deep(txBody, 't')) {
+        const phType = ph ? (attr(ph, 'type') || 'body') : null;
+        const kind = !ph ? 'other' : (phType === 'title' || phType === 'ctrTitle') ? 'title' : ['dt', 'ftr', 'sldNum'].includes(phType) ? 'other' : 'body';
+        const bodyPrs = [kid(txBody, 'bodyPr'), ...chain.map(c => kid(kid(c, 'txBody'), 'bodyPr'))].filter(Boolean);
+        const bp = a => { for (const b of bodyPrs) if (attr(b, a) != null) return attr(b, a); return null; };
+        const anchor = bp('anchor') || (kind === 'title' ? 'ctr' : 't');
+        const ins = (a, d) => pt(+(bp(a) ?? d));
+        const fa = deep(kid(txBody, 'bodyPr'), 'normAutofit'), scale = fa && attr(fa, 'fontScale') ? +attr(fa, 'fontScale') / 100000 : 1;
+        const lst = [kid(txBody, 'lstStyle'), ...chain.map(c => kid(kid(c, 'txBody'), 'lstStyle'))].filter(Boolean);
+        const wrapNone = bp('wrap') === 'none';
+        text = `<div class="tx" style="padding:${ins('tIns', 45720)} ${ins('rIns', 91440)} ${ins('bIns', 45720)} ${ins('lIns', 91440)};justify-content:${anchor === 'ctr' ? 'center' : anchor === 'b' ? 'flex-end' : 'flex-start'};${wrapNone ? 'white-space:nowrap;' : ''}">${paras(txBody, ctx, lst, kind, scale)}</div>`;
+      }
+      const shl = deep(kid(el, 'nvSpPr'), 'hlinkClick'), shref = shl && (relMap[rid(shl, 'id')] || {}).url;
+      const lk = shref && /^(https?:|mailto:)/i.test(shref) ? `<a href="${esc(shref)}" style="position:absolute;inset:0;z-index:5"></a>` : '';
+      return `<div class="sh" style="${box}${clip ? '' : fill + border}${radius}">${shapeBg}${text}${lk}</div>`;
+    }
+  }
+  function mk(name, val) { const d = document.implementation.createDocument(null, name); const e = d.documentElement; e.setAttribute('val', val); return e; }
+
+  /* ---------- paragraphs and runs ---------- */
+  function paras(txBody, ctx, lstStyles, kind, scale) {
+    if (!txBody) return '';
+    const master = kind === 'title' ? ctx.title : kind === 'body' ? ctx.bodyS : ctx.other;
+    const levelSrc = lvl => [...lstStyles.map(l => kid(l, `lvl${lvl}pPr`)), kid(master, `lvl${lvl}pPr`)].filter(Boolean);
+    let h = '';
+    let auto = 0;
+    for (const p of kids(txBody, 'p')) {
+      const pPr = kid(p, 'pPr'), lvl = (+attr(pPr, 'lvl') || 0) + 1;
+      const srcs = [pPr, ...levelSrc(lvl)].filter(Boolean);
+      const pa = a => { for (const s of srcs) if (attr(s, a) != null) return attr(s, a); return null; };
+      const pk = n => { for (const s of srcs) { const k = kid(s, n); if (k) return k; } return null; };
+      const defR = srcs.map(s => kid(s, 'defRPr')).filter(Boolean);
+      const algn = { ctr: 'center', r: 'right', just: 'justify', dist: 'justify' }[pa('algn')] || 'left';
+      const marL = +(pa('marL') || 0), indent = +(pa('indent') || 0);
+      const lnPct = deep(pk('lnSpc'), 'spcPct'), lh = lnPct ? 1.2 * (+attr(lnPct, 'val') / 100000) : 1.2;
+      const sb = deep(pk('spcBef'), 'spcPts'), sa = deep(pk('spcAft'), 'spcPts');
+      const runs = [...p.children].filter(c => ['r', 'br', 'fld'].includes(c.localName));
+      const endSz = attr(kid(p, 'endParaRPr'), 'sz');
+      const firstSz = (() => { for (const r of runs) { const s = attr(kid(r, 'rPr'), 'sz'); if (s) return +s; } for (const d of defR) if (attr(d, 'sz')) return +attr(d, 'sz'); return endSz ? +endSz : (kind === 'title' ? 4400 : kind === 'body' ? 2800 : 1800); })() / 100 * scale;
+      // bullets
+      let bullet = '';
+      const hasText = runs.some(r => (kid(r, 't') || {}).textContent);
+      const bsrc = srcs.find(x => kid(x, 'buNone') || kid(x, 'buChar') || kid(x, 'buAutoNum'));
+      if (hasText && bsrc && !kid(bsrc, 'buNone')) {
+        const bc = kid(bsrc, 'buChar'), ba = kid(bsrc, 'buAutoNum');
+        if (bc) { const ch = attr(bc, 'char') || '•', code = ch.charCodeAt(0); bullet = esc({ 0xF0A7: '▪', 0xA7: '▪', 0xF0B7: '•', 0xF0D8: '➢', 0xD8: '➢', 0xF0FC: '✓', 0xFC: '✓', 0xF076: '❖', 0x76: '❖', 0xF06E: '■', 0x6E: '■', 0xF071: '❑', 0x71: '❑' }[code] || ch); }
+        else if (ba) { auto++; const t = attr(ba, 'type') || 'arabicPeriod'; bullet = (t.startsWith('alphaLc') ? String.fromCharCode(96 + auto) : t.startsWith('alphaUc') ? String.fromCharCode(64 + auto) : auto) + (t.endsWith('ParenR') ? ')' : '.'); }
+      }
+      let inner = '';
+      for (const r of runs) {
+        if (r.localName === 'br') { inner += '<br>'; continue; }
+        const t = (kid(r, 't') || {}).textContent || ''; if (!t) continue;
+        const rPr = kid(r, 'rPr'), rs = [rPr, ...defR].filter(Boolean);
+        const ra = a => { for (const s of rs) if (attr(s, a) != null) return attr(s, a); return null; };
+        const rk = n => { for (const s of rs) { const k = kid(s, n); if (k) return k; } return null; };
+        const size = (+(ra('sz')) || firstSz * 100 / scale) / 100 * scale;
+        const col = kid(rPr, 'noFill') ? 'transparent' : (colour(ctx, rk('solidFill')) || colour(ctx, { children: [mk('schemeClr', 'tx1')] }));
+        let face = attr(rk('latin'), 'typeface') || (kind === 'title' ? ctx.major : ctx.minor) || 'Calibri';
+        if (face === '+mj-lt') face = ctx.major || 'Calibri'; else if (face === '+mn-lt') face = ctx.minor || 'Calibri';
+        const st = [`font-size:${size.toFixed(1)}pt`, `color:${col}`, `font-family:'${face.replace(/'/g, '')}',Carlito,Calibri,'Segoe UI',Arial,sans-serif`];
+        if (ra('b') === '1') st.push('font-weight:bold'); if (ra('i') === '1') st.push('font-style:italic');
+        const u = ra('u'), strike = ra('strike'); const dec = [u && u !== 'none' ? 'underline' : '', strike && strike !== 'noStrike' ? 'line-through' : ''].filter(Boolean).join(' ');
+        if (dec) st.push('text-decoration:' + dec);
+        const base = +ra('baseline') || 0; if (base) st.push(`vertical-align:${base > 0 ? 'super' : 'sub'};font-size:${(size * 0.7).toFixed(1)}pt`);
+        const cap = ra('cap'); if (cap === 'all') st.push('text-transform:uppercase');
+        const hl = kid(rPr, 'hlinkClick'), href = hl && ctx.sRels && (ctx.sRels[rid(hl, 'id')] || {}).url;
+        inner += href && /^(https?:|mailto:)/i.test(href) ? `<a href="${esc(href)}" style="color:inherit;text-decoration:inherit"><span style="${st.join(';')}">${esc(t)}</span></a>` : `<span style="${st.join(';')}">${esc(t)}</span>`;
+      }
+      const empty = !inner;
+      h += `<p style="text-align:${algn};line-height:${lh.toFixed(2)};font-size:${firstSz.toFixed(1)}pt;${sb ? `margin-top:${(+attr(sb, 'val') / 100 * scale).toFixed(1)}pt;` : ''}${sa ? `margin-bottom:${(+attr(sa, 'val') / 100 * scale).toFixed(1)}pt;` : ''}padding-left:${pt(marL)};text-indent:${pt(indent)}">`
+        + (bullet ? `<span style="display:inline-block;min-width:${pt(Math.max(0, -indent))};text-indent:0">${bullet}</span>` : '')
+        + (empty ? '&#8203;' : inner) + '</p>';
+    }
+    return h;
+  }
+}
+
+
+/* ================= PowerPoint animations → one slide per click ================= */
+const NS_P = 'http://schemas.openxmlformats.org/presentationml/2006/main', NS_A = 'http://schemas.openxmlformats.org/drawingml/2006/main';
+const NS_R = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships', NS_REL = 'http://schemas.openxmlformats.org/package/2006/relationships';
+async function expandBuilds(bytes) {
+  const zip = await JSZip.loadAsync(bytes);
+  const P = new DOMParser(), X = new XMLSerializer();
+  const rd = async p => { const f = zip.file(p); return f ? P.parseFromString(await f.async('string'), 'application/xml') : null; };
+  const relsPath = p => { const i = p.lastIndexOf('/'); return p.slice(0, i) + '/_rels/' + p.slice(i + 1) + '.rels'; };
+  const relMap = async p => { const d = await rd(relsPath(p)), m = {}; if (d) for (const r of d.getElementsByTagNameNS('*', 'Relationship')) { const ext = r.getAttribute('TargetMode') === 'External'; m[r.getAttribute('Id')] = { type: r.getAttribute('Type'), target: ext ? null : resolvePath(p, r.getAttribute('Target')), url: ext ? r.getAttribute('Target') : null }; } return m; };
+  const pres = await rd('ppt/presentation.xml'), presRelsDoc = await rd('ppt/_rels/presentation.xml.rels'), ct = await rd('[Content_Types].xml');
+  if (!pres || !presRelsDoc || !ct) return null;
+  const presRels = {}; for (const r of presRelsDoc.getElementsByTagNameNS('*', 'Relationship')) presRels[r.getAttribute('Id')] = r;
+  const sz = deep(pres, 'sldSz'), SW = +attr(sz, 'cx') || 9144000, SH = +attr(sz, 'cy') || 6858000;
+  const lst = deep(pres, 'sldIdLst'); if (!lst) return null;
+  const sldIds = kids(lst, 'sldId');
+  let maxId = Math.max(256, ...sldIds.map(s => +attr(s, 'id') || 0)), maxRid = 0, maxN = 0;
+  for (const id of Object.keys(presRels)) { const m = /^rId(\d+)$/.exec(id); if (m) maxRid = Math.max(maxRid, +m[1]); }
+  zip.forEach(p => { const m = /^ppt\/slides\/slide(\d+)\.xml$/.exec(p); if (m) maxN = Math.max(maxN, +m[1]); });
+  const map = []; let changed = false, slideNo = 0;
+  for (const sid of sldIds) {
+    const rel = presRels[rid(sid, 'id')]; if (!rel) continue;
+    const path = resolvePath('ppt/presentation.xml', rel.getAttribute('Target'));
+    const doc = await rd(path); if (!doc) continue;
+    const hidden = attr(doc.documentElement, 'show') === '0';
+    slideNo++;
+    const sRels = await relMap(path);
+    const layoutPath = Object.values(sRels).find(r => r.type && r.type.endsWith('/slideLayout'));
+    const layout = layoutPath ? await rd(layoutPath.target) : null;
+    const box = id => shapeBox(doc, layout, id, SW, SH);
+    // videos: YouTube / online links and videos stored inside the file
+    const videos = [];
+    for (const pic of [...doc.getElementsByTagNameNS('*', 'pic')]) {
+      const vf = deep(pic, 'videoFile'), md = deep(pic, 'media'); if (!vf && !md) continue;
+      const id = attr(deep(pic, 'cNvPr'), 'id');
+      const lr = vf && sRels[rid(vf, 'link')], er = md && sRels[rid(md, 'embed')];
+      const v = { box: box(id) };
+      if (lr && lr.url && /^https?:/i.test(lr.url)) v.url = lr.url;
+      else if (er && er.target) v.media = er.target;
+      else if (lr && lr.target) v.media = lr.target;
+      if (v.url || v.media) videos.push(v);
+    }
+    const plan = buildPlan(doc);
+    if (!plan || plan.steps.length < 1) { map.push({ slide: slideNo, step: 1, steps: 1, hidden, fx: [], videos }); continue; }
+    const states = plan.states, K = states.length;     // K = 1 + clicks
+    const srcRels = zip.file(relsPath(path)) ? await zip.file(relsPath(path)).async('string') : null;
+    for (let k = 0; k < K; k++) {
+      const out = doc.cloneNode(true);
+      applyState(out, states[k]);
+      const t = deep(out, 'timing'); if (t) t.parentNode.removeChild(t);
+      const fx = k === 0 ? [] : plan.steps[k - 1].map(e => ({ cls: e.cls, id: e.id, sub: e.sub, delay: e.start, dur: e.dur, box: box(e.spid) }));
+      map.push({ slide: slideNo, step: k + 1, steps: K, hidden, fx, videos });
+      if (k === K - 1) { zip.file(path, X.serializeToString(out)); continue; }   // final state keeps the original slide part
+      const ext = kid(out.documentElement, 'extLst'); if (ext) ext.parentNode.removeChild(ext);
+      const n = ++maxN, np = `ppt/slides/slide${n}.xml`, rId = 'rId' + (++maxRid), newId = ++maxId;
+      zip.file(np, X.serializeToString(out));
+      if (srcRels) { const rdoc = P.parseFromString(srcRels, 'application/xml'); for (const r of [...rdoc.getElementsByTagNameNS('*', 'Relationship')]) if (/\/(notesSlide|comments|commentAuthors|modernComment)$/i.test(r.getAttribute('Type') || '')) r.parentNode.removeChild(r); zip.file(relsPath(np), X.serializeToString(rdoc)); }
+      const ov = ct.createElementNS(ct.documentElement.namespaceURI, 'Override'); ov.setAttribute('PartName', '/' + np); ov.setAttribute('ContentType', 'application/vnd.openxmlformats-officedocument.presentationml.slide+xml'); ct.documentElement.appendChild(ov);
+      const nr = presRelsDoc.createElementNS(NS_REL, 'Relationship'); nr.setAttribute('Id', rId); nr.setAttribute('Type', rel.getAttribute('Type')); nr.setAttribute('Target', `slides/slide${n}.xml`); presRelsDoc.documentElement.appendChild(nr);
+      const ns = pres.createElementNS(sid.namespaceURI, sid.tagName); ns.setAttribute('id', String(newId)); ns.setAttributeNS(NS_R, 'r:id', rId); lst.insertBefore(ns, sid);
+      changed = true;
+    }
+  }
+  if (!changed) return { map, b64: null, SW, SH };
+  // sections list would not include the new slides – drop it (only affects PowerPoint's section headings)
+  for (const e of [...pres.getElementsByTagNameNS('*', 'sectionLst')]) { const ext = e.parentNode; if (ext && ext.parentNode) ext.parentNode.removeChild(ext); }
+  zip.file('ppt/presentation.xml', X.serializeToString(pres));
+  zip.file('ppt/_rels/presentation.xml.rels', X.serializeToString(presRelsDoc));
+  zip.file('[Content_Types].xml', X.serializeToString(ct));
+  const b64 = await zip.generateAsync({ type: 'base64', compression: 'DEFLATE' });
+  return { map, b64, SW, SH };
+}
+/* read p:timing → the clicks, and which shapes / paragraphs are visible after each */
+function buildPlan(doc) {
+  const timing = deep(doc, 'timing'); if (!timing) return null;
+  const main = [...timing.getElementsByTagNameNS('*', 'cTn')].find(c => attr(c, 'nodeType') === 'mainSeq'); if (!main) return null;
+  const effects = [...main.getElementsByTagNameNS('*', 'cTn')].filter(c => attr(c, 'presetClass'));
+  if (!effects.length) return null;
+  const steps = [[]]; let lastStart = 0, maxEnd = 0;
+  for (const c of effects) {
+    const nt = attr(c, 'nodeType'), cls = attr(c, 'presetClass');
+    if (nt === 'clickEffect') { steps.push([]); lastStart = 0; maxEnd = 0; }
+    let dur = 0; for (const d of c.getElementsByTagNameNS('*', 'cTn')) { const v = +attr(d, 'dur'); if (v > dur) dur = v; }
+    if (!dur) dur = cls === 'entr' && attr(c, 'presetID') === '1' ? 1 : 500;
+    let delay = 0; const cond = deep(kid(c, 'stCondLst'), 'cond'); if (cond && /^\d+$/.test(attr(cond, 'delay') || '')) delay = +attr(cond, 'delay');
+    const start = (nt === 'afterEffect' ? maxEnd : nt === 'withEffect' ? lastStart : 0) + delay;
+    lastStart = start; maxEnd = Math.max(maxEnd, start + dur);
+    if (cls !== 'entr' && cls !== 'exit') continue;
+    const tg = deep(c, 'spTgt'); if (!tg) continue;
+    const spid = attr(tg, 'spid'), pr = deep(tg, 'pRg');
+    steps[steps.length - 1].push({ cls, id: +attr(c, 'presetID') || 0, sub: +attr(c, 'presetSubtype') || 0, start, dur: Math.min(3000, dur), spid, pr: pr ? [+attr(pr, 'st'), +attr(pr, 'end')] : null });
+  }
+  // a target's starting visibility: hidden if its first effect is an entrance
+  const keyOf = e => e.pr ? e.pr.map(String).join('-') + '@' + e.spid : e.spid;
+  const vis = {}, seen = new Set();
+  for (const st of steps) for (const e of st) { const k = keyOf(e); if (!seen.has(k)) { seen.add(k); vis[k] = e.cls !== 'entr'; } }
+  const apply = (v, st) => { for (const e of st) v[keyOf(e)] = e.cls === 'entr'; };
+  const auto = steps[0], clicks = steps.slice(1).filter(st => st.length);
+  apply(vis, auto);
+  const states = [{ ...vis }];
+  for (const st of clicks) { const v = { ...states[states.length - 1] }; apply(v, st); states.push(v); }
+  if (!clicks.length) return null;
+  const targets = {}; for (const st of steps) for (const e of st) targets[keyOf(e)] = e;
+  return { steps: clicks, states: states.map(v => Object.entries(v).filter(([, on]) => !on).map(([k]) => targets[k])) };
+}
+function shapeById(doc, id) { for (const c of doc.getElementsByTagNameNS('*', 'cNvPr')) if (attr(c, 'id') === String(id)) return c.parentNode && c.parentNode.parentNode; return null; }
+function applyState(doc, hiddenTargets) {
+  for (const t of hiddenTargets) {
+    const sh = shapeById(doc, t.spid); if (!sh || !sh.parentNode) continue;
+    if (!t.pr) { sh.parentNode.removeChild(sh); continue; }
+    const ps = kids(kid(sh, 'txBody'), 'p');
+    for (let i = t.pr[0]; i <= t.pr[1] && i < ps.length; i++) hideParagraph(ps[i]);
+  }
+}
+function hideParagraph(p) {
+  const d = p.ownerDocument, A = n => d.createElementNS(NS_A, 'a:' + n);
+  for (const r of [...p.children].filter(c => c.localName === 'r' || c.localName === 'fld')) {
+    let rPr = kid(r, 'rPr'); if (!rPr) { rPr = A('rPr'); r.insertBefore(rPr, r.firstChild); }
+    for (const f of [...rPr.children]) if (/^(noFill|solidFill|gradFill|blipFill|pattFill|grpFill)$/.test(f.localName)) rPr.removeChild(f);
+    const ln = kid(rPr, 'ln'), nf = A('noFill'); rPr.insertBefore(nf, ln ? ln.nextSibling : rPr.firstChild);
+  }
+  let pPr = kid(p, 'pPr'); if (!pPr) { pPr = A('pPr'); p.insertBefore(pPr, p.firstChild); }
+  if (kid(pPr, 'buAutoNum')) { if (!kid(pPr, 'buClr')) { const bc = A('buClr'), c = A('srgbClr'), al = A('alpha'); c.setAttribute('val', 'FFFFFF'); al.setAttribute('val', '0'); c.appendChild(al); bc.appendChild(c); pPr.insertBefore(bc, pPr.firstChild); } return; }
+  for (const b of [...pPr.children]) if (/^(buChar|buBlip|buNone)$/.test(b.localName)) pPr.removeChild(b);
+  const after = [...pPr.children].find(c => /^(tabLst|defRPr|extLst)$/.test(c.localName));
+  pPr.insertBefore(A('buNone'), after || null);
+}
+function shapeBox(doc, layout, id, SW, SH) {
+  const sh = shapeById(doc, id); if (!sh) return [0, 0, 1, 1];
+  const xf = s => { const pr = kid(s, 'spPr') || kid(s, 'grpSpPr'); return kid(pr, 'xfrm') || kid(s, 'xfrm'); };
+  let x = xf(sh);
+  if (!x || !kid(x, 'off')) {   // placeholder: position comes from the layout
+    const nv = kid(sh, 'nvSpPr') || kid(sh, 'nvPicPr') || kid(sh, 'nvGraphicFramePr'), ph = nv && deep(nv, 'ph');
+    if (ph && layout) { const idx = attr(ph, 'idx'), type = attr(ph, 'type') || 'body';
+      for (const c of layout.getElementsByTagNameNS('*', 'ph')) if ((idx != null && attr(c, 'idx') === idx) || (attr(c, 'type') || 'body') === type) { const s2 = c.parentNode.parentNode.parentNode; x = xf(s2); if (x && kid(x, 'off')) break; } }
+  }
+  if (!x || !kid(x, 'off')) return [0, 0, 1, 1];
+  let b = [+attr(kid(x, 'off'), 'x'), +attr(kid(x, 'off'), 'y'), +attr(kid(x, 'ext'), 'cx'), +attr(kid(x, 'ext'), 'cy')];
+  for (let g = sh.parentNode; g && g.localName === 'grpSp'; g = g.parentNode) {
+    const gx = xf(g); if (!gx) continue; const o = kid(gx, 'off'), e = kid(gx, 'ext'), co = kid(gx, 'chOff'), ce = kid(gx, 'chExt');
+    const sx = +attr(ce, 'cx') ? +attr(e, 'cx') / +attr(ce, 'cx') : 1, sy = +attr(ce, 'cy') ? +attr(e, 'cy') / +attr(ce, 'cy') : 1;
+    b = [+attr(o, 'x') + (b[0] - +attr(co, 'x')) * sx, +attr(o, 'y') + (b[1] - +attr(co, 'y')) * sy, b[2] * sx, b[3] * sy];
+  }
+  return [b[0] / SW, b[1] / SH, b[2] / SW, b[3] / SH];
+}
+window.expand = async b64 => { try { return await expandBuilds(b64ToBytes(b64)); } catch (e) { return { error: String(e && e.message || e) }; } };
+
+window.render = async (kind, b64) => {
+  const bytes = b64ToBytes(b64);
+  try { return kind === 'docx' ? await renderDocx(bytes) : await renderPptx(bytes); }
+  catch (e) { return { error: String(e && e.message || e) }; }
+};
+</script>
+</body>
+</html>

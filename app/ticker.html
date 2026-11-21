@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<title>Objective ticker</title>
+<style>
+*{box-sizing:border-box}
+:root{--bg:rgba(18,24,38,.95);--fg:#ffffff;--done:#4ade80;--card:rgba(255,255,255,.09);--line:rgba(0,0,0,.45)}
+html,body{margin:0;height:100%;overflow:hidden;background:transparent;user-select:none;-webkit-user-select:none;font-family:"Segoe UI",system-ui,sans-serif}
+#bar{position:absolute;inset:0;display:flex;align-items:center;gap:12px;padding:0 16px 0 12px;cursor:pointer;
+  background:linear-gradient(180deg,rgba(255,255,255,.07),rgba(0,0,0,.12)),var(--bg);border-top:2px solid rgba(255,255,255,.18);box-shadow:0 -4px 14px rgba(0,0,0,.25)}
+#bar:active{filter:brightness(1.1)}
+#badge{flex:none;display:flex;align-items:center;gap:.5em;height:64%;padding:0 .9em;border-radius:999px;background:linear-gradient(180deg,#3a6cf0,#2457d6);color:#fff;font-weight:800;font-size:30vh;letter-spacing:.02em;white-space:nowrap;box-shadow:0 2px 0 rgba(0,0,0,.35)}
+#badge svg{height:1.3em;width:1.3em}
+#badge.all{background:linear-gradient(180deg,#22c55e,#15803d)}
+#track{position:relative;flex:1;height:100%;overflow:hidden;-webkit-mask-image:linear-gradient(90deg,transparent 0,#000 2%,#000 97%,transparent 100%)}
+.obj{position:absolute;left:0;top:50%;white-space:nowrap;color:var(--fg);font-size:42vh;font-weight:700;line-height:1;transform:translate(100vw,-50%);will-change:transform,opacity}
+.done{color:var(--done)}
+.tk{display:inline-flex;align-items:center;justify-content:center;margin-left:.45em;width:1.15em;height:1.15em;border-radius:50%;background:#22c55e;color:#fff;font-size:.8em;vertical-align:.05em;box-shadow:0 0 12px rgba(34,197,94,.8)}
+.n{opacity:.6;font-weight:800;margin-right:.45em}
+.done .n{opacity:1}
+/* flip clock */
+.flip{position:absolute;left:4px;right:4px;top:9%;bottom:9%;perspective:700px;color:var(--fg);font-weight:700;font-size:42vh}
+.flip .half{position:absolute;left:0;right:0;height:50%;overflow:hidden;background:var(--card);backface-visibility:hidden}
+.flip .half.top{top:0;border-radius:8px 8px 0 0;transform-origin:50% 100%;box-shadow:inset 0 -1px 0 var(--line)}
+.flip .half.bot{bottom:0;border-radius:0 0 8px 8px;transform-origin:50% 0;box-shadow:inset 0 1px 0 var(--line)}
+.flip .face{position:absolute;left:0;right:0;height:200%;display:flex;align-items:center;justify-content:center;white-space:nowrap;line-height:1}
+.flip .top .face{top:0}.flip .bot .face{top:-100%}
+.flip .flap.top{z-index:3}.flip .flap.bot{z-index:3}
+.flip .shade{position:absolute;inset:0;background:#000;opacity:0;pointer-events:none}
+/* reel */
+.reel{position:absolute;inset:0;overflow:hidden;color:var(--fg);font-weight:700;font-size:42vh}
+.reel .strip{position:absolute;left:0;right:0;top:0;will-change:transform,filter}
+.reel .cell{height:100%;display:flex;align-items:center;justify-content:center;white-space:nowrap;line-height:1}
+.reel::before,.reel::after{content:"";position:absolute;left:0;right:0;height:22%;z-index:2;pointer-events:none}
+.reel::before{top:0;background:linear-gradient(180deg,rgba(0,0,0,.35),transparent)}
+.reel::after{bottom:0;background:linear-gradient(0deg,rgba(0,0,0,.35),transparent)}
+/* empty / start-up prompt */
+#empty,#ask{position:absolute;inset:0;display:none;align-items:center;justify-content:center;gap:.5em;color:var(--fg);font-size:40vh;font-weight:700}
+#empty b{display:inline-flex;align-items:center;justify-content:center;width:1.2em;height:1.2em;border-radius:50%;background:#2457d6;color:#fff;font-size:.9em}
+body.none #empty{display:flex}
+body.ask #ask{display:flex} body.ask #empty,body.ask .obj,body.ask .flip,body.ask .reel{display:none}
+body.none #badge,body.none #dots,body.ask #dots{display:none}
+#ask span{margin-right:.4em}
+#ask button,#empty button{font:800 32vh "Segoe UI",system-ui,sans-serif;height:66%;padding:0 1em;border-radius:999px;border:0;cursor:pointer;color:#fff;background:#2457d6;box-shadow:0 2px 0 rgba(0,0,0,.35);white-space:nowrap}
+#ask button.r,#empty button.r{background:#dc2626}#ask button.q{background:rgba(255,255,255,.16);font-weight:600}
+@keyframes pulse{50%{opacity:.6}}
+#dots{flex:none;display:flex;gap:7px;align-items:center;padding-left:4px}
+#dots i{flex:none;width:24vh;height:24vh;border-radius:50%;background:rgba(127,127,127,.35);border:1.5px solid rgba(255,255,255,.35)}
+#dots i.done{background:#22c55e;border-color:#86efac;box-shadow:0 0 8px rgba(34,197,94,.7)}
+#dots i.cur{outline:2px solid var(--fg);outline-offset:1.5px}
+</style>
+</head>
+<body class="none">
+<div id="bar" title="Click to open the objectives">
+  <div id="badge"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.4" fill="currentColor"/></svg><span id="bt">Objective ticker</span></div>
+  <div id="track">
+    <div id="empty"><button data-a="new">＋ Add objectives</button><button class="r" data-a="close">✕ Close ticker</button></div>
+    <div id="ask"></div>
+  </div>
+  <div id="dots"></div>
+</div>
+<script>
+(() => {
+const cc = window.cc, track = document.getElementById('track'), dots = document.getElementById('dots');
+let list = [], idx = 0, run = 0, cur = null, style = { anim: 'swipe', bg: '#121826', op: 95, fg: '#ffffff' }, asking = false;
+const PAUSE = 6000, SPEED = 110;
+const sleep = (ms, me) => new Promise(res => setTimeout(() => res(me === run), ms));
+const tx = (el, kf, ms, ease) => el.animate(kf, { duration: ms, easing: ease, fill: 'forwards' }).finished.catch(() => {});
+const mv = (x, extra = '') => ({ transform: `translate(${x}px,-50%) ${extra}` });
+const esc = s => s.replace(/&/g, '&amp;').replace(/</g, '&lt;');
+function html(o, i) { return `<span class="n">${i + 1}.</span>${esc(o.text)}${o.done ? '<span class="tk">✓</span>' : ''}`; }
+
+/* ---------- colours ---------- */
+function hexRgb(h) { h = (h || '#000').replace('#', ''); if (h.length === 3) h = [...h].map(c => c + c).join(''); return [0, 2, 4].map(i => parseInt(h.substr(i, 2), 16) || 0); }
+function applyStyle() {
+  const [r, g, b] = hexRgb(style.bg), lum = (0.299 * r + 0.587 * g + 0.114 * b) / 255, R = document.documentElement.style;
+  R.setProperty('--bg', `rgba(${r},${g},${b},${(style.op || 95) / 100})`);
+  R.setProperty('--fg', style.fg || '#fff');
+  R.setProperty('--done', lum > 0.55 ? '#15803d' : '#4ade80');
+  const mix = (t, k) => [r, g, b].map(v => Math.round(v + (t - v) * k)).join(','); R.setProperty('--card', lum > 0.55 ? `rgb(${mix(0, .08)})` : `rgb(${mix(255, .1)})`);
+  R.setProperty('--line', lum > 0.55 ? 'rgba(0,0,0,.25)' : 'rgba(0,0,0,.5)');
+}
+
+function paintChrome() {
+  const done = list.filter(o => o.done).length;
+  document.body.classList.toggle('none', !list.length && !asking);
+  document.getElementById('bt').textContent = asking ? 'Objective ticker' : list.length ? (done === list.length ? 'All done!' : `Objective ${Math.min(idx, list.length - 1) + 1} of ${list.length}`) : 'Objective ticker';
+  document.getElementById('badge').classList.toggle('all', !!list.length && done === list.length && !asking);
+  dots.innerHTML = list.map((o, i) => `<i class="${o.done ? 'done' : ''}${i === idx ? ' cur' : ''}"></i>`).join('');
+}
+
+/* fit a line of text into the track by shrinking it (used by fade's short texts, flip and reel) */
+function fitScale(content) {
+  const m = document.createElement('span'); m.className = 'obj'; m.style.transform = 'none'; m.style.visibility = 'hidden'; m.innerHTML = content; track.appendChild(m);
+  const w = m.offsetWidth; m.remove(); const avail = track.clientWidth - 40;
+  return w > avail ? Math.max(0.5, avail / w) : 1;
+}
+
+/* ---------- builders for each style ---------- */
+function makeLine(i) { const el = document.createElement('span'); el.className = 'obj' + (list[i].done ? ' done' : ''); el.innerHTML = html(list[i], i); el.dataset.i = i; track.appendChild(el); return el; }
+function makeFlip(i, oldHtml, oldDone) {
+  const c = html(list[i], i), s = fitScale(c), so = oldHtml ? fitScale(oldHtml) : s;
+  const el = document.createElement('div'); el.className = 'flip'; el.dataset.i = i;
+  const face = (h, sc, d) => `<div class="face${d ? ' done' : ''}" style="font-size:${(42 * sc).toFixed(1)}vh">${h}</div>`;
+  const nd = list[i].done;
+  el.innerHTML = `<div class="half top new">${face(c, s, nd)}</div><div class="half bot old">${face(oldHtml || '', so, oldDone)}</div>`
+    + `<div class="half top flap old">${face(oldHtml || '', so, oldDone)}<div class="shade"></div></div><div class="half bot flap new" style="transform:rotateX(90deg)">${face(c, s, nd)}<div class="shade"></div></div>`;
+  track.appendChild(el); return el;
+}
+function makeReel(i, oldHtml, oldDone) {
+  const c = html(list[i], i), s = fitScale(c);
+  const fillers = []; const n = Math.max(3, Math.min(6, list.length + 2));
+  for (let k = 0; k < n; k++) { const j = (i + k + 1) % list.length; fillers.push(html(list[j], j)); }
+  const cells = [[oldHtml || '', oldDone, oldHtml ? fitScale(oldHtml) : 1], ...fillers.map(h => [h, false, fitScale(h)]), [c, list[i].done, s]];
+  const el = document.createElement('div'); el.className = 'reel'; el.dataset.i = i;
+  const H = track.clientHeight;
+  el.innerHTML = `<div class="strip">${cells.map(([h, d, sc]) => `<div class="cell${d ? ' done' : ''}" style="height:${H}px;font-size:${(42 * sc).toFixed(1)}vh">${h}</div>`).join('')}</div>`;
+  el._cells = cells.length; track.appendChild(el); return el;
+}
+function updateInPlace(el, i) {
+  const o = list[i]; if (!o) return;
+  if (el.classList.contains('obj')) { el.className = 'obj' + (o.done ? ' done' : ''); el.innerHTML = html(o, i); return; }
+  const faces = el.classList.contains('flip') ? el.querySelectorAll('.new .face') : [...el.querySelectorAll('.cell')].slice(-1);
+  faces.forEach(f => { f.innerHTML = html(o, i); f.classList.toggle('done', o.done); });
+}
+
+/* ---------- the loop ---------- */
+async function loop() {
+  const me = ++run;
+  track.querySelectorAll('.obj,.flip,.reel').forEach(e => e.remove()); cur = null;
+  paintChrome();
+  if (!list.length || asking) return;
+  let prev = null, prevHtml = '', prevDone = false;
+  while (me === run) {
+    if (idx >= list.length) idx = 0;
+    paintChrome();
+    const A = style.anim || 'swipe', W = track.clientWidth, pad = 18;
+    if (A === 'swipe' || A === 'fade') {
+      if (prev) {      // leave
+        if (A === 'swipe') { const x = prev._x; await tx(prev, [mv(x), mv(-prev.offsetWidth - 40)], 700, 'cubic-bezier(.6,0,.8,.4)'); }
+        else await tx(prev, [{ opacity: 1 }, { opacity: 0 }], 450, 'ease-in');
+        prev.remove(); if (me !== run) return;
+      }
+      const el = makeLine(idx); cur = el;
+      const w = el.offsetWidth, fits = w + pad * 2 <= W, rest = fits ? Math.round((W - w) / 2) : pad;
+      if (A === 'swipe') await tx(el, [mv(W), mv(rest)], 900, 'cubic-bezier(.2,.8,.2,1)');
+      else { el.style.transform = `translate(${rest}px,-50%)`; await tx(el, [{ opacity: 0, transform: `translate(${rest}px,-50%) scale(.96)` }, { opacity: 1, transform: `translate(${rest}px,-50%) scale(1)` }], 650, 'ease-out'); }
+      el._x = rest; if (me !== run) return;
+      if (!fits) { if (!(await sleep(1800, me))) return; const end = W - w - pad; await tx(el, [mv(rest), mv(end)], (rest - end) / SPEED * 1000, 'linear'); el._x = end; if (me !== run) return; if (!(await sleep(2000, me))) return; }
+      else if (!(await sleep(PAUSE, me))) return;
+      prev = el;
+    } else if (A === 'flip') {
+      const el = makeFlip(idx, prevHtml, prevDone); cur = el;
+      if (prev) prev.remove();
+      const [ft, fb] = el.querySelectorAll('.flap'), [st, sb] = [ft.querySelector('.shade'), fb.querySelector('.shade')];
+      if (prevHtml) {
+        tx(st, [{ opacity: 0 }, { opacity: .45 }], 260, 'ease-in');
+        await tx(ft, [{ transform: 'rotateX(0deg)' }, { transform: 'rotateX(-90deg)' }], 260, 'ease-in');
+        ft.style.visibility = 'hidden';
+        tx(sb, [{ opacity: .45 }, { opacity: 0 }], 300, 'ease-out');
+        await tx(fb, [{ transform: 'rotateX(90deg)' }, { transform: 'rotateX(-8deg)', offset: .75 }, { transform: 'rotateX(0deg)' }], 340, 'ease-out');
+      } else { ft.style.visibility = 'hidden'; await tx(fb, [{ transform: 'rotateX(90deg)' }, { transform: 'rotateX(0deg)' }], 300, 'ease-out'); }
+      el.querySelector('.half.bot.old').remove(); ft.remove(); if (me !== run) return;
+      if (!(await sleep(PAUSE, me))) return;
+      prev = el;
+    } else {       // reel
+      const el = makeReel(idx, prevHtml, prevDone); cur = el;
+      if (prev) prev.remove();
+      const strip = el.querySelector('.strip'), H = track.clientHeight, end = -(el._cells - 1) * H;
+      if (prevHtml) await tx(strip, [{ transform: 'translateY(0)', filter: 'blur(0)' }, { transform: `translateY(${end * 0.5}px)`, filter: 'blur(2.5px)', offset: .35 }, { transform: `translateY(${end - H * 0.14}px)`, filter: 'blur(.6px)', offset: .82 }, { transform: `translateY(${end}px)`, filter: 'blur(0)' }], 1300, 'cubic-bezier(.3,.1,.3,1)');
+      else strip.style.transform = `translateY(${end}px)`;
+      if (me !== run) return;
+      if (!(await sleep(PAUSE, me))) return;
+      prev = el;
+    }
+    if (list.length === 1) { while (me === run && list.length === 1) { if (!(await sleep(1000, me))) return; } return; }
+    prevHtml = html(list[idx], idx); prevDone = list[idx].done;
+    idx = (idx + 1) % list.length;
+  }
+}
+function setList(l) {
+  const old = list; list = (l || []).filter(o => o && o.text && o.text.trim());
+  const sameTexts = old.length === list.length && old.every((o, i) => o.text === list[i].text);
+  if (sameTexts && cur && cur.isConnected) { updateInPlace(cur, +cur.dataset.i); paintChrome(); return; }
+  const changed = list.findIndex((o, i) => !old[i] || old[i].text !== o.text);
+  if (changed >= 0) idx = changed; else if (idx >= list.length) idx = 0;
+  loop();
+}
+
+/* ---------- start-up question ---------- */
+function ask(o) {
+  asking = !!o; document.body.classList.toggle('ask', asking);
+  const a = document.getElementById('ask');
+  a.innerHTML = `<button data-a="new">＋ Add objectives</button><button class="r" data-a="close">✕ Close ticker</button>`;
+  loop();
+}
+for (const id of ['ask', 'empty']) document.getElementById(id).addEventListener('click', e => { e.stopPropagation(); const b = e.target.closest('button'); if (!b) return; asking = false; document.body.classList.remove('ask'); cc && cc.obj('start-' + b.dataset.a); });
+document.getElementById('bar').addEventListener('click', () => {
+  if (!cc) return;
+  if (asking) { asking = false; document.body.classList.remove('ask'); paintChrome(); loop(); cc.obj('start-new'); return; }
+  cc.obj('open');
+});
+document.addEventListener('contextmenu', e => e.preventDefault());
+if (cc) {
+  cc.on('obj-list', l => setList(l));
+  cc.on('obj-style', s => { const animChanged = s.anim !== style.anim; style = { ...style, ...s }; applyStyle(); if (animChanged) loop(); });
+  cc.on('obj-ask', o => ask(o));
+  cc.on('obj-wake', () => { asking = false; document.body.classList.remove('ask'); applyStyle(); paintChrome(); loop(); });
+}
+addEventListener('resize', () => loop());
+window.__ticker = { setList, ask, setStyle: s => { style = { ...style, ...s }; applyStyle(); loop(); } };
+applyStyle(); paintChrome();
+})();
+</script>
+</body>
+</html>

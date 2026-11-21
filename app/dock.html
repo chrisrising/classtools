@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<title>ClassTools</title>
+<style>
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:transparent;overflow:hidden;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;touch-action:none;font-family:"Segoe UI",system-ui,sans-serif}
+*{-webkit-user-drag:none;touch-action:none}
+button:hover{filter:brightness(1.06)}
+#tab{display:none;position:absolute;inset:0;width:100%;height:100%;box-shadow:none;transform:none!important;border:1.5px solid rgba(255,255,255,.22);background:linear-gradient(160deg,rgba(46,54,70,.95),rgba(18,22,30,.95));color:#fff;cursor:pointer;flex-direction:column;align-items:center;justify-content:center;gap:8px;padding:0}
+body.left #tab{border-radius:0 16px 16px 0;border-left:0}body.right #tab{border-radius:16px 0 0 16px;border-right:0}
+#tab .gr{width:5px;height:34px;border-radius:3px;background:rgba(255,255,255,.4)}
+#tab .ar{font-size:13px;opacity:.85}
+#tab .tt{writing-mode:vertical-rl;transform:rotate(180deg);font-size:11px;font-weight:800;background:#ff4757;border-radius:999px;padding:5px 2px;display:none}
+#tab .tt.on{display:block}#tab .tt.done{background:#ffb400;color:#3a2600}
+body.tucked #dock{display:none}body.tucked #tab{display:flex}
+#dock{position:absolute;inset:4px;border-radius:36px;background:linear-gradient(160deg,rgba(46,54,70,.93),rgba(18,22,30,.93));border:1.5px solid rgba(255,255,255,.2);
+  display:flex;flex-direction:column;align-items:center;gap:9px;padding:9px 0 12px;cursor:grab;box-shadow:inset 0 1px 0 rgba(255,255,255,.18)}
+#dock.dragging{cursor:grabbing}
+.grip{width:24px;height:5px;border-radius:3px;background:rgba(255,255,255,.3);margin-bottom:1px}
+button{width:50px;height:50px;border-radius:50%;border:0;padding:0;background:radial-gradient(circle at 50% 30%,#ffffff,#d3d7df);display:flex;align-items:center;justify-content:center;cursor:pointer;position:relative;
+  box-shadow:0 3px 0 rgba(0,0,0,.45),inset 0 1px 0 #fff;transition:transform .08s}
+button:active{transform:translateY(2px);box-shadow:0 1px 0 rgba(0,0,0,.45)}
+button svg{width:30px;height:30px}
+/* A short screen (an older projector, say) gets smaller buttons so the whole dock still fits. */
+@media (max-height:700px){#bar{gap:6px}button{width:42px;height:42px}button svg{width:25px;height:25px}}
+@media (max-height:580px){#bar{gap:4px}button{width:36px;height:36px}button svg{width:21px;height:21px}}
+#quit{background:radial-gradient(circle at 50% 30%,#ff6b6b,#c81e1e)}
+.sep{display:none;width:34px;height:2px;border-radius:2px;background:rgba(255,255,255,.3);margin:-2px 0}
+.ann{display:none}
+body.annot .sep,body.annot .ann{display:flex}
+body.annot #pen,body.annot.pointer #ptr{box-shadow:0 0 0 3px #22c55e,0 0 9px 3px rgba(34,197,94,.8),0 3px 0 rgba(0,0,0,.45)}
+body.obj #obj{box-shadow:0 0 0 3px #22c55e,0 0 9px 3px rgba(34,197,94,.8),0 3px 0 rgba(0,0,0,.45)}
+body.annot.pointer #pen{box-shadow:0 3px 0 rgba(0,0,0,.45),inset 0 1px 0 #fff}
+.badge{position:absolute;bottom:-7px;left:50%;transform:translateX(-50%);background:#ff4757;color:#fff;font-weight:800;font-size:10.5px;line-height:1;padding:3px 5px;border-radius:999px;white-space:nowrap;display:none;box-shadow:0 1px 3px #0006}
+.badge.on{display:block}
+.badge.paused{background:#8a93a6}
+.badge.done{background:#ffb400;color:#3a2600;animation:bl .8s steps(1) infinite}
+@keyframes bl{50%{opacity:.3}}
+</style>
+</head>
+<body>
+<button id="tab" title="Show ClassTools"><span class="ar" id="tabAr">◀</span><span class="gr"></span><span class="tt" id="tabT"></span></button>
+<div id="dock">
+  <div class="grip"></div>
+  <button id="calc" title="Calculator">
+    <svg viewBox="0 0 32 32"><rect x="6" y="2" width="20" height="28" rx="5" fill="#8f918d" stroke="#555" stroke-width="1.5"/><rect x="9" y="5" width="14" height="7" rx="1.5" fill="#cfe0d4" stroke="#444" stroke-width="1"/>
+    <g fill="#f4f4f2" stroke="#666" stroke-width=".6"><circle cx="11.5" cy="17" r="1.9"/><circle cx="16" cy="17" r="1.9"/><circle cx="20.5" cy="17" r="1.9"/><circle cx="11.5" cy="21.8" r="1.9"/><circle cx="16" cy="21.8" r="1.9"/><circle cx="11.5" cy="26.4" r="1.9"/><circle cx="16" cy="26.4" r="1.9"/></g>
+    <circle cx="20.5" cy="21.8" r="1.9" fill="#f4b021" stroke="#a36d00" stroke-width=".6"/><circle cx="20.5" cy="26.4" r="1.9" fill="#f4f4f2" stroke="#666" stroke-width=".6"/></svg>
+  </button>
+  <button id="docs" title="Open a PowerPoint, Word file or PDF">
+    <svg viewBox="0 0 32 32"><path d="M3 8.5a2 2 0 0 1 2-2h7l2.4 2.6H27a2 2 0 0 1 2 2V24a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" fill="#f0b429" stroke="#8a6100" stroke-width="1.5" stroke-linejoin="round"/>
+    <path d="M3 12.5h26V24a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" fill="#fcd96b" stroke="#8a6100" stroke-width="1.4" stroke-linejoin="round"/>
+    <rect x="11" y="9" width="10" height="12" rx="1.3" fill="#fff" stroke="#8a6100" stroke-width="1.3"/>
+    <path d="M13.5 12h5M13.5 15h5M13.5 18h3" stroke="#c2410c" stroke-width="1.3" stroke-linecap="round"/></svg>
+  </button>
+  <button id="pen" title="PDF pen & geometry tools">
+    <svg viewBox="0 0 32 32"><path d="M6 26l2.2-6.6L21.5 6.1a2.6 2.6 0 0 1 3.7 0l.7.7a2.6 2.6 0 0 1 0 3.7L12.6 23.8z" fill="#2f6fe0" stroke="#173d86" stroke-width="1.5" stroke-linejoin="round"/>
+    <path d="M8.2 19.4l4.4 4.4M19.6 8l4.4 4.4" stroke="#173d86" stroke-width="1.5"/><path d="M6 26l2.2-6.6 4.4 4.4z" fill="#ffd9a8" stroke="#173d86" stroke-width="1.2" stroke-linejoin="round"/><path d="M6 26l1-3 2 2z" fill="#222"/>
+    <path d="M14 28c4-2 8 1 12-1" stroke="#d42a2a" stroke-width="1.8" fill="none" stroke-linecap="round"/></svg>
+  </button>
+  <button id="timer" title="Activity timer">
+    <svg viewBox="0 0 32 32"><path d="M4.5 9A6 6 0 0 1 12 3.2zM27.5 9A6 6 0 0 0 20 3.2z" fill="#f2b632" stroke="#8a6200" stroke-width="1.2" stroke-linejoin="round"/>
+    <path d="M9.5 26.5l-2.5 3M22.5 26.5l2.5 3" stroke="#444" stroke-width="2.4" stroke-linecap="round"/>
+    <circle cx="16" cy="17.5" r="11" fill="#e63946" stroke="#8c1016" stroke-width="1.5"/><circle cx="16" cy="17.5" r="8.4" fill="#fffdf6"/>
+    <path d="M16 17.5V10.5A7 7 0 0 1 22.6 15.2z" fill="#ff4757" opacity=".85"/><path d="M16 17.5V12M16 17.5l3.5 2" stroke="#222" stroke-width="1.6" stroke-linecap="round"/></svg>
+    <span class="badge" id="badge"></span>
+  </button>
+  <button id="qs" title="Question sheets – starters and problem solving">
+    <svg viewBox="0 0 32 32"><circle cx="16" cy="16" r="12.5" fill="#8b5cf6" stroke="#4c1d95" stroke-width="1.6"/><path d="M12.2 12.1a3.9 3.9 0 0 1 7.6 1.2c0 2.4-3.2 2.8-3.2 5.1" fill="none" stroke="#fff6c2" stroke-width="2.6" stroke-linecap="round"/><circle cx="16.3" cy="22.6" r="1.8" fill="#fff6c2"/><path d="M26.5 4l.9 2.3 2.3.9-2.3.9-.9 2.3-.9-2.3-2.3-.9 2.3-.9z" fill="#fde047" stroke="#a16207" stroke-width=".9" stroke-linejoin="round"/></svg>
+  </button>
+  <button id="obj" title="Objective ticker (show / hide)">
+    <svg viewBox="0 0 32 32"><circle cx="16" cy="16" r="12.5" fill="#fff" stroke="#b91c1c" stroke-width="1.6"/><circle cx="16" cy="16" r="9.5" fill="#ef4444"/><circle cx="16" cy="16" r="6.5" fill="#fff"/><circle cx="16" cy="16" r="3.4" fill="#ef4444"/><path d="M16 16l11-11" stroke="#1f2937" stroke-width="2" stroke-linecap="round"/><path d="M23.5 4.5l3.5-.5-.5 3.5" fill="#22c55e" stroke="#15803d" stroke-width="1.2" stroke-linejoin="round"/></svg>
+  </button>
+  <button id="rx" title="Reactions (sound effects)">
+    <svg viewBox="0 0 32 32"><circle cx="15" cy="17" r="11" fill="#facc15" stroke="#a16207" stroke-width="1.6"/><circle cx="11" cy="15" r="1.7" fill="#3f2a00"/><circle cx="19" cy="15" r="1.7" fill="#3f2a00"/><path d="M9.5 20.5q5.5 5 11 0" fill="none" stroke="#3f2a00" stroke-width="1.8" stroke-linecap="round"/><path d="M26 3.5l1 2.6 2.6 1-2.6 1-1 2.6-1-2.6-2.6-1 2.6-1z" fill="#fff" stroke="#2457d6" stroke-width="1"/></svg>
+  </button>
+  <button id="poly" title="Polypad (virtual maths manipulatives – needs internet)">
+    <svg viewBox="0 0 32 32"><path d="M4 26l7-12 7 12z" fill="#ef4444" stroke="#7f1d1d" stroke-width="1.2" stroke-linejoin="round"/><rect x="15" y="4" width="11" height="11" rx="1.2" fill="#3b82f6" stroke="#1e3a8a" stroke-width="1.2"/><path d="M19 17l5 0 2.5 4.3-2.5 4.3h-5l-2.5-4.3z" fill="#22c55e" stroke="#14532d" stroke-width="1.2" stroke-linejoin="round"/><circle cx="8.5" cy="8.5" r="4.2" fill="#facc15" stroke="#a16207" stroke-width="1.2"/></svg>
+  </button>
+  <button id="shapes" title="ShapeXplorer (3D solids and 2D shapes)">
+    <svg viewBox="0 0 32 32"><path d="M16 4l11 6.3v12.4L16 29 5 22.7V10.3z" fill="#14b8a6" stroke="#0f5e57" stroke-width="1.5" stroke-linejoin="round"/><path d="M5 10.3L16 16.6 27 10.3M16 16.6V29" fill="none" stroke="#0f5e57" stroke-width="1.5" stroke-linejoin="round"/><path d="M16 16.6L27 10.3V22.7L16 29z" fill="#0d9488" opacity=".45"/></svg>
+  </button>
+  <div class="sep" id="annSep"></div>
+  <button id="ptr" class="ann" title="Pointer: click normally (drawings stay)">
+    <svg id="ptrIco" viewBox="0 0 32 32"><path d="M8 4l16 12-7 1.5 4.5 8-3 1.6-4.5-8L9 24z" fill="#fff" stroke="#111" stroke-width="1.8" stroke-linejoin="round"/></svg>
+  </button>
+  <button id="rub" class="ann" title="Whiteboard rubber: clear all drawings and tools">
+    <svg viewBox="0 0 32 32"><g transform="rotate(-30 16 16)"><rect x="4" y="10" width="24" height="13" rx="2.5" fill="#2f6fe0" stroke="#173d86" stroke-width="1.6"/><rect x="4" y="18" width="24" height="5" rx="1.5" fill="#f5f0e1" stroke="#173d86" stroke-width="1.4"/></g><path d="M5 29h22" stroke="#999" stroke-width="1.6" stroke-linecap="round" stroke-dasharray="2 3"/></svg>
+  </button>
+  <button id="quit" title="Quit ClassTools">
+    <svg viewBox="0 0 32 32"><path d="M11 8.5a10 10 0 1 0 10 0" fill="none" stroke="#fff" stroke-width="3.2" stroke-linecap="round"/><path d="M16 4v12" stroke="#fff" stroke-width="3.2" stroke-linecap="round"/></svg>
+  </button>
+</div>
+<script>
+(()=>{
+const cc=window.cc,dock=document.getElementById('dock');
+let drag=null;
+dock.addEventListener('pointerdown',e=>{
+  if(e.button!==0)return;
+  drag={sx:e.screenX,sy:e.screenY,wx:window.screenX,wy:window.screenY,moved:false,btn:e.target.closest('button')};
+  dock.setPointerCapture(e.pointerId);
+});
+let lastAct=0;
+dock.addEventListener('pointermove',e=>{if(Date.now()-lastAct>800&&cc){lastAct=Date.now();cc.dock('activity');}if(!drag)return;const dx=e.screenX-drag.sx,dy=e.screenY-drag.sy;
+  if(!drag.moved&&Math.abs(dx)+Math.abs(dy)>5){drag.moved=true;dock.classList.add('dragging');cc&&cc.dock('drag-start');}
+  if(drag.moved&&cc)cc.move(drag.wx+dx,drag.wy+dy);});
+const endDrag=()=>{if(!drag)return;const d=drag;drag=null;dock.classList.remove('dragging');if(d.moved&&cc)cc.dock('moved');};
+dock.addEventListener('lostpointercapture',endDrag);
+dock.addEventListener('pointerup',()=>{if(!drag)return;const d=drag;drag=null;dock.classList.remove('dragging');
+  if(d.moved){cc&&cc.dock('moved');return;}if(d.btn&&cc)cc.dock(d.btn.id);});
+document.addEventListener('contextmenu',e=>{e.preventDefault();cc&&cc.dock('menu');});
+if(cc)cc.on('timer-status',s=>{const b=document.getElementById('badge');b.textContent=s.text||'';b.className='badge'+(s.text?' on':'')+(s.state==='paused'?' paused':'')+(s.state==='done'?' done':'');
+  const t=document.getElementById('tabT');t.textContent=s.text||'';t.className='tt'+(s.text?' on':'')+(s.state==='done'?' done':'');});
+/* tucked tab: tap/click or hover to slide the dock out; drag it up or down the edge */
+const tab=document.getElementById('tab');let tdrag=null;
+const PTR='<path d="M8 4l16 12-7 1.5 4.5 8-3 1.6-4.5-8L9 24z" fill="#fff" stroke="#111" stroke-width="1.8" stroke-linejoin="round"/>',
+  PEN='<path d="M6 26l2.2-6.6L21.5 6.1a2.6 2.6 0 0 1 3.7 0l.7.7a2.6 2.6 0 0 1 0 3.7L12.6 23.8z" fill="#2f6fe0" stroke="#173d86" stroke-width="1.5" stroke-linejoin="round"/><path d="M6 26l2.2-6.6 4.4 4.4z" fill="#ffd9a8" stroke="#173d86" stroke-width="1.2" stroke-linejoin="round"/>';
+if(cc)cc.on('annot',a=>{document.body.classList.toggle('annot',!!a.active);document.body.classList.toggle('pointer',a.mode==='pointer');
+  const ptr=document.getElementById('ptr');document.getElementById('ptrIco').innerHTML=a.mode==='pointer'?PEN:PTR;ptr.title=a.mode==='pointer'?'Back to drawing':'Pointer: click normally (drawings stay)';});
+if(cc)cc.on('obj-on',on=>document.body.classList.toggle('obj',!!on));
+if(cc)cc.on('dock-tuck',(t,side)=>{document.body.classList.toggle('tucked',t);document.body.classList.toggle('left',side==='left');document.body.classList.toggle('right',side!=='left');document.getElementById('tabAr').textContent=side==='left'?'▶':'◀';});
+tab.addEventListener('pointerdown',e=>{if(e.button!==0)return;tdrag={sy:e.screenY,wx:window.screenX,wy:window.screenY,moved:false};tab.setPointerCapture(e.pointerId);});
+tab.addEventListener('pointermove',e=>{if(!tdrag)return;const dy=e.screenY-tdrag.sy;if(!tdrag.moved&&Math.abs(dy)>6)tdrag.moved=true;if(tdrag.moved&&cc)cc.move(tdrag.wx,tdrag.wy+dy);});
+tab.addEventListener('pointerup',()=>{if(!tdrag)return;const d=tdrag;tdrag=null;if(!cc)return;if(d.moved)cc.dock('tab-moved');else cc.dock('untuck');});
+let hoverT=0;tab.addEventListener('pointerenter',e=>{if(e.pointerType==='mouse'){clearTimeout(hoverT);hoverT=setTimeout(()=>{if(!tdrag&&cc)cc.dock('untuck');},350);}});
+tab.addEventListener('pointerleave',()=>clearTimeout(hoverT));
+document.addEventListener('dblclick',e=>e.preventDefault());
+document.addEventListener('wheel',e=>{if(e.ctrlKey)e.preventDefault();},{passive:false});
+})();
+</script>
+</body>
+</html>
