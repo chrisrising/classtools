@@ -61,5 +61,4 @@ npx electron app
 
 ## Free to use
 
-ClassTools is free for any teacher to use with their classes. If it saves you time and you'd like
-to chip in towards it, there's a donation link — but it will always be free, donation or not.
+ClassTools is free for any teacher to use with their classes.
