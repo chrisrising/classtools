@@ -2,8 +2,8 @@
 1 ICON "classtools.ico"
 
 1 VERSIONINFO
-FILEVERSION     1,52,0,0
-PRODUCTVERSION  1,52,0,0
+FILEVERSION     1,53,0,0
+PRODUCTVERSION  1,53,0,0
 FILEOS          VOS__WINDOWS32
 FILETYPE        VFT_APP
 BEGIN
@@ -13,11 +13,11 @@ BEGIN
     BEGIN
       VALUE "CompanyName",      "Chris Bloor"
       VALUE "FileDescription",  "ClassTools - classroom assistant"
-      VALUE "FileVersion",      "1.52.0"
+      VALUE "FileVersion",      "1.53.0"
       VALUE "InternalName",     "ClassTools"
       VALUE "OriginalFilename", "ClassTools.exe"
       VALUE "ProductName",      "ClassTools"
-      VALUE "ProductVersion",   "1.52.0"
+      VALUE "ProductVersion",   "1.53.0"
     END
   END
   BLOCK "VarFileInfo"
