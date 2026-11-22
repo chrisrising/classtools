@@ -11,8 +11,11 @@ body.web{background:#cfd5de}
 #panel{position:absolute;inset:0;display:flex;flex-direction:column;border-radius:18px;background:linear-gradient(160deg,rgba(30,36,50,.97),rgba(15,18,26,.97));color:#eef2ff;border:1px solid rgba(255,255,255,.14);overflow:hidden}
 body.web #panel{position:relative;width:420px;height:640px;margin:12px}
 .hd{display:flex;align-items:center;gap:6px;padding:10px 12px 0;cursor:move}
-.tab{flex:1;border:0;border-radius:12px 12px 0 0;padding:9px 6px;font:800 14px inherit;font-family:inherit;color:#aab4d0;background:rgba(255,255,255,.05);cursor:pointer}
-.tab.on{background:rgba(255,255,255,.12);color:#fff}
+.tab{flex:1;border:0;border-radius:12px;padding:10px 6px;font:800 14px inherit;font-family:inherit;color:#aab4d0;
+  background:rgba(255,255,255,.07);cursor:pointer;transition:box-shadow .12s,background .12s,color .12s}
+.tab:hover{background:rgba(255,255,255,.12)}
+.tab.on{background:rgba(255,255,255,.14);color:#fff;
+  box-shadow:0 0 0 2.5px #22c55e,0 0 10px 3px rgba(34,197,94,.55)}
 .x{width:30px;height:30px;border-radius:50%;border:0;background:rgba(255,255,255,.1);color:#fff;font-size:15px;cursor:pointer;flex:none}
 .body{flex:1;display:flex;flex-direction:column;gap:10px;padding:12px 14px 14px;background:rgba(255,255,255,.06);min-height:0}
 .search{position:relative}
@@ -65,8 +68,12 @@ body.web #panel{position:relative;width:420px;height:640px;margin:12px}
 const CC=window.cc||null;if(!CC)document.body.classList.add('web');
 const $=id=>document.getElementById(id);
 const esc=s=>s.replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
-let ST={mode:'ext',query:'',topic:null,count:6,answers:true,flu:[],fluN:4,kb:-1};
-try{Object.assign(ST,{count:+localStorage.getItem('cc-q-count')||6,fluN:+localStorage.getItem('cc-q-flun')||4,answers:localStorage.getItem('cc-q-ans')!=='0'});}catch(e){}
+let ST={mode:'ext',query:'',topic:null,count:6,answers:true,flu:[],fluN:6,kb:-1};
+/** Shares `total` questions between `n` topics, the earlier topics taking the odd one.
+    Nine between two topics is five and four. */
+function share(total,n){const base=Math.floor(total/n),rem=total%n;
+  return Array.from({length:n},(_,i)=>base+(i<rem?1:0)).filter(x=>x>0);}
+try{Object.assign(ST,{count:+localStorage.getItem('cc-q-count')||6,fluN:Math.min(9,+localStorage.getItem('cc-q-flun')||6),answers:localStorage.getItem('cc-q-ans')!=='0'});}catch(e){}
 const persist=()=>{try{localStorage.setItem('cc-q-count',ST.count);localStorage.setItem('cc-q-flun',ST.fluN);localStorage.setItem('cc-q-ans',ST.answers?'1':'0');}catch(e){}};
 
 function setMode(m){if(m!==ST.mode)ST.query='';ST.mode=m;ST.topic=null;ST.kb=-1;document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('on',t.dataset.m===m));render(true);}
@@ -104,7 +111,7 @@ function render(focus){
     ${flu?`<div><div class="lab">Chosen topics (${ST.flu.length}/3)</div><div class="sel" id="sel">${ST.flu.length?ST.flu.map(id=>`<span class="pill">${QB.TOPICS.find(t=>t.id===id).name}<button data-id="${id}" title="Remove">✕</button></span>`).join(''):'<div class="empty">Click topics below to add them</div>'}</div></div>`:''}
     <div class="lab">${ST.query.trim()?'Related topics':'All Foundation topics'}</div>
     <div id="results">${resultsHTML()}</div>
-    ${flu?`<div><div class="lab">Questions per topic</div><div class="chips" id="fn">${[2,3,4,5,6].map(n=>`<button class="chip${n===ST.fluN?' on':''}" data-n="${n}">${n}</button>`).join('')}</div></div>
+    ${flu?`<div><div class="lab">How many questions altogether?${ST.flu.length>1?` <span style="font-weight:600;opacity:.75">(${share(ST.fluN,ST.flu.length).join(' and ')})</span>`:''}</div><div class="chips" id="fn">${[1,2,3,4,5,6,7,8,9].map(n=>`<button class="chip${n===ST.fluN?' on':''}" data-n="${n}">${n}</button>`).join('')}</div></div>
       <label class="row"><input type="checkbox" id="ans" ${ST.answers?'checked':''}> Add an answers page at the end</label>
       <button class="go" id="go" ${ST.flu.length?'':'disabled'}>Show starter on the board</button>`:''}`;
   const q=$('q');q.oninput=()=>{ST.query=q.value;ST.kb=-1;$('results').innerHTML=resultsHTML();document.querySelector('.lab:nth-of-type(1)');refreshLab();};
@@ -158,21 +165,36 @@ function extHTML(t,qs,answers){
   if(answers)h+=`<div class="page"><div class="hd"><h1>${t.name} – answers</h1><span class="tag ans">Answers</span></div>${grid(true)}</div>`;
   return h;
 }
-function fluHTML(ts,sets,n,answers){
-  const fs=n>=6?12.5:n>=5?13.5:14.5;
-  const dgh=ts.length>=3?33:ts.length===2?48:70;
-  const grid=ans=>{let h=`<div class="grid flu" style="--dgh:${dgh}mm;grid-template-columns:30mm repeat(${n},1fr);grid-template-rows:repeat(${ts.length},1fr);font-size:${ans?Math.min(fs,13):fs}pt">`;let k=0;
-    ts.forEach((t,ti)=>{h+=`<div class="rowlab">${t.name}</div>`;sets[ti].forEach(q=>{h+=cellHTML(q,k++,ans,true);});});return h+'</div>';};
+// Fewer questions means a bigger page to fill, so the type grows to suit - but only
+// so far, because every box still has to leave room to work the answer out in.
+const FLU_FONT={1:34,2:28,3:23,4:20,5:18,6:16.5,7:15,8:14,9:13};
+function fluHTML(ts,sets,answers){
+  const cols=Math.max(...sets.map(s=>s.length)),rows=ts.length;
+  // Columns set how wide a box is, rows set how tall. Both have to come into it, or
+  // two rows of four looks fine on paper and then runs over the edge.
+  const ROW_SQUEEZE={1:1,2:0.78,3:0.62};
+  let fs=Math.max(11,Math.min(34,(FLU_FONT[cols]||12)*(ROW_SQUEEZE[rows]||0.58)));
+  fs=Math.round(fs*10)/10;
+  const dgh=Math.min(rows>=3?33:rows===2?48:70, cols<=1?70:cols===2?60:cols===3?50:cols===4?42:34);
+  const grid=ans=>{let h=`<div class="grid flu" style="--dgh:${dgh}mm;grid-template-columns:30mm repeat(${cols},1fr);grid-template-rows:repeat(${rows},1fr);font-size:${ans?Math.min(fs,13):fs}pt">`;let k=0;
+    ts.forEach((t,ti)=>{h+=`<div class="rowlab">${t.name}</div>`;
+      sets[ti].forEach(q=>{h+=cellHTML(q,k++,ans,true);});
+      for(let i=sets[ti].length;i<cols;i++)h+='<div></div>';   // a shorter row just leaves the space blank
+    });return h+'</div>';};
   const title=ts.length===1?ts[0].name:'Fluency starter';
   let h=`<div class="page"><div class="hd"><h1>${title}</h1><span class="tag flu">Fluency starter</span></div>${grid(false)}</div>`;
   if(answers)h+=`<div class="page"><div class="hd"><h1>${title} – answers</h1><span class="tag ans">Answers</span></div>${grid(true)}</div>`;
   return h;
 }
+window.__picker={sheetFor:()=>sheetFor(),ST,share};   // test hook
 const wrapDoc=b=>`<!DOCTYPE html><html><head><meta charset="utf-8"><style>${CSS}</style></head><body>${b}</body></html>`;
 function sheetFor(){
   if(ST.mode==='ext'){const t=QB.TOPICS.find(x=>x.id===ST.topic);const qs=QB.make(t,'ps',ST.count);return {html:wrapDoc(extHTML(t,qs,ST.answers)),name:`Extension – ${t.name}.pdf`};}
-  const ts=ST.flu.map(id=>QB.TOPICS.find(t=>t.id===id));const sets=ts.map(t=>QB.make(t,'flu',ST.fluN));
-  return {html:wrapDoc(fluHTML(ts,sets,ST.fluN,ST.answers)),name:`Fluency starter – ${ts.map(t=>t.name).join(', ')}.pdf`};
+  const chosen=ST.flu.map(id=>QB.TOPICS.find(t=>t.id===id));
+  const counts=share(ST.fluN,chosen.length);               // 9 across 2 topics -> 5 and 4
+  const ts=chosen.slice(0,counts.length);                  // with fewer questions than topics, the last topics drop out
+  const sets=ts.map((t,i)=>QB.make(t,'flu',counts[i]));
+  return {html:wrapDoc(fluHTML(ts,sets,ST.answers)),name:`Fluency starter – ${ts.map(t=>t.name).join(', ')}.pdf`};
 }
 async function build(){
   const s=sheetFor();
