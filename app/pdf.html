@@ -93,8 +93,23 @@
   .trow input{flex:1}
   .trow b{width:40px;text-align:right}
   #textEdit{position:absolute;display:none;z-index:6;margin:0;padding:0;border:2px dashed #2457d6;border-radius:3px;
-  background:rgba(255,255,255,.92);color:#111;font-family:Helvetica,Arial,sans-serif;line-height:1.25;
-  resize:none;overflow:hidden;outline:none;box-shadow:0 2px 10px rgba(0,0,0,.2)}
+  background:rgba(255,255,255,.92);color:#111;line-height:1.25;white-space:pre-wrap;word-break:normal;
+  overflow:hidden;outline:none;box-shadow:0 2px 10px rgba(0,0,0,.2)}
+  /* The little bar of controls that floats above the box being written in. */
+  #textBar{position:absolute;display:none;z-index:8;gap:3px;padding:4px;border-radius:10px;
+    background:#1f2430;box-shadow:0 6px 18px rgba(0,0,0,.4);align-items:center}
+  #textBar.on{display:flex}
+  #textBar button{width:30px;height:30px;border:0;border-radius:7px;background:#2c3342;color:#e8ecf5;
+    font:700 13px system-ui,sans-serif;cursor:pointer;display:flex;align-items:center;justify-content:center}
+  #textBar button:hover{background:#3b465c}
+  #textBar button.on{background:#2457d6;color:#fff}
+  #textBar .tcol{position:relative;width:30px;height:30px;border-radius:7px;overflow:hidden;cursor:pointer;flex:0 0 auto}
+  #textBar .tcol span{position:absolute;inset:0;border-radius:7px;background:conic-gradient(red,yellow,lime,cyan,blue,magenta,red)}
+  #textBar .tcol input{position:absolute;inset:-4px;width:140%;height:140%;opacity:0;cursor:pointer}
+  #fontMenu{position:absolute;top:100%;left:0;margin-top:5px;display:none;flex-direction:column;gap:2px;
+    padding:4px;border-radius:10px;background:#1f2430;box-shadow:0 6px 18px rgba(0,0,0,.4);min-width:150px}
+  #fontMenu.on{display:flex}
+  #fontMenu button{width:100%;height:32px;justify-content:flex-start;padding:0 9px;font-size:14px}
 #links{position:absolute;pointer-events:none;z-index:4}
   #links .lk{position:absolute;border-radius:4px;cursor:pointer;pointer-events:none}
   body.links-on #links .lk{pointer-events:auto}
@@ -273,7 +288,16 @@
     <div id="tint"></div>
     <canvas id="ink"></canvas>
     <canvas id="ui"></canvas>
-    <textarea id="textEdit" spellcheck="false"></textarea>
+    <div id="textEdit" contenteditable="true" spellcheck="false"></div>
+    <div id="textBar">
+      <button data-cmd="font" title="Font (F)"><b>F</b></button>
+      <button data-cmd="bold" title="Bold"><b>B</b></button>
+      <button data-cmd="italic" title="Italic"><i>I</i></button>
+      <button data-cmd="underline" title="Underline"><u>U</u></button>
+      <button data-cmd="strike" title="Strike through"><s>ST</s></button>
+      <label class="tcol" title="Colour"><span></span><input type="color" id="textCol" value="#111111"></label>
+      <div id="fontMenu"></div>
+    </div>
     <div id="links"></div>
   </div>
   <div id="empty">
@@ -326,7 +350,7 @@ const S = {
   comp: { placed: false, cx: 0, cy: 0, r: 4 * CM, ang: 0 },
 };
 window.__isDirty = () => S.dirty;
-window.__t = { S, save: () => savePdf(), build: () => buildAnnotated(), rotate: q => rotateDoc(q), load: (b, n) => loadBytes(b, n), tool: t => setTool(t), addImage, redraw: () => { redrawInk(); redrawUI(); }, items: () => S.ann[AK()] || [], handles: () => selHandles(), handlePt, fit: fitText };   // test hook
+window.__t = { S, save: () => savePdf(), build: () => buildAnnotated(), rotate: q => rotateDoc(q), load: (b, n) => loadBytes(b, n), tool: t => setTool(t), addImage, redraw: () => { redrawInk(); redrawUI(); }, items: () => S.ann[AK()] || [], handles: () => selHandles(), handlePt, fit: fitText, lines: k=>textLayout(k) };   // test hook
 S.groups = null; let pendingBuilds = null;
 const G = (p = S.page) => S.groups && S.groups[p - 1];
 const AK = (p = S.page) => { const g = G(p); return g ? g.key : p; };
@@ -706,6 +730,59 @@ function drawStroke(c, k) {
    and saving all treat them the same way. A stroke has no `kind`; the new ones
    are kind 'text' and kind 'image'.                                        */
 const FONT = 'Helvetica, Arial, sans-serif';
+const esc = t => String(t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+/* Five families a maths teacher might actually reach for. Windows has all of these;
+   the fallbacks cover anything that doesn't. The saved PDF maps each to the closest
+   of the fonts every PDF reader already has, so a file opens the same anywhere. */
+const FONTS = [
+  { id: 'plain',  name: 'Plain',       css: 'Calibri, Carlito, "Segoe UI", Arial, sans-serif' },
+  { id: 'comic',  name: 'Comic',       css: '"Comic Sans MS", "Comic Neue", cursive' },
+  { id: 'hand',   name: 'Handwriting', css: '"Segoe Script", "Ink Free", "Bradley Hand", cursive' },
+  { id: 'digital',name: 'Digital',     css: '"DS-Digital", Consolas, "Segoe UI Mono", monospace' },
+  { id: 'impact', name: 'Impact',      css: 'Impact, Haettenschweiler, "Arial Black", sans-serif' }
+];
+const fontCss = id => (FONTS.find(f => f.id === id) || FONTS[0]).css;
+
+/** A run of text that all looks the same: the unit everything here works in. */
+function runFont(r, size) {
+  return (r.i ? 'italic ' : '') + (r.b ? '700 ' : '') + size + 'px ' + fontCss(r.f);
+}
+
+/* Reading the styled text back out of the editing box. Each run carries its own
+   bold/italic/underline/strike, family and colour. */
+function runsFromNode(node, inherit, out) {
+  for (const n of node.childNodes) {
+    if (n.nodeType === 3) {
+      if (n.nodeValue) out.push(Object.assign({}, inherit, { t: n.nodeValue }));
+      continue;
+    }
+    if (n.nodeName === 'BR') { out.push(Object.assign({}, inherit, { t: '\n' })); continue; }
+    const st = n.style || {}, tag = n.nodeName;
+    const next = Object.assign({}, inherit);
+    if (tag === 'B' || tag === 'STRONG' || +st.fontWeight >= 600 || st.fontWeight === 'bold') next.b = true;
+    if (tag === 'I' || tag === 'EM' || st.fontStyle === 'italic') next.i = true;
+    if (tag === 'U') next.u = true;
+    if (tag === 'S' || tag === 'STRIKE' || tag === 'DEL') next.s = true;
+    const deco = st.textDecorationLine || st.textDecoration || '';
+    if (/underline/.test(deco)) next.u = true;
+    if (/line-through/.test(deco)) next.s = true;
+    if (st.color) next.c = st.color;
+    if (n.getAttribute && n.getAttribute('color')) next.c = n.getAttribute('color');
+    const fam = st.fontFamily || (n.getAttribute && n.getAttribute('face')) || '';
+    if (fam) { const hit = FONTS.find(f => fam.toLowerCase().indexOf(f.css.split(',')[0].replace(/"/g, '').toLowerCase()) >= 0); if (hit) next.f = hit.id; }
+    const block = /^(DIV|P)$/.test(tag);
+    if (block && out.length) out.push(Object.assign({}, inherit, { t: '\n' }));
+    runsFromNode(n, next, out);
+  }
+  return out;
+}
+
+/** The runs a text box is made of, falling back to plain text for older boxes. */
+function itemRuns(k) {
+  if (k.runs) return k.runs;
+  return [{ t: k.text || '', b: false, i: false, u: false, s: false, f: 'plain', c: k.c }];
+}
 const imgCache = {};                 // src -> HTMLImageElement, so a redraw doesn't reload
 
 function getImg(src) {
@@ -733,16 +810,42 @@ function wrapText(text, w, measure) {
   return out;
 }
 
-function textLines(k) {
-  const c = inkX;
-  c.save(); c.font = k.size + 'px ' + FONT;
-  const lines = wrapText(k.text, k.w, t => c.measureText(t).width);
-  c.restore();
+/**
+ * Lays styled text out into lines of pieces, wrapping at `w`.
+ * One routine serves both the screen and the saved file - they only differ in how
+ * a width is measured - so what you see really is what gets printed.
+ * Returns [{ pieces:[{run, t, x, w}], w }].
+ */
+function layoutRuns(runs, size, w, measure) {
+  const lines = [];
+  let line = { pieces: [], w: 0 };
+  const push = () => { lines.push(line); line = { pieces: [], w: 0 }; };
+  runs.forEach(run => {
+    // split so spaces stay attached to the word before them, as a line break wants
+    const bits = String(run.t).split(/(\n)|( +)/).filter(x => x !== undefined && x !== '');
+    bits.forEach(bit => {
+      if (bit === '\n') { push(); return; }
+      const bw = measure(bit, run);
+      if (line.w + bw > w && line.pieces.length && bit.trim()) push();
+      line.pieces.push({ run, t: bit, x: line.w, w: bw });
+      line.w += bw;
+    });
+  });
+  push();
   return lines;
 }
 
+function textLayout(k, w) {
+  const c = inkX;
+  return layoutRuns(itemRuns(k), k.size, w === undefined ? k.w : w, (t, run) => {
+    c.save(); c.font = runFont(run, k.size); const m = c.measureText(t).width; c.restore(); return m;
+  });
+}
+
+function textLines(k) { return textLayout(k).map(l => l.pieces.map(p => p.t).join('')); }
+
 /** How tall a text box ends up, which is what its outline and hit area use. */
-function textHeight(k) { return textLines(k).length * k.size * 1.25; }
+function textHeight(k) { return Math.max(1, textLayout(k).length) * k.size * 1.25; }
 
 /** Turns a page point into the item's own frame, so a turned picture still hits right. */
 function localPt(k, x, y) {
@@ -756,12 +859,13 @@ function localPt(k, x, y) {
     outline sits around the words rather than around empty space. */
 function fitText(k) {
   if (!k || k.kind !== 'text') return;
-  const c = inkX;
-  c.save(); c.font = k.size + 'px ' + FONT;
+  // Left to itself a box runs on until it is 10% short of the right-hand edge, then
+  // wraps. Once the width handle has been used that choice is the teacher's, and it
+  // stays put until they change it again.
+  const limit = k.fixedW ? k.w : Math.max(40, S.pw * 0.9 - k.x);
   let w = 0;
-  wrapText(k.text, k.w, t => c.measureText(t).width).forEach(line => { w = Math.max(w, c.measureText(line).width); });
-  c.restore();
-  k.w = Math.max(24, Math.ceil(w) + 2);
+  textLayout(k, limit).forEach(l => { w = Math.max(w, l.w); });
+  k.w = Math.max(24, Math.ceil(Math.min(limit, w)) + 2);
 }
 
 function itemBox(k) {
@@ -784,8 +888,20 @@ function drawItem(c, k) {
     c.save();
     if (k.rot) { const b = itemBox(k), cx = b[0] + b[2] / 2, cy = b[1] + b[3] / 2;
       c.translate(cx, cy); c.rotate(k.rot); c.translate(-cx, -cy); }
-    c.font = k.size + 'px ' + FONT; c.fillStyle = k.c; c.textBaseline = 'alphabetic';
-    textLines(k).forEach((line, i) => c.fillText(line, k.x, k.y + k.size * 0.95 + i * k.size * 1.25));
+    c.textBaseline = 'alphabetic';
+    textLayout(k).forEach((line, i) => {
+      const base = k.y + k.size * 0.95 + i * k.size * 1.25;
+      line.pieces.forEach(p => {
+        c.font = runFont(p.run, k.size);
+        c.fillStyle = p.run.c || k.c;
+        c.fillText(p.t, k.x + p.x, base);
+        if (p.run.u || p.run.s) {
+          const yy = p.run.u ? base + k.size * 0.14 : base - k.size * 0.28;
+          c.beginPath(); c.strokeStyle = p.run.c || k.c; c.lineWidth = Math.max(0.6, k.size * 0.06);
+          c.moveTo(k.x + p.x, yy); c.lineTo(k.x + p.x + p.w, yy); c.stroke();
+        }
+      });
+    });
     c.restore();
     return;
   }
@@ -1087,10 +1203,43 @@ function drawSelection(c) {
 /* The editing box is a real textarea sitting exactly where the text will be
    drawn, so what you type is what you get. */
 let editing = null;
+
+/** The styled text, as HTML the editing box understands. */
+function runsToHtml(k) {
+  return itemRuns(k).map(r => {
+    if (r.t === '\n') return '<br>';
+    let h = esc(r.t).replace(/ /g, '\u00a0');
+    const css = [];
+    if (r.f && r.f !== 'plain') css.push('font-family:' + fontCss(r.f));
+    if (r.c) css.push('color:' + r.c);
+    if (r.b) css.push('font-weight:700');
+    if (r.i) css.push('font-style:italic');
+    const deco = (r.u ? 'underline ' : '') + (r.s ? 'line-through' : '');
+    if (deco.trim()) css.push('text-decoration:' + deco.trim());
+    return css.length ? '<span style="' + css.join(';') + '">' + h + '</span>' : h;
+  }).join('');
+}
+
+/** Reads the editing box back into runs, tidying the whitespace as it goes. */
+function htmlToRuns(el, fallbackColour) {
+  const base = { b: false, i: false, u: false, s: false, f: 'plain', c: fallbackColour };
+  const raw = runsFromNode(el, base, []);
+  const out = [];
+  raw.forEach(r => {
+    r.t = String(r.t).replace(/\u00a0/g, ' ');
+    if (!r.t) return;
+    const last = out[out.length - 1];
+    if (last && last.b === r.b && last.i === r.i && last.u === r.u && last.s === r.s
+        && last.f === r.f && last.c === r.c && last.t !== '\n' && r.t !== '\n') last.t += r.t;
+    else out.push(r);
+  });
+  return out.length ? out : [Object.assign({ t: '' }, base)];
+}
+
 function startEdit(k) {
   const t = $('textEdit'), s = sc(), r = ui.getBoundingClientRect(), st = stage.getBoundingClientRect();
   editing = k;
-  t.value = k.text || '';
+  t.innerHTML = runsToHtml(k);
   t.style.display = 'block';
   t.style.left = Math.round(r.left - st.left + (MARGIN + k.x) * s) + 'px';
   t.style.top = Math.round(r.top - st.top + (MARGIN + k.y) * s) + 'px';
@@ -1100,21 +1249,46 @@ function startEdit(k) {
   t.style.color = k.c;
   t.style.transform = k.rot ? 'rotate(' + k.rot + 'rad)' : '';
   t.style.transformOrigin = 'center center';
-  redrawInk();
+  t.style.fontFamily = fontCss('plain');
+  redrawInk(); showTextBar(k);
   // The caret goes to the end, so a click carries straight on from what is written.
-  setTimeout(() => { t.focus(); const n = t.value.length; t.setSelectionRange(n, n); }, 0);
+  setTimeout(() => {
+    t.focus();
+    const sel = window.getSelection(), rg = document.createRange();
+    rg.selectNodeContents(t); rg.collapse(false);
+    sel.removeAllRanges(); sel.addRange(rg);
+  }, 0);
 }
+
+/** Puts the little bar of controls just above the box being written in. */
+function showTextBar(k) {
+  const bar = $('textBar'), t = $('textEdit'), st = stage.getBoundingClientRect();
+  bar.classList.add('on');
+  const r = t.getBoundingClientRect();
+  bar.style.left = Math.max(4, Math.round(r.left - st.left)) + 'px';
+  bar.style.top = Math.round(r.top - st.top - 42) + 'px';
+}
+function hideTextBar() { $('textBar').classList.remove('on'); $('fontMenu').classList.remove('on'); }
+/** Keeps the editing box the same shape as the text will be once it is committed. */
 function sizeEditBox() {
-  const t = $('textEdit');
-  if (!editing) return;
+  const t = $('textEdit'), k = editing;
+  if (!k) return;
+  const s = sc();
+  k.runs = htmlToRuns(t, k.c);
+  fitText(k);                               // grows to the right until 10% off the edge
+  t.style.width = Math.round(k.w * s) + 'px';
   t.style.height = 'auto';
-  t.style.height = Math.max(t.scrollHeight, editing.size * sc()) + 'px';
+  t.style.height = Math.max(t.scrollHeight, k.size * s) + 'px';
+  showTextBar(k);
+  redrawUI();
 }
 function endEdit(keep) {
   const t = $('textEdit'), k = editing;
   if (!k) return;
-  editing = null; t.style.display = 'none'; t.blur();
-  const text = t.value.trim();
+  editing = null; t.style.display = 'none'; t.blur(); hideTextBar();
+  const runs = htmlToRuns(t, k.c);
+  const text = runs.map(r => r.t).join('').trim();
+  k.runs = runs;
   const list = S.ann[AK()] || [];
   if (!keep || !text) {
     const i = list.indexOf(k);
@@ -1301,7 +1475,7 @@ ui.addEventListener('pointermove', e => {
       const co = Math.cos(k.rot || 0), si = Math.sin(k.rot || 0);
       const along = (mx - drag.ox) * co + (my - drag.oy) * si;
       const w = Math.max(24, drag.w0 + along);
-      if (drag.m === 'itemWidth') { k.w = w; }                      // text: just wider, same type size
+      if (drag.m === 'itemWidth') { k.w = w; k.fixedW = true; }     // their width now, and it stays
       else if (k.kind === 'image') { k.w = w; k.h = Math.max(16, drag.h0 * (w / drag.w0)); }
       else { k.w = w; k.size = Math.max(6, Math.round(drag.size0 * (w / drag.w0))); S.textSize = k.size; }
     }
@@ -1414,7 +1588,7 @@ function dataUrlBytes(src) {
 
 async function buildAnnotated() {
   const L = PDFLib; const d = await L.PDFDocument.load(S.bytes.slice(), { ignoreEncryption: true });
-  let font = null;                       // embedded only if some page actually has text on it
+  const fonts = {};                      // embedded only as each one is actually needed
   const pages = d.getPages();
   // Turned on screen, the file saves turned: every page carries the extra rotation, which is also
   // the space the writing was recorded in, so the ink maths below lands it in the right place.
@@ -1433,11 +1607,31 @@ async function buildAnnotated() {
     if (L.pushGraphicsState && L.setLineJoin && L.LineJoinStyle) pg.pushOperators(L.pushGraphicsState(), L.setLineJoin(L.LineJoinStyle.Round));
     for (const k of list) {
       if (k.kind === 'text') {
-        if (!font) font = await d.embedFont(L.StandardFonts.Helvetica);
-        const n = parseInt(k.c.slice(1), 16);
-        const col = L.rgb(((n >> 16) & 255) / 255, ((n >> 8) & 255) / 255, (n & 255) / 255);
-        // wrap with the real font's own widths, so the saved lines break where they should
-        const lines = wrapText(k.text, k.w, t => font.widthOfTextAtSize(t, k.size));
+        // Every PDF reader already has these, so the file opens the same anywhere -
+        // no fonts travel with it. The decorative families are matched as closely as
+        // the built-in set allows.
+        const pick = r => {
+          if (r.f === 'digital') return r.b ? (r.i ? 'CourierBoldOblique' : 'CourierBold') : (r.i ? 'CourierOblique' : 'Courier');
+          if (r.f === 'hand') return r.b ? 'TimesRomanBoldItalic' : 'TimesRomanItalic';
+          if (r.f === 'impact') return r.i ? 'HelveticaBoldOblique' : 'HelveticaBold';
+          return r.b ? (r.i ? 'HelveticaBoldOblique' : 'HelveticaBold') : (r.i ? 'HelveticaOblique' : 'Helvetica');
+        };
+        for (const r of itemRuns(k)) {
+          const nm = pick(r);
+          if (!fonts[nm]) fonts[nm] = await d.embedFont(L.StandardFonts[nm]);
+        }
+        const pdfFont = r => fonts[pick(r)];
+        const colOf = v => {
+          const m = /^#?([0-9a-f]{6})$/i.exec(String(v || '').trim())
+            || (function () { const q = /rgba?\((\d+)[ ,]+(\d+)[ ,]+(\d+)/i.exec(String(v || '')); return q && [null, ((+q[1]) << 16 | (+q[2]) << 8 | (+q[3])).toString(16).padStart(6, '0')]; })();
+          const n = parseInt(m ? m[1] : '111111', 16);
+          return L.rgb(((n >> 16) & 255) / 255, ((n >> 8) & 255) / 255, (n & 255) / 255);
+        };
+        // Break the lines exactly where the screen broke them, so the saved page reads
+        // the same as the board did. Within a line each piece is then advanced by the
+        // PDF font's own width, which keeps the words from treading on each other even
+        // though the built-in fonts are a shade wider than the ones on screen.
+        const lines = textLayout(k, k.w);
         // A turned text box turns about its middle on screen, so each line's starting
         // point has to be swung about that same middle before it is placed.
         const tb = itemBox(k), tcx = tb[0] + tb[2] / 2, tcy = tb[1] + tb[3] / 2;
@@ -1447,10 +1641,23 @@ async function buildAnnotated() {
           : [px, py]);
         const textTurn = L.degrees(rot - (k.rot || 0) * 180 / Math.PI);
         lines.forEach((line, i) => {
-          if (!line) return;
-          const [sx, sy] = swing(k.x, k.y + k.size * 0.95 + i * k.size * 1.25);
-          const [bx, by] = tp(sx, sy);
-          pg.drawText(line, { x: bx, y: by, size: k.size, font, color: col, rotate: textTurn });
+          let pen = 0;                      // how far along the line we have got, in PDF widths
+          line.pieces.forEach(p => {
+            const pw = pdfFont(p.run).widthOfTextAtSize(p.t, k.size);
+            const at = pen; pen += pw;
+            if (!p.t.trim() && !p.run.u && !p.run.s) return;
+            const yOff = k.y + k.size * 0.95 + i * k.size * 1.25;
+            const [sx, sy] = swing(k.x + at, yOff);
+            const [bx, by] = tp(sx, sy);
+            const col = colOf(p.run.c || k.c);
+            if (p.t.trim()) pg.drawText(p.t, { x: bx, y: by, size: k.size, font: pdfFont(p.run), color: col, rotate: textTurn });
+            if (p.run.u || p.run.s) {
+              const ly = yOff + (p.run.u ? k.size * 0.14 : -k.size * 0.28);
+              const [ax, ay] = tp.apply(null, swing(k.x + at, ly));
+              const [cx2, cy2] = tp.apply(null, swing(k.x + at + pw, ly));
+              pg.drawLine({ start: { x: ax, y: ay }, end: { x: cx2, y: cy2 }, thickness: Math.max(0.5, k.size * 0.06), color: col });
+            }
+          });
         });
         continue;
       }
@@ -1691,11 +1898,65 @@ document.addEventListener('paste', e => {
 
 /* ---------- the text editing box ---------- */
 $('textEdit').addEventListener('input', sizeEditBox);
-$('textEdit').addEventListener('blur', () => { if (editing) endEdit(true); });
+$('textEdit').addEventListener('blur', e => {
+  // Pressing a button on the bar isn't finishing: it should keep the words selected.
+  if (e.relatedTarget && e.relatedTarget.closest && e.relatedTarget.closest('#textBar')) return;
+  setTimeout(() => { if (editing && !$('textBar').contains(document.activeElement)) endEdit(true); }, 120);
+});
 $('textEdit').addEventListener('keydown', e => {
   e.stopPropagation();                       // the page's own shortcuts shouldn't fire while typing
   if (e.key === 'Escape') { e.preventDefault(); endEdit(false); }
   if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); endEdit(true); }
+  if ((e.ctrlKey || e.metaKey) && 'biu'.indexOf(e.key.toLowerCase()) >= 0) setTimeout(sizeEditBox, 0);
+});
+$('textEdit').addEventListener('paste', e => {      // paste words, not someone else's styling
+  const txt = e.clipboardData && e.clipboardData.getData('text/plain');
+  if (txt == null) return;
+  e.preventDefault(); document.execCommand('insertText', false, txt);
+});
+
+/* ---------- the formatting bar ---------- */
+/** Applies a change to the selected words, or to all of them if none are picked out. */
+function applyToText(fn) {
+  const t = $('textEdit');
+  if (!editing) return;
+  const sel = window.getSelection();
+  const inside = sel.rangeCount && t.contains(sel.anchorNode) && !sel.isCollapsed;
+  if (!inside) {                                   // nothing highlighted: the lot changes
+    const rg = document.createRange(); rg.selectNodeContents(t);
+    sel.removeAllRanges(); sel.addRange(rg);
+  }
+  t.focus();
+  fn();
+  sizeEditBox();
+}
+
+$('textBar').addEventListener('mousedown', e => { if (e.target.closest('button,label')) e.preventDefault(); });
+$('textBar').addEventListener('click', e => {
+  const b = e.target.closest('button[data-cmd]');
+  if (!b) return;
+  const cmd = b.dataset.cmd;
+  if (cmd === 'font') { $('fontMenu').classList.toggle('on'); return; }
+  $('fontMenu').classList.remove('on');
+  applyToText(() => {
+    if (cmd === 'bold') document.execCommand('bold');
+    else if (cmd === 'italic') document.execCommand('italic');
+    else if (cmd === 'underline') document.execCommand('underline');
+    else if (cmd === 'strike') document.execCommand('strikeThrough');
+  });
+});
+$('textCol').addEventListener('input', e => {
+  const v = e.target.value;
+  applyToText(() => { document.execCommand('styleWithCSS', false, true); document.execCommand('foreColor', false, v); });
+});
+$('fontMenu').innerHTML = FONTS.map(f =>
+  `<button data-font="${f.id}" style="font-family:${f.css}">${f.name}</button>`).join('');
+$('fontMenu').addEventListener('mousedown', e => e.preventDefault());
+$('fontMenu').addEventListener('click', e => {
+  const b = e.target.closest('button[data-font]'); if (!b) return;
+  const css = fontCss(b.dataset.font);
+  applyToText(() => { document.execCommand('styleWithCSS', false, true); document.execCommand('fontName', false, css); });
+  $('fontMenu').classList.remove('on');
 });
 /* ---------- size the tools to the screen ---------- */
 let barW = 0;
