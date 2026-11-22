@@ -76,6 +76,7 @@ function setTucked(t) {
   dockState.tucked = t;
   W.dock.setBounds(t ? dockTabBounds() : dockOpenBounds());
   W.dock.webContents.send('dock-tuck', t, dockSide());
+  showHelpBtn(!t);
   if (!t) armTuck();
 }
 function armTuck() { clearTimeout(dockState.timer); if (autoTuck() && !annot.active) dockState.timer = setTimeout(() => { if (!dockState.dragging && !menuOpen) setTucked(true); else armTuck(); }, TUCK_AFTER); }
@@ -85,6 +86,54 @@ function snapDock() {
   cfg.dock = { disp: d.id, side: cx < a.x + a.width / 2 ? 'left' : 'right', cy: b.y + b.height / 2 };
   saveCfg(); setTucked(dockState.tucked);
 }
+/* ---------- the help button ----------
+   A separate little circle under the dock rather than another button on it: it is
+   not a classroom tool, and it should not be in the way while teaching. */
+const HELP_D = 44, HELP_GAP = 10;
+function helpBtnBounds() {
+  const b = dockOpenBounds(), a = dockDisplayArea();
+  const x = Math.round(b.x + (DOCK_W - HELP_D) / 2);
+  let y = b.y + b.height + HELP_GAP;
+  if (y + HELP_D > a.y + a.height - 4) y = b.y - HELP_GAP - HELP_D;   // no room below: sit above
+  return { x, y: Math.round(y), width: HELP_D, height: HELP_D };
+}
+function createHelpBtn() {
+  W.helpBtn = floating({ ...helpBtnBounds(), title: 'ClassTools help', skipTaskbar: true });
+  W.helpBtn.loadFile(path.join(__dirname, 'helpbtn.html'));
+}
+function placeHelpBtn() { if (W.helpBtn && !W.helpBtn.isDestroyed()) W.helpBtn.setBounds(helpBtnBounds()); }
+function showHelpBtn(on) {
+  if (!W.helpBtn || W.helpBtn.isDestroyed()) return;
+  if (on) { placeHelpBtn(); W.helpBtn.setAlwaysOnTop(true, 'screen-saver'); W.helpBtn.showInactive(); }
+  else W.helpBtn.hide();
+}
+function openHelp() {
+  if (W.help && !W.help.isDestroyed()) { W.help.show(); W.help.focus(); return; }
+  W.help = new BrowserWindow({ width: 860, height: 820, title: 'ClassTools \u2013 hints and tips',
+    autoHideMenuBar: true, icon: path.join(__dirname, 'icon.png'), backgroundColor: '#f6f7fa',
+    webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true } });
+  W.help.setMenu(null);
+  W.help.webContents.setWindowOpenHandler(({ url }) => { if (/^https?:|^mailto:/i.test(url)) shell.openExternal(url); return { action: 'deny' }; });
+  W.help.loadFile(path.join(__dirname, 'help.html'));
+}
+ipcMain.on('help-open', () => openHelp());
+/* The six colours last reached for, shared by every colour wheel in the app and
+   kept with the rest of the settings so they are still there next lesson. */
+ipcMain.handle('cols-get', () => cfg.recentColours || []);
+ipcMain.on('cols-use', (e, c) => {
+  if (!c || !/^#[0-9a-f]{6}$/i.test(c)) return;
+  const list = (cfg.recentColours || []).filter(x => x.toLowerCase() !== c.toLowerCase());
+  list.unshift(c);
+  cfg.recentColours = list.slice(0, 6); saveCfg();
+  for (const w of BrowserWindow.getAllWindows()) { if (!w.isDestroyed()) w.webContents.send('cols-changed', cfg.recentColours); }
+});
+
+ipcMain.handle('app-version', () => {
+  // Read it straight from the app's own package.json, so the number on the help
+  // page is the one that was actually built, whatever Electron reports.
+  try { return require('./package.json').version || app.getVersion(); } catch (e) { return app.getVersion(); }
+});
+
 function createDock() {
   W.dock = floating({ ...dockOpenBounds(), title: 'ClassTools', skipTaskbar: false, minimizable: true });
   W.dock.loadFile(path.join(__dirname, 'dock.html'));
@@ -181,7 +230,7 @@ function createOverlay() {
 }
 function raiseFloaters() { for (const k of ['ticker', 'calc', 'timer', 'picker', 'objp', 'radial', 'react', 'dock']) if (W[k] && !W[k].isDestroyed() && W[k].isVisible()) W[k].moveTop(); }
 function sendAnnot() { if (W.dock) W.dock.webContents.send('annot', { active: annot.active, mode: annot.mode }); }
-function resizeDockForAnnot() { DOCK_H = annot.active ? DOCK_H_ANN : DOCK_H_BASE; if (!dockState.tucked) W.dock.setBounds(dockOpenBounds()); }
+function resizeDockForAnnot() { DOCK_H = annot.active ? DOCK_H_ANN : DOCK_H_BASE; if (!dockState.tucked) { W.dock.setBounds(dockOpenBounds()); placeHelpBtn(); } }
 async function ensureOverlay(stateJson) {
   if (W.overlay && !W.overlay.isDestroyed()) return;
   createOverlay(); await new Promise(r => W.overlay.webContents.once('did-finish-load', r));
@@ -700,7 +749,7 @@ app.whenReady().then(() => {
       const named = { pdf: 'PDF', pptx: 'PowerPoint presentation', docx: 'Word document' }[ex] || ex.toUpperCase();
       item.setSaveDialogOptions({ title: 'Save annotated copy', defaultPath: path.join(app.getPath('documents'), fn), filters: [{ name: named, extensions: [ex] }] });
     });
-    createDock(); createCalc(); createTimer(); createPicker(); createRadial(); createReact(); createTicker();
+    createDock(); createHelpBtn(); createCalc(); createTimer(); createPicker(); createRadial(); createReact(); createTicker();
     try {
       tray = new Tray(nativeImage.createFromPath(path.join(__dirname, 'icon.png')).resize({ width: 16, height: 16 }));
       tray.setToolTip('ClassTools');

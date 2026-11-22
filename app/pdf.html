@@ -50,7 +50,7 @@
   #colours{display:grid;grid-template-columns:repeat(6,1fr);row-gap:7px;gap:4px;justify-items:center;padding:2px 0}
   #colours .sw,#colours .cp{width:18px;height:18px}
   #colours .cp{font-size:12px}
-  .cp{position:relative;width:26px;height:26px;border-radius:50%;background:conic-gradient(red,yellow,lime,cyan,blue,magenta,red);box-shadow:0 0 0 1px var(--line);cursor:pointer;display:flex;align-items:center;justify-content:center;color:#fff;font-size:15px;text-shadow:0 0 3px #000}
+  .cp{position:relative;border:0;padding:0;-webkit-appearance:none;appearance:none;width:26px;height:26px;border-radius:50%;background:conic-gradient(red,yellow,lime,cyan,blue,magenta,red);box-shadow:0 0 0 1px var(--line);cursor:pointer;display:flex;align-items:center;justify-content:center;color:#fff;font-size:15px;text-shadow:0 0 3px #000}
   .cp.on{box-shadow:0 0 0 2px var(--acc)}
   .cp input{position:absolute;inset:0;opacity:0;width:100%;height:100%;cursor:pointer}
   .wrow{display:flex;align-items:center;gap:6px;padding:0 4px}
@@ -87,6 +87,7 @@
   .tsw i{width:30px;height:30px;border-radius:8px;box-shadow:inset 0 0 0 1px rgba(0,0,0,.18);display:block;position:relative;overflow:hidden}
   .tsw.off i{background:linear-gradient(135deg,#fff 45%,#dc2626 45%,#dc2626 55%,#fff 55%)}
   .tsw i.pick{background:conic-gradient(red,yellow,lime,cyan,blue,magenta,red)}
+  button.tsw{-webkit-appearance:none;appearance:none;font-family:inherit}
   .tsw i.pick input{position:absolute;inset:0;opacity:0;width:100%;height:100%;cursor:pointer}
   .tsw.on{border-color:#2457d6;background:#e8eefc}
   .trow{display:flex;align-items:center;gap:8px;margin-top:10px;font-weight:600;font-size:13px}
@@ -103,7 +104,7 @@
     font:700 13px system-ui,sans-serif;cursor:pointer;display:flex;align-items:center;justify-content:center}
   #textBar button:hover{background:#3b465c}
   #textBar button.on{background:#2457d6;color:#fff}
-  #textBar .tcol{position:relative;width:30px;height:30px;border-radius:7px;overflow:hidden;cursor:pointer;flex:0 0 auto}
+  #textBar .tcol{position:relative;width:30px;height:30px;border-radius:7px;overflow:hidden;cursor:pointer;flex:0 0 auto;border:0;padding:0;background:none}
   #textBar .tcol span{position:absolute;inset:0;border-radius:7px;background:conic-gradient(red,yellow,lime,cyan,blue,magenta,red)}
   #textBar .tcol input{position:absolute;inset:-4px;width:140%;height:140%;opacity:0;cursor:pointer}
   #fontMenu{position:absolute;top:100%;left:0;margin-top:5px;display:none;flex-direction:column;gap:2px;
@@ -224,6 +225,7 @@
       <button class="tile" data-tool="line" title="Straight line (L)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 19L19 5"/><circle cx="5" cy="19" r="1.6"/><circle cx="19" cy="5" r="1.6"/></svg><span>Line</span></button>
       <button class="tile" data-tool="shape" id="shapeBtn" title="Draw a shape (S)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 20l5-9 5 9z"/><rect x="13" y="4" width="8" height="8"/><circle cx="17" cy="17" r="3.5"/></svg><span id="shapeLbl">Shapes</span></button>
       <button class="tile" data-tool="compass" title="Compass (C)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="4" r="2"/><path d="M11 6L6 21M13 6l5 15"/><path d="M4 16a9 6 0 0 0 16 0" stroke-dasharray="2 2"/></svg><span>Compass</span></button>
+      <button class="tile" id="styleBtn" title="Line and shape style – colour, dashes, thickness and fill"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 6h18"/><path d="M3 12h4M11 12h4M19 12h2" /><path d="M3 18h1M7 18h1M11 18h1M15 18h1M19 18h1"/></svg><span>Style</span></button>
       <button class="tile" data-tool="text" title="Text box (T) – click the page to write, drag the corner to resize"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 6V4h14v2M12 4v16M9 20h6"/></svg><span>Text</span></button>
       <button class="tile" id="imgBtn" title="Add a picture – or just paste one with Ctrl+V"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="8.5" cy="10" r="1.5"/><path d="M21 16l-5-5-6 6-2-2-5 5"/></svg><span>Picture</span></button>
       <button class="tile" data-tool="eraser" title="Rubber (E)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 20h12M5 15l9-9 5 5-9 9H8z"/><path d="M9.5 10.5l5 5"/></svg><span>Rubber</span></button>
@@ -249,7 +251,7 @@
       <button class="sw" data-c="#d42a2a" style="background:#d42a2a" title="Red"></button>
       <button class="sw" data-c="#138a36" style="background:#138a36" title="Green"></button>
       <button class="sw" data-c="#f2c200" style="background:#f2c200" title="Yellow"></button>
-      <label class="cp" title="Pick any colour"><input type="color" id="colorPick" value="#7a3cc8"><b>+</b></label>
+      <button class="cp" id="colorPick" data-colpop title="Pick any colour"><b>+</b></button>
     </div>
     <div class="wrow"><span class="dot s"></span><input type="range" id="width" min="0.5" max="8" step="0.25" value="1.5" title="Line thickness"><span class="dot l"></span></div>
   </div>
@@ -295,7 +297,7 @@
       <button data-cmd="italic" title="Italic"><i>I</i></button>
       <button data-cmd="underline" title="Underline"><u>U</u></button>
       <button data-cmd="strike" title="Strike through"><s>ST</s></button>
-      <label class="tcol" title="Colour"><span></span><input type="color" id="textCol" value="#111111"></label>
+      <button class="tcol" id="textCol" data-colpop title="Colour"><span></span></button>
       <div id="fontMenu"></div>
     </div>
     <div id="links"></div>
@@ -321,12 +323,28 @@
 <div id="shapeMenu"></div>
 <div id="tintMenu">
   <div class="th"><b>Coloured overlay</b><small>Tints the slide – black text stays black</small></div>
-  <div class="tgrid"><button class="tsw off" data-t="" title="No overlay"><i></i><span>Off</span></button><button class="tsw" data-t="#fff59d" title="Yellow"><i style="background:#fff59d"></i><span>Yellow</span></button><button class="tsw" data-t="#c5e1a5" title="Green"><i style="background:#c5e1a5"></i><span>Green</span></button><button class="tsw" data-t="#b3e5fc" title="Light blue"><i style="background:#b3e5fc"></i><span>Light blue</span></button><button class="tsw" data-t="#7f9cd8" title="Dark blue"><i style="background:#7f9cd8"></i><span>Dark blue</span></button><button class="tsw" data-t="#f8bbd0" title="Pink"><i style="background:#f8bbd0"></i><span>Pink</span></button><button class="tsw" data-t="#d1c4e9" title="Lilac"><i style="background:#d1c4e9"></i><span>Lilac</span></button><button class="tsw" data-t="#ffcc80" title="Orange"><i style="background:#ffcc80"></i><span>Orange</span></button><button class="tsw" data-t="#ef9a9a" title="Red"><i style="background:#ef9a9a"></i><span>Red</span></button><label class="tsw" title="Pick any colour"><i class="pick"><input type="color" id="tintPick" value="#fff59d"></i><span>Any</span></label></div>
+  <div class="tgrid"><button class="tsw off" data-t="" title="No overlay"><i></i><span>Off</span></button><button class="tsw" data-t="#fff59d" title="Yellow"><i style="background:#fff59d"></i><span>Yellow</span></button><button class="tsw" data-t="#c5e1a5" title="Green"><i style="background:#c5e1a5"></i><span>Green</span></button><button class="tsw" data-t="#b3e5fc" title="Light blue"><i style="background:#b3e5fc"></i><span>Light blue</span></button><button class="tsw" data-t="#7f9cd8" title="Dark blue"><i style="background:#7f9cd8"></i><span>Dark blue</span></button><button class="tsw" data-t="#f8bbd0" title="Pink"><i style="background:#f8bbd0"></i><span>Pink</span></button><button class="tsw" data-t="#d1c4e9" title="Lilac"><i style="background:#d1c4e9"></i><span>Lilac</span></button><button class="tsw" data-t="#ffcc80" title="Orange"><i style="background:#ffcc80"></i><span>Orange</span></button><button class="tsw" data-t="#ef9a9a" title="Red"><i style="background:#ef9a9a"></i><span>Red</span></button><button class="tsw" id="tintPick" data-colpop title="Pick any colour"><i class="pick"></i><span>Any</span></button></div>
   <div class="trow"><span>Strength</span><input type="range" id="tintOp" min="10" max="100" step="5" value="100"><b id="tintOpV">100%</b></div>
 </div>
 <div id="busy"><div class="card"><div class="spin"></div><p id="busyMsg" style="color:var(--ink);margin:12px 0 0">Opening…</p><p style="font-size:12px;margin:6px 0 0">Big slide shows can take a few seconds.</p></div></div>
 <input type="file" id="file" accept=".pdf,.pptx,.ppt,.ppsx,.pps,.pptm,.docx,.doc,.docm,.rtf,.odt,.odp,application/pdf" hidden>
 
+<div id="stylePop">
+  <p class="ttl">Line</p>
+  <div class="srow" id="dashRow">
+    <button data-d="solid" title="Straight"><svg viewBox="0 0 60 12"><path d="M3 6h54" stroke="currentColor" stroke-width="3" fill="none" stroke-linecap="round"/></svg></button>
+    <button data-d="dash" title="Dashed"><svg viewBox="0 0 60 12"><path d="M3 6h54" stroke="currentColor" stroke-width="3" fill="none" stroke-linecap="round" stroke-dasharray="10 7"/></svg></button>
+    <button data-d="dot" title="Dotted"><svg viewBox="0 0 60 12"><path d="M3 6h54" stroke="currentColor" stroke-width="3" fill="none" stroke-linecap="round" stroke-dasharray="0.5 7"/></svg></button>
+    <button data-d="wave" title="Hand drawn"><svg viewBox="0 0 60 12"><path d="M3 6q6-4 11 0t11 0 11 0 11 0 11 0" stroke="currentColor" stroke-width="3" fill="none" stroke-linecap="round"/></svg></button>
+  </div>
+  <p class="ttl">Thickness</p>
+  <div class="srow" id="wRow"></div>
+  <p class="ttl">Colour</p>
+  <div class="srow"><button id="styleCol" data-colpop class="wide"><i id="styleColDot"></i><span>Line colour</span></button></div>
+  <p class="ttl">Fill (shapes)</p>
+  <div class="srow"><button id="styleFill" data-colpop class="wide"><i id="styleFillDot"></i><span id="styleFillTxt">No fill</span></button></div>
+</div>
+<script src="colourpop.js"></script>
 <script>
 (() => {
 'use strict';
@@ -350,7 +368,7 @@ const S = {
   comp: { placed: false, cx: 0, cy: 0, r: 4 * CM, ang: 0 },
 };
 window.__isDirty = () => S.dirty;
-window.__t = { S, save: () => savePdf(), build: () => buildAnnotated(), rotate: q => rotateDoc(q), load: (b, n) => loadBytes(b, n), tool: t => setTool(t), addImage, redraw: () => { redrawInk(); redrawUI(); }, items: () => S.ann[AK()] || [], handles: () => selHandles(), handlePt, fit: fitText, lines: k=>textLayout(k) };   // test hook
+window.__t = { style: { pop: () => $('stylePop'), apply: applyStyle, last: lastShapeOnPage, toggle: toggleStylePop }, colours: { open: openColourPop, recent: recentColours, remember: rememberColour, pop: () => $('colPop') }, dashFor, renderPts, S, save: () => savePdf(), build: () => buildAnnotated(), rotate: q => rotateDoc(q), load: (b, n) => loadBytes(b, n), tool: t => setTool(t), addImage, redraw: () => { redrawInk(); redrawUI(); }, items: () => S.ann[AK()] || [], handles: () => selHandles(), handlePt, fit: fitText, lines: k=>textLayout(k) };   // test hook
 S.groups = null; let pendingBuilds = null;
 const G = (p = S.page) => S.groups && S.groups[p - 1];
 const AK = (p = S.page) => { const g = G(p); return g ? g.key : p; };
@@ -713,8 +731,44 @@ function goPage(n) {
 }
 
 /* ---------- strokes ---------- */
+/* A hand-drawn line is the same line walked at a steady pace with a gentle sway
+   across it. Worked out once and kept on the stroke, so it doesn't shimmer when
+   the page redraws, and so the saved PDF gets exactly the line that was on screen. */
+function wavyPts(p, amp) {
+  if (p.length < 4) return p;
+  const out = [p[0], p[1]], step = 3.5, wave = 17;
+  let run = 0;
+  for (let i = 0; i < p.length - 2; i += 2) {
+    const x0 = p[i], y0 = p[i + 1], dx = p[i + 2] - x0, dy = p[i + 3] - y0, len = Math.hypot(dx, dy);
+    if (len < 0.01) continue;
+    const nx = -dy / len, ny = dx / len;
+    for (let d = step; d < len; d += step) {
+      // Two waves that never line up, so the line drifts the way a hand does
+      // instead of marching along like a pattern.
+      const t = (run + d) / wave * Math.PI;
+      const o = amp * (Math.sin(t) * 0.8 + Math.sin(t * 0.37 + 1.7) * 0.5);
+      out.push(x0 + dx * d / len + nx * o, y0 + dy * d / len + ny * o);
+    }
+    run += len;
+  }
+  out.push(p[p.length - 2], p[p.length - 1]);
+  return out;
+}
+/** The points actually drawn for a stroke: wobbled for the hand-drawn style, raw otherwise. */
+function renderPts(k) {
+  if (k.d !== 'wave') return k.p;
+  const amp = Math.min(3.1, 1.3 + k.w * 0.22), key = k.p.length + ':' + amp.toFixed(2) + ':' + k.p[0] + ',' + k.p[1];
+  if (k._wk !== key) { k._wk = key; k._wp = wavyPts(k.p, amp); }
+  return k._wp;
+}
+/** Dashes in page units, scaled with the pen so a thick dashed line still reads as dashed. */
+function dashFor(k) {
+  if (k.d === 'dash') return [Math.max(7, k.w * 3.4), Math.max(5, k.w * 2.4)];
+  if (k.d === 'dot') return [0.01, Math.max(4, k.w * 2.1)];
+  return null;
+}
 function strokePath(c, k) {
-  const p = k.p; c.beginPath(); c.moveTo(p[0], p[1]);
+  const p = renderPts(k); c.beginPath(); c.moveTo(p[0], p[1]);
   if (p.length === 2) c.lineTo(p[0] + 0.01, p[1]);
   else if (k.sm && p.length > 4) {
     for (let i = 2; i < p.length - 2; i += 2) c.quadraticCurveTo(p[i], p[i + 1], (p[i] + p[i + 2]) / 2, (p[i + 1] + p[i + 3]) / 2);
@@ -722,8 +776,11 @@ function strokePath(c, k) {
   } else for (let i = 2; i < p.length; i += 2) c.lineTo(p[i], p[i + 1]);
 }
 function drawStroke(c, k) {
-  c.save(); c.globalAlpha = k.a; c.strokeStyle = k.c; c.lineWidth = k.w; c.lineCap = 'round'; c.lineJoin = 'round';
-  strokePath(c, k); c.stroke(); c.restore();
+  c.save(); c.globalAlpha = k.a; c.strokeStyle = k.c; c.lineWidth = k.w; c.lineCap = k.d === 'dot' ? 'round' : 'round'; c.lineJoin = 'round';
+  strokePath(c, k);
+  if (k.sh && k.f) { c.fillStyle = k.f; c.fill(); }     // shapes can be filled; a line never is
+  const dash = dashFor(k); if (dash) c.setLineDash(dash);
+  c.stroke(); c.restore();
 }
 /* ---------- text boxes and pictures ----------
    These live in the same per-page list as the ink, so undo, erase, page turns
@@ -928,7 +985,9 @@ function restore(from, to) {
 }
 function newStroke(kind, pts) {
   const hl = kind === 'hl';
-  return { c: S.color, w: hl ? Math.max(6, S.width * 5) : S.width, a: hl ? 0.35 : 1, p: pts, sm: false };
+  const k = { c: S.color, w: hl ? Math.max(6, S.width * 5) : S.width, a: hl ? 0.35 : 1, p: pts, sm: false };
+  if (kind === 'line') k.d = S.dash;   // freehand and highlighter stay plain; lines and shapes carry a style
+  return k;
 }
 function segDist(px, py, ax, ay, bx, by) {
   const dx = bx - ax, dy = by - ay, l = dx * dx + dy * dy; let t = l ? ((px - ax) * dx + (py - ay) * dy) / l : 0;
@@ -1323,6 +1382,66 @@ function paintUI() {
 /* ---------- shapes ---------- */
 const POLY = { 5: 'Pentagon', 6: 'Hexagon', 7: 'Heptagon', 8: 'Octagon', 9: 'Nonagon', 10: 'Decagon', 11: 'Hendecagon', 12: 'Dodecagon' };
 S.shape = { kind: 'circle', n: 0 };
+S.dash = 'solid'; S.fill = '';
+
+/* ---------- the style panel ----------
+   Changes the line or shape you have just drawn, and sets how the next one comes
+   out - so you can draw it, look at it on the board, and then change your mind. */
+const STYLE_W = [2, 4, 6, 9, 14];
+function lastShapeOnPage() {
+  const list = S.ann[S.page] || [];
+  for (let i = list.length - 1; i >= 0; i--) { const k = list[i]; if (!k.kind && k.d) return k; }
+  return null;
+}
+function styleOpen() { return $('stylePop').classList.contains('on'); }
+function closeStylePop() { $('stylePop').classList.remove('on'); $('styleBtn').classList.remove('on'); closeColourPop(); }
+function paintStylePop() {
+  const k = lastShapeOnPage();
+  const d = k ? (k.d || 'solid') : S.dash, w = k ? k.w : S.width, col = k ? k.c : S.color, fill = k ? (k.sh ? k.f : S.fill) : S.fill;
+  [...$('dashRow').children].forEach(b => b.classList.toggle('on', b.dataset.d === d));
+  $('wRow').innerHTML = STYLE_W.map(v =>
+    `<button data-w="${v}" class="${Math.abs(v - w) < 0.6 ? 'on' : ''}" title="${v}"><svg viewBox="0 0 40 16"><path d="M3 8h34" stroke="currentColor" stroke-width="${v}" fill="none" stroke-linecap="round"/></svg></button>`).join('');
+  $('styleColDot').style.background = col;
+  $('styleFillDot').style.background = fill || '#fff';
+  $('styleFillDot').style.borderStyle = fill ? 'solid' : 'dashed';
+  $('styleFillTxt').textContent = fill ? 'Filled' : 'No fill';
+}
+/** Changes the line or shape just drawn, and sets the same as the default for the next one. */
+function applyStyle(toStroke, toDefault) {
+  const k = lastShapeOnPage();
+  if (k) { snapshot(); toStroke(k); delete k._wk; redrawInk(); }
+  toDefault();
+  paintStylePop();
+}
+function toggleStylePop() {
+  if (styleOpen()) { closeStylePop(); return; }
+  paintStylePop();
+  const pop = $('stylePop'); pop.classList.add('on'); $('styleBtn').classList.add('on');
+  const r = $('styleBtn').getBoundingClientRect();
+  pop.style.left = Math.round(Math.max(6, Math.min(innerWidth - pop.offsetWidth - 6, r.left))) + 'px';
+  pop.style.top = Math.round(Math.min(innerHeight - pop.offsetHeight - 6, r.bottom + 6)) + 'px';
+}
+$('styleBtn').addEventListener('click', toggleStylePop);
+$('dashRow').addEventListener('click', e => {
+  const b = e.target.closest('button[data-d]'); if (!b) return;
+  applyStyle(k => k.d = b.dataset.d, () => S.dash = b.dataset.d);
+});
+$('wRow').addEventListener('click', e => {
+  const b = e.target.closest('button[data-w]'); if (!b) return;
+  const v = +b.dataset.w;
+  applyStyle(k => k.w = v, () => { S.width = v; const sl = $('width'); if (sl) sl.value = v; });
+});
+$('styleCol').addEventListener('click', e => {
+  const k = lastShapeOnPage();
+  openColourPop(e.currentTarget, k ? k.c : S.color, v => { if (v) applyStyle(st => st.c = v, () => setColour(v)); });
+});
+$('styleFill').addEventListener('click', e => {
+  const k = lastShapeOnPage();
+  openColourPop(e.currentTarget, k && k.sh ? k.f : S.fill, v => applyStyle(st => { if (st.sh) st.f = v; }, () => S.fill = v), true);
+});
+document.addEventListener('pointerdown', e => {
+  if (styleOpen() && !e.target.closest('#stylePop') && !e.target.closest('#styleBtn') && !e.target.closest('#colPop')) closeStylePop();
+}, true);
 const shapeName = sh => ({ circle: 'Circle', oval: 'Oval', semi: 'Semicircle', equi: 'Equilateral triangle', isos: 'Isosceles triangle', right: 'Right-angled triangle', square: 'Square', rect: 'Rectangle' })[sh.kind] || (POLY[sh.n] || sh.n + '-sided polygon');
 function shapePts(sh, x0, y0, x1, y1) {
   let w = x1 - x0, h = y1 - y0; const sg = v => (v < 0 ? -1 : 1);
@@ -1440,7 +1559,7 @@ ui.addEventListener('pointerdown', e => {
   }
   if (t === 'pen' || t === 'hl') { const k = newStroke(t, [x, y]); k.sm = true; drag = { m: 'pen', id: e.pointerId, k }; }
   else if (t === 'line') { const [sx, sy, sn] = snapPoint(x, y, e.altKey); drag = { m: 'line', id: e.pointerId, ax: sx, ay: sy, k: newStroke('line', [sx, sy, sx, sy]), snapMark: sn ? [sx, sy] : null }; }
-  else if (t === 'shape') { drag = { m: 'shape', id: e.pointerId, x0: x, y0: y, k: newStroke('line', [x, y]) }; }
+  else if (t === 'shape') { const k = newStroke('line', [x, y]); k.sh = true; k.f = S.fill; drag = { m: 'shape', id: e.pointerId, x0: x, y0: y, k }; }
   else if (t === 'eraser') { drag = { m: 'erase', id: e.pointerId }; if (!eraseItemAt(x, y)) eraseAt(x, y); }
   else if (t === 'compass') {
     const C = S.comp;
@@ -1677,16 +1796,19 @@ async function buildAnnotated() {
         pg.drawImage(emb, { x: ix, y: iy, width: k.w, height: k.h, rotate: L.degrees(deg) });
         continue;
       }
-      const p = k.p; const f = (i) => tf(p[i], p[i + 1]).map(n => n.toFixed(2)).join(' ');
+      const p = renderPts(k); const f = (i) => tf(p[i], p[i + 1]).map(n => n.toFixed(2)).join(' ');
       let path = 'M ' + f(0);
       if (p.length === 2) { const q = tf(p[0] + 0.01, p[1]); path += ' L ' + q[0].toFixed(2) + ' ' + q[1].toFixed(2); }
       else if (k.sm && p.length > 4) {
         for (let i = 2; i < p.length - 2; i += 2) { const m = tf((p[i] + p[i + 2]) / 2, (p[i + 1] + p[i + 3]) / 2); path += ' Q ' + f(i) + ' ' + m[0].toFixed(2) + ' ' + m[1].toFixed(2); }
         path += ' L ' + f(p.length - 2);
       } else for (let i = 2; i < p.length; i += 2) path += ' L ' + f(i);
-      const n = parseInt(k.c.slice(1), 16);
-      const opts = { x: 0, y: 0, borderColor: L.rgb(((n >> 16) & 255) / 255, ((n >> 8) & 255) / 255, (n & 255) / 255), borderWidth: k.w, borderOpacity: k.a };
+      const hex = h => { const n = parseInt(String(h).slice(1), 16); return L.rgb(((n >> 16) & 255) / 255, ((n >> 8) & 255) / 255, (n & 255) / 255); };
+      const opts = { x: 0, y: 0, borderColor: hex(k.c), borderWidth: k.w, borderOpacity: k.a };
       if (L.LineCapStyle) opts.borderLineCap = L.LineCapStyle.Round;
+      const dash = dashFor(k);
+      if (dash) { opts.borderDashArray = dash; opts.borderDashPhase = 0; }
+      if (k.sh && k.f) { opts.color = hex(k.f); opts.opacity = k.a; }   // a filled shape keeps its fill in the file
       pg.drawSvgPath(path, opts);
     }
     if (L.popGraphicsState && L.setLineJoin) pg.pushOperators(L.popGraphicsState());
@@ -1783,7 +1905,7 @@ function toggleProt() {
   updateBar(); redrawUI();
 }
 function setColour(c) {
-  S.color = c; let hit = false; document.querySelectorAll('#colours .sw').forEach(b => { const on = b.dataset.c === c; hit = hit || on; b.classList.toggle('on', on); }); const cp = document.querySelector('.cp'); if (cp) { cp.classList.toggle('on', !hit); if (!hit) cp.style.background = c; } redrawUI();
+  S.color = c; rememberColour(c); let hit = false; document.querySelectorAll('#colours .sw').forEach(b => { const on = b.dataset.c === c; hit = hit || on; b.classList.toggle('on', on); }); const cp = document.querySelector('.cp'); if (cp) { cp.classList.toggle('on', !hit); if (!hit) cp.style.background = c; } redrawUI();
 }
 
 $('openBtn').onclick = $('openBtn2').onclick = () => $('file').click();
@@ -1805,7 +1927,7 @@ $('addPageBtn').onclick = addPage;
 document.querySelectorAll('[data-blank]').forEach(b => b.onclick = () => { $('paper').value = b.dataset.blank; newBlank(b.dataset.blank); });
 document.querySelectorAll('#bar [data-tool]').forEach(b => b.onclick = () => { if (b.dataset.tool === 'shape') { if ($('shapeMenu').classList.contains('on')) $('shapeMenu').classList.remove('on'); else openShapeMenu(); return; } setTool(b.dataset.tool); });
 document.querySelectorAll('#colours .sw').forEach(b => b.onclick = () => setColour(b.dataset.c));
-$('colorPick').oninput = e => setColour(e.target.value);
+$('colorPick').onclick = e => openColourPop(e.currentTarget, S.color, v => { if (v) setColour(v); });
 $('width').oninput = e => S.width = +e.target.value;
 $('rulerBtn').onclick = toggleRuler; $('protBtn').onclick = toggleProt;
 function hideTools() {
@@ -1945,9 +2067,11 @@ $('textBar').addEventListener('click', e => {
     else if (cmd === 'strike') document.execCommand('strikeThrough');
   });
 });
-$('textCol').addEventListener('input', e => {
-  const v = e.target.value;
-  applyToText(() => { document.execCommand('styleWithCSS', false, true); document.execCommand('foreColor', false, v); });
+$('textCol').addEventListener('click', e => {
+  openColourPop(e.currentTarget, editing && editing.c, v => {
+    if (!v) return;
+    applyToText(() => { document.execCommand('styleWithCSS', false, true); document.execCommand('foreColor', false, v); });
+  });
 });
 $('fontMenu').innerHTML = FONTS.map(f =>
   `<button data-font="${f.id}" style="font-family:${f.css}">${f.name}</button>`).join('');
@@ -1979,7 +2103,7 @@ function applyTint() {
   $('tint').style.background = TINT.c || 'transparent'; $('tint').style.opacity = (TINT.op || 100) / 100;
   $('tintBtn').classList.toggle('on', on);
   let hit = false; document.querySelectorAll('#tintMenu .tsw[data-t]').forEach(b => { const o = (b.dataset.t || '') === (TINT.c || ''); hit = hit || o; b.classList.toggle('on', o); });
-  const pk = document.querySelector('#tintMenu label.tsw'); pk.classList.toggle('on', on && !hit); if (on && !hit) pk.querySelector('i').style.background = TINT.c; else pk.querySelector('i').style.background = '';
+  const pk = $('tintPick'); pk.classList.toggle('on', on && !hit); if (on && !hit) pk.querySelector('i').style.background = TINT.c; else pk.querySelector('i').style.background = '';
   $('tintOp').value = TINT.op || 100; $('tintOpV').textContent = (TINT.op || 100) + '%';
   try { localStorage.setItem('ct-tint', JSON.stringify(TINT)); } catch (e) {}
 }
@@ -1988,7 +2112,7 @@ $('tintBtn').onclick = e => {
   if (m.classList.toggle('on')) { const b = $('tintBtn').getBoundingClientRect(); m.style.left = ($('bar').getBoundingClientRect().right + 8) + 'px'; m.style.top = Math.max(6, Math.min(b.top - 20, innerHeight - m.offsetHeight - 6)) + 'px'; }
 };
 $('tintMenu').addEventListener('click', e => { e.stopPropagation(); const b = e.target.closest('.tsw[data-t]'); if (b) { TINT.c = b.dataset.t; applyTint(); } });
-$('tintPick').oninput = e => { TINT.c = e.target.value; applyTint(); };
+$('tintPick').onclick = e => openColourPop(e.currentTarget, TINT.c, v => { if (v) { TINT.c = v; applyTint(); } });
 $('tintOp').oninput = e => { TINT.op = +e.target.value; applyTint(); };
 document.addEventListener('pointerdown', e => { if (!e.target.closest('#tintMenu,#tintBtn')) $('tintMenu').classList.remove('on'); });
 applyTint();

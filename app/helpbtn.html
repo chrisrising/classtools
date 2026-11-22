@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<title>ClassTools help button</title>
+<style>
+  html,body{margin:0;height:100%;background:transparent;overflow:hidden;user-select:none;-webkit-user-select:none}
+  *{-webkit-user-drag:none}
+  button{position:absolute;inset:3px;border-radius:50%;border:1.5px solid rgba(255,255,255,.25);cursor:pointer;
+    background:linear-gradient(160deg,rgba(46,54,70,.95),rgba(18,22,30,.95));color:#cfe0ff;
+    font:800 22px "Segoe UI",system-ui,sans-serif;display:flex;align-items:center;justify-content:center;
+    box-shadow:0 3px 0 rgba(0,0,0,.45),inset 0 1px 0 rgba(255,255,255,.18);padding:0}
+  button:hover{color:#fff;background:linear-gradient(160deg,rgba(58,68,88,.97),rgba(26,32,44,.97))}
+  button:active{transform:translateY(2px);box-shadow:0 1px 0 rgba(0,0,0,.45)}
+</style>
+</head>
+<body>
+<button id="b" title="Hints and tips">?</button>
+<script>
+document.getElementById('b').addEventListener('click', () => { if (window.cc && cc.help) cc.help(); });
+</script>
+</body>
+</html>

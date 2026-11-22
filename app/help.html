@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<title>ClassTools – hints and tips</title>
+<style>
+  :root{--blue:#1f5fa8;--ink:#1a1f28;--muted:#5b6573;--line:#e3e7ee}
+  *{box-sizing:border-box}
+  body{margin:0;font-family:"Segoe UI",system-ui,sans-serif;color:var(--ink);background:#f6f7fa;line-height:1.5}
+  header{background:linear-gradient(160deg,#24304a,#141922);color:#fff;padding:22px 26px}
+  header h1{margin:0 0 4px;font-size:21px}
+  header .by{font-size:14px;opacity:.85}
+  header a{color:#9ec5ff}
+  main{max-width:780px;margin:0 auto;padding:20px 26px 40px}
+  h2{font-size:16px;margin:26px 0 8px;color:var(--blue);border-bottom:2px solid var(--line);padding-bottom:5px}
+  ul{margin:0;padding-left:20px}
+  li{margin-bottom:7px}
+  kbd{display:inline-block;border:1px solid #c6ccd8;border-bottom-width:2px;border-radius:5px;background:#fff;
+    padding:0 5px;font:600 12px "Segoe UI",system-ui;min-width:18px;text-align:center}
+  .tip{background:#fff;border:1px solid var(--line);border-left:4px solid var(--blue);border-radius:8px;padding:10px 14px;margin:14px 0}
+  .tip b{color:var(--blue)}
+  footer{color:var(--muted);font-size:13px;padding:0 26px 30px;max-width:780px;margin:0 auto}
+</style>
+</head>
+<body>
+<header>
+  <h1 id="title">ClassTools</h1>
+  <div class="by">made by Chris Bloor</div>
+  <div class="by">Email: <a href="mailto:chrisdbloor@gmail.com">chrisdbloor@gmail.com</a></div>
+</header>
+<main>
+
+  <div class="tip"><b>The quickest thing to learn:</b> the dock tucks itself away to the side when you
+    leave it alone. Nudge the edge of the screen and it comes back. Drag it to the other side if it
+    is covering something.</div>
+
+  <h2>Writing on whatever is on screen</h2>
+  <ul>
+    <li>The <b>pen</b> button draws over anything &ndash; a website, a video, a photo under the visualiser.</li>
+    <li>Press it again to put the pen away and get the mouse back.</li>
+    <li>The ring of tools that appears has the ruler, protractor and compass in it.</li>
+    <li>Start a line just above the ruler's edge and it comes out perfectly straight.</li>
+  </ul>
+
+  <h2>Worksheets, slides and past papers</h2>
+  <ul>
+    <li>The <b>folder</b> button opens a PDF, PowerPoint or Word file to write on.</li>
+    <li><kbd>P</kbd> pen, <kbd>G</kbd> highlighter, <kbd>L</kbd> line, <kbd>S</kbd> shapes,
+        <kbd>T</kbd> text, <kbd>E</kbd> rubber, <kbd>C</kbd> compass, <kbd>R</kbd> ruler,
+        <kbd>A</kbd> protractor, <kbd>H</kbd> swipe.</li>
+    <li><kbd>Ctrl</kbd>+<kbd>R</kbd> turns the page a quarter turn. Your writing turns with it.</li>
+    <li><b>Save</b> offers the file back in the type you opened &ndash; a PowerPoint stays a PowerPoint,
+        with the text still editable.</li>
+    <li>In swipe mode, drag left and right to change slide, or tap to play the next animation.</li>
+    <li><b>Style</b> changes the line or shape you have just drawn, and sets how the next one
+      comes out: straight, dashed, dotted or hand&#8209;drawn, how thick, what colour, and whether
+      a shape is filled in. Draw it first, look at it on the board, then change your mind.</li>
+    <li>Every colour wheel opens the same picker, with the six colours you used last at the top.</li>
+  </ul>
+
+  <h2>Text boxes and pictures</h2>
+  <ul>
+    <li>Pick <b>Text</b> and click the page to start writing. Click an existing box to carry on from the end.</li>
+    <li>Drag a box to move it; the handle halfway down its right side changes how wide it is;
+        the corner changes the size of the type.</li>
+    <li>The bar above the box does bold, italic, underline, strike through, five fonts and colour.
+        Highlight part of the words to change just that part.</li>
+    <li><kbd>Ctrl</kbd>+<kbd>V</kbd> drops a picture straight onto the page. Drag it about,
+        use the corner to resize and the grip above it to turn it.</li>
+  </ul>
+
+  <h2>Question sheets</h2>
+  <ul>
+    <li>The <b>?</b> button on the dock makes starters and problem&#8209;solving sheets.</li>
+    <li>A fluency starter takes up to three topics and shares the questions between them.</li>
+    <li>Ask for an answers page and it prints on the back.</li>
+  </ul>
+
+  <h2>Keeping the lesson on track</h2>
+  <ul>
+    <li>The <b>objectives</b> button puts the lesson objectives along the bottom of the board,
+        and ticks them off as you go.</li>
+    <li>The <b>timer</b> is readable from the back row. It keeps counting while you teach.</li>
+    <li><b>ShapeXplorer</b> opens shapes, nets, areas and volumes to explore in front of the class.</li>
+  </ul>
+
+  <h2>If something goes wrong</h2>
+  <ul>
+    <li>Windows nagging about an unknown app? Right&#8209;click the zip, Properties, tick <b>Unblock</b>,
+        <em>then</em> extract it.</li>
+    <li>Dock in the way? Drag it to the other side, or let it tuck itself away.</li>
+    <li>Anything else, or an idea for something it should do &ndash; email me. I read all of it.</li>
+  </ul>
+
+</main>
+<footer>Free to use for teaching. Updates at risingmaths.web.app</footer>
+<script>
+if (window.cc && cc.version) cc.version().then(v => {
+  document.getElementById('title').textContent = 'ClassTools V' + v;
+  document.title = 'ClassTools V' + v + ' – hints and tips';
+});
+</script>
+</body>
+</html>

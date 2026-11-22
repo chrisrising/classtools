@@ -66,9 +66,9 @@ select{font:600 14px "Segoe UI",system-ui,sans-serif;padding:7px 10px;border-rad
   <div id="list"></div>
   <div id="settings">
     <div class="srow"><label>Animation</label><div class="seg" id="anims"><button data-anim="swipe"><svg viewBox="0 0 30 22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11h17M15 6l5 5-5 5"/><path d="M24 4v14" opacity=".5"/></svg>Swipe</button><button data-anim="fade"><svg viewBox="0 0 30 22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="5" width="22" height="12" rx="2" stroke-dasharray="2.5 2.5"/><path d="M10 11h10" opacity=".5"/></svg>Fade</button><button data-anim="flip"><svg viewBox="0 0 30 22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="2" width="20" height="18" rx="2.5"/><path d="M5 11h20"/><path d="M9 7h12M9 15h12" opacity=".5"/></svg>Flip clock</button><button data-anim="reel"><svg viewBox="0 0 30 22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="7" y="1.5" width="16" height="19" rx="2"/><path d="M10 6h10M10 11h10M10 16h10" opacity=".6"/><path d="M27 4v14M25 16l2 2 2-2"/></svg>Reel</button></div></div>
-    <div class="srow"><label>Background</label><div class="sws" id="bgs"><button class="sw" data-bg="#121826" style="background:#121826"></button><button class="sw" data-bg="#000000" style="background:#000000"></button><button class="sw" data-bg="#1e3a8a" style="background:#1e3a8a"></button><button class="sw" data-bg="#4c1d95" style="background:#4c1d95"></button><button class="sw" data-bg="#14532d" style="background:#14532d"></button><button class="sw" data-bg="#7f1d1d" style="background:#7f1d1d"></button><button class="sw" data-bg="#ffffff" style="background:#ffffff"></button><button class="sw" data-bg="#fef3c7" style="background:#fef3c7"></button><label class="cpk" title="Any colour"><input type="color" id="bgPick">+</label></div></div>
+    <div class="srow"><label>Background</label><div class="sws" id="bgs"><button class="sw" data-bg="#121826" style="background:#121826"></button><button class="sw" data-bg="#000000" style="background:#000000"></button><button class="sw" data-bg="#1e3a8a" style="background:#1e3a8a"></button><button class="sw" data-bg="#4c1d95" style="background:#4c1d95"></button><button class="sw" data-bg="#14532d" style="background:#14532d"></button><button class="sw" data-bg="#7f1d1d" style="background:#7f1d1d"></button><button class="sw" data-bg="#ffffff" style="background:#ffffff"></button><button class="sw" data-bg="#fef3c7" style="background:#fef3c7"></button><button class="cpk" id="bgPick" data-colpop title="Any colour">+</button></div></div>
     <div class="srow"><label>See-through</label><input type="range" id="op" min="0" max="70" step="5"><span id="opv"></span></div>
-    <div class="srow"><label>Text colour</label><div class="sws" id="fgs"><button class="sw" data-fg="#ffffff" style="background:#ffffff"></button><button class="sw" data-fg="#fde047" style="background:#fde047"></button><button class="sw" data-fg="#67e8f9" style="background:#67e8f9"></button><button class="sw" data-fg="#86efac" style="background:#86efac"></button><button class="sw" data-fg="#000000" style="background:#000000"></button><button class="sw" data-fg="#1e3a8a" style="background:#1e3a8a"></button><label class="cpk" title="Any colour"><input type="color" id="fgPick">+</label></div></div>
+    <div class="srow"><label>Text colour</label><div class="sws" id="fgs"><button class="sw" data-fg="#ffffff" style="background:#ffffff"></button><button class="sw" data-fg="#fde047" style="background:#fde047"></button><button class="sw" data-fg="#67e8f9" style="background:#67e8f9"></button><button class="sw" data-fg="#86efac" style="background:#86efac"></button><button class="sw" data-fg="#000000" style="background:#000000"></button><button class="sw" data-fg="#1e3a8a" style="background:#1e3a8a"></button><button class="cpk" id="fgPick" data-colpop title="Any colour">+</button></div></div>
     <div class="srow"><label>At start-up</label><select id="start"><option value="ask">Show the objective ticker with “Add objectives”</option><option value="show">Carry on with the saved objectives</option><option value="off">Don't show the objective ticker</option></select></div>
   </div>
   <footer>
@@ -78,6 +78,7 @@ select{font:600 14px "Segoe UI",system-ui,sans-serif;padding:7px 10px;border-rad
     <button id="done">Done</button>
   </footer>
 </div>
+<script src="colourpop.js"></script>
 <script>
 (() => {
 const cc = window.cc, listEl = document.getElementById('list');
@@ -121,7 +122,7 @@ function paintStyle() {
   document.querySelectorAll('[data-anim]').forEach(b => b.classList.toggle('on', b.dataset.anim === ST.anim));
   let hb = false; document.querySelectorAll('[data-bg]').forEach(b => { const on = b.dataset.bg.toLowerCase() === (ST.bg || '').toLowerCase(); hb = hb || on; b.classList.toggle('on', on); });
   let hf = false; document.querySelectorAll('[data-fg]').forEach(b => { const on = b.dataset.fg.toLowerCase() === (ST.fg || '').toLowerCase(); hf = hf || on; b.classList.toggle('on', on); });
-  const bp = document.getElementById('bgPick').parentNode, fp = document.getElementById('fgPick').parentNode;
+  const bp = document.getElementById('bgPick'), fp = document.getElementById('fgPick');
   bp.classList.toggle('on', !hb); fp.classList.toggle('on', !hf); if (!hb) bp.style.background = ST.bg; if (!hf) fp.style.background = ST.fg;
   document.getElementById('op').value = 100 - ST.op; document.getElementById('opv').textContent = (100 - ST.op) + '%';
   document.getElementById('start').value = ST.start;
@@ -130,8 +131,8 @@ function setStyle(o) { Object.assign(ST, o); paintStyle(); cc && cc.obj('style',
 document.getElementById('anims').onclick = e => { const b = e.target.closest('[data-anim]'); if (b) setStyle({ anim: b.dataset.anim }); };
 document.getElementById('bgs').onclick = e => { const b = e.target.closest('[data-bg]'); if (b) setStyle({ bg: b.dataset.bg }); };
 document.getElementById('fgs').onclick = e => { const b = e.target.closest('[data-fg]'); if (b) setStyle({ fg: b.dataset.fg }); };
-document.getElementById('bgPick').oninput = e => setStyle({ bg: e.target.value });
-document.getElementById('fgPick').oninput = e => setStyle({ fg: e.target.value });
+document.getElementById('bgPick').onclick = e => openColourPop(e.currentTarget, ST.bg, v => { if (v) setStyle({ bg: v }); });
+document.getElementById('fgPick').onclick = e => openColourPop(e.currentTarget, ST.fg, v => { if (v) setStyle({ fg: v }); });
 document.getElementById('op').oninput = e => setStyle({ op: 100 - e.target.value });
 document.getElementById('start').onchange = e => setStyle({ start: e.target.value });
 document.getElementById('sty').onclick = () => { const on = document.getElementById('settings').classList.toggle('on'); document.getElementById('sty').classList.toggle('on', on); fit(); };
