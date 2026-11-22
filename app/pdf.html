@@ -782,6 +782,8 @@ function drawItem(c, k) {
   }
   if (k.kind === 'text') {
     c.save();
+    if (k.rot) { const b = itemBox(k), cx = b[0] + b[2] / 2, cy = b[1] + b[3] / 2;
+      c.translate(cx, cy); c.rotate(k.rot); c.translate(-cx, -cy); }
     c.font = k.size + 'px ' + FONT; c.fillStyle = k.c; c.textBaseline = 'alphabetic';
     textLines(k).forEach((line, i) => c.fillText(line, k.x, k.y + k.size * 0.95 + i * k.size * 1.25));
     c.restore();
@@ -1011,9 +1013,10 @@ function selBox() { return S.sel ? itemBox(S.sel) : null; }
 function selHandles() {
   const k = S.sel, b = selBox();
   if (!b) return null;
-  const h = { size: [b[0] + b[2], b[1] + b[3]] };                    // corner: bigger / smaller
-  if (k.kind === 'text') h.width = [b[0] + b[2], b[1] + b[3] / 2];   // right edge, halfway down
-  if (k.kind === 'image') h.turn = [b[0] + b[2] / 2, b[1] - 26 / sc()];
+  const out = HANDLE * 0.75 / sc();        // just beyond the edge, clear of the editing box
+  const h = { size: [b[0] + b[2] + out, b[1] + b[3] + out] };        // corner: bigger / smaller
+  if (k.kind === 'text') h.width = [b[0] + b[2] + out, b[1] + b[3] / 2];   // right edge, halfway down
+  h.turn = [b[0] + b[2] / 2, b[1] - 26 / sc()];
   return h;
 }
 
@@ -1095,8 +1098,11 @@ function startEdit(k) {
   t.style.height = Math.round(Math.max(k.size, textHeight(k)) * s) + 'px';
   t.style.fontSize = (k.size * s) + 'px';
   t.style.color = k.c;
+  t.style.transform = k.rot ? 'rotate(' + k.rot + 'rad)' : '';
+  t.style.transformOrigin = 'center center';
   redrawInk();
-  setTimeout(() => { t.focus(); t.select(); }, 0);
+  // The caret goes to the end, so a click carries straight on from what is written.
+  setTimeout(() => { t.focus(); const n = t.value.length; t.setSelectionRange(n, n); }, 0);
 }
 function sizeEditBox() {
   const t = $('textEdit');
@@ -1137,7 +1143,7 @@ function paintUI() {
   if (drag && (drag.m === 'rulRot' || drag.m === 'protRot')) { const o = drag.m === 'rulRot' ? S.ruler : S.prot; pill(c, mathDeg(o.a).toFixed(1) + '°', o.x, o.y - 22 / s); }
   if (S.tool === 'eraser' && hover) { c.beginPath(); c.arc(hover[0], hover[1], 16 / s, 0, Math.PI * 2); c.fillStyle = 'rgba(255,255,255,.4)'; c.fill(); c.strokeStyle = 'rgba(0,0,0,.6)'; c.lineWidth = 1.5 / s; c.stroke(); }
   if (S.tool === 'compass' && !S.comp.placed && !drag && hover) pill(c, 'Press on the centre point, drag out the radius', hover[0], hover[1] - 24 / s);
-  if (S.sel && !editing) drawSelection(c);
+  if (S.sel) drawSelection(c);
 }
 
 /* ---------- shapes ---------- */
@@ -1229,12 +1235,16 @@ ui.addEventListener('pointerdown', e => {
       return;
     }
   }
-  if (e.button !== 1 && (S.tool === 'text' || S.sel)) {
+  // Swipe mode included: a press on something you added takes hold of it rather than
+  // turning the page. The pen and highlighter still draw straight over the top.
+  if (e.button !== 1 && (S.tool === 'text' || S.tool === 'hand' || S.sel)) {
     const hit = itemAt(x, y);
     if (hit) {
       if (editing && editing !== hit) endEdit(true);
+      if (editing === hit) return;              // already writing in it: let the textarea have the press
       selectItem(hit);
-      drag = { m: 'itemMove', id: e.pointerId, k: hit, ox: x - hit.x, oy: y - hit.y, done: false };
+      drag = { m: 'itemMove', id: e.pointerId, k: hit, ox: x - hit.x, oy: y - hit.y, done: false,
+               sx: e.clientX, sy: e.clientY, t0: performance.now() };
       return;
     }
     if (S.sel && S.tool !== 'text') { selectItem(null); }
@@ -1351,7 +1361,16 @@ function endDrag(e) {
   if (!drag || (e && e.pointerId !== drag.id)) return;
   const d = drag; drag = null;
   if (e && e.pointerType !== 'mouse') hover = null;
-  if (d.m === 'itemMove' || d.m === 'itemSize' || d.m === 'itemWidth' || d.m === 'itemTurn') { if (d.k.kind === 'text') fitText(d.k); updateBar(); redrawInk(); redrawUI(); return; }
+  if (d.m === 'itemMove' || d.m === 'itemSize' || d.m === 'itemWidth' || d.m === 'itemTurn') {
+    if (d.k.kind === 'text') fitText(d.k);
+    // Pressed and let go without really moving? That was a click, not a drag, so open
+    // the text for writing. Drag it anywhere and it just moves, as you would expect.
+    const still = d.m === 'itemMove' && e && Math.abs(e.clientX - d.sx) < 5 && Math.abs(e.clientY - d.sy) < 5
+                  && performance.now() - d.t0 < 500;
+    updateBar(); redrawInk(); redrawUI();
+    if (still && d.k.kind === 'text') startEdit(d.k);
+    return;
+  }
   if (d.m === 'pan' && d.swipe) { finishSwipe(d); return; }   // no hover on a whiteboard: don't leave the rubber circle behind
   if (d.m === 'pen' || d.m === 'line' || d.m === 'rline') { if (d.k.p.length >= 2 && !(d.m !== 'pen' && dist(d.k.p[0], d.k.p[1], d.k.p[2], d.k.p[3]) < 0.5 / sc())) addStroke(d.k); }
   else if (d.m === 'shape') {         // keep any shape at least 0.1 cm across
@@ -1419,10 +1438,19 @@ async function buildAnnotated() {
         const col = L.rgb(((n >> 16) & 255) / 255, ((n >> 8) & 255) / 255, (n & 255) / 255);
         // wrap with the real font's own widths, so the saved lines break where they should
         const lines = wrapText(k.text, k.w, t => font.widthOfTextAtSize(t, k.size));
+        // A turned text box turns about its middle on screen, so each line's starting
+        // point has to be swung about that same middle before it is placed.
+        const tb = itemBox(k), tcx = tb[0] + tb[2] / 2, tcy = tb[1] + tb[3] / 2;
+        const tco = Math.cos(k.rot || 0), tsi = Math.sin(k.rot || 0);
+        const swing = (px, py) => (k.rot
+          ? [tcx + (px - tcx) * tco - (py - tcy) * tsi, tcy + (px - tcx) * tsi + (py - tcy) * tco]
+          : [px, py]);
+        const textTurn = L.degrees(rot - (k.rot || 0) * 180 / Math.PI);
         lines.forEach((line, i) => {
           if (!line) return;
-          const [bx, by] = tp(k.x, k.y + k.size * 0.95 + i * k.size * 1.25);
-          pg.drawText(line, { x: bx, y: by, size: k.size, font, color: col, rotate: turn });
+          const [sx, sy] = swing(k.x, k.y + k.size * 0.95 + i * k.size * 1.25);
+          const [bx, by] = tp(sx, sy);
+          pg.drawText(line, { x: bx, y: by, size: k.size, font, color: col, rotate: textTurn });
         });
         continue;
       }
