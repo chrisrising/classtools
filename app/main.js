@@ -13,7 +13,7 @@ app.commandLine.appendSwitch('autoplay-policy', 'no-user-gesture-required');
 app.commandLine.appendSwitch('disable-features', 'CalculateNativeWinOcclusion');
 
 const CALC_W = 420, CALC_H = 960;                // calculator aspect ratio
-const DOCK_W = 70, DOCK_H_BASE = 629, DOCK_H_ANN = 755;
+const DOCK_W = 70, DOCK_H_BASE = 542, DOCK_H_ANN = 660;   // exactly what the buttons need, no slack
 let DOCK_H = DOCK_H_BASE;
 const W = {};                                     // windows
 const hiddenAt = { calc: 0, timer: 0, picker: 0 };
@@ -169,7 +169,7 @@ function toggleTimer() {
 
 /* ---------- screen pen (overlay) + radial menu ---------- */
 const annot = { active: false, mode: 'draw', color: '#7a3cc8', tools: {}, tool: 'pen' };
-const RAD_W = 250, RAD_H = 400;
+const RAD_W = 270, RAD_H = 440;   // room for the wider fan
 function createOverlay() {
   const d = screen.getDisplayMatching(W.dock.getBounds()).bounds;
   W.overlay = new BrowserWindow({ ...d, frame: false, transparent: true, backgroundColor: '#00000000', hasShadow: false, resizable: false, movable: false,
@@ -334,27 +334,6 @@ function togglePdf() {
   else W.pdf.focus();
 }
 
-/* ---------- Polypad (online maths manipulatives) ---------- */
-const POLYPAD_URL = 'https://polypad.amplify.com/p/';
-function togglePolypad() {
-  if (annot.active && annot.mode === 'draw') setAnnotMode('pointer');
-  if (W.poly && !W.poly.isDestroyed()) {
-    if (!W.poly.isVisible() || W.poly.isMinimized()) { W.poly.show(); W.poly.restore(); W.poly.maximize(); W.poly.focus(); }
-    else if (W.poly.isFocused()) W.poly.minimize(); else W.poly.focus();
-    return;
-  }
-  W.poly = new BrowserWindow({ show: false, width: 1280, height: 800, title: 'Polypad – ClassTools', autoHideMenuBar: true, icon: path.join(__dirname, 'icon.png'), backgroundColor: '#ffffff' });
-  W.poly.setMenu(null);
-  W.poly.webContents.setWindowOpenHandler(({ url }) => { if (/^https?:/i.test(url)) shell.openExternal(url); return { action: 'deny' }; });
-  W.poly.webContents.on('did-fail-load', (e, code, desc, url, main) => {
-    if (!main || code === -3) return;
-    W.poly.loadURL('data:text/html;charset=utf-8,' + encodeURIComponent(`<body style="font:18px system-ui;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;background:#f4f6fb;color:#333"><div style="text-align:center"><h2>Polypad needs the internet</h2><p>ClassTools couldn't reach polypad.amplify.com (${desc}).</p><button onclick="location.href='${POLYPAD_URL}'" style="font:700 16px system-ui;padding:10px 20px;border-radius:10px;border:0;background:#2457d6;color:#fff;cursor:pointer">Try again</button></div></body>`));
-  });
-  W.poly.on('close', e => { if (!quitting) { e.preventDefault(); W.poly.hide(); } });   // keep the board for later in the lesson
-  W.poly.once('ready-to-show', () => { W.poly.maximize(); W.poly.show(); });
-  W.poly.loadURL(POLYPAD_URL);
-}
-
 /* ---------- menus & quitting ---------- */
 async function pdfDirty() {
   if (!W.pdf || W.pdf.isDestroyed()) return false;
@@ -379,7 +358,7 @@ const models = () => [['cw', 'CW (current calculator)'], ['plus', 'PLUS (natural
   label: l, click: () => { W.calc.webContents.send('model', m); if (!W.calc.isVisible()) showCalc(); } }));
 function dockMenu() {
   popup(W.dock, [
-    { label: 'Calculator', click: toggleCalc }, { label: 'Open a document…', click: openDocs }, { label: 'Page / document pen', click: togglePdf }, { label: 'Screen pen tools…', click: toggleRadial }, { label: 'Clear screen drawings', click: clearAnnot }, { label: 'Timer', click: toggleTimer }, { label: 'Polypad', click: togglePolypad }, { label: 'ShapeXplorer', click: toggleShapes }, { label: 'Objective ticker', type: 'checkbox', checked: tickerOn(), click: () => setTicker(!tickerOn()) }, { label: 'Cancel timer', click: () => W.timer.webContents.send('timer-cancel') },
+    { label: 'Calculator', click: toggleCalc }, { label: 'Open a document…', click: openDocs }, { label: 'Page / document pen', click: togglePdf }, { label: 'Screen pen tools…', click: toggleRadial }, { label: 'Clear screen drawings', click: clearAnnot }, { label: 'Timer', click: toggleTimer }, { label: 'ShapeXplorer', click: toggleShapes }, { label: 'Objective ticker', type: 'checkbox', checked: tickerOn(), click: () => setTicker(!tickerOn()) }, { label: 'Cancel timer', click: () => W.timer.webContents.send('timer-cancel') },
     { label: 'Extension questions', click: () => togglePicker('ext') }, { label: 'Fluency starter', click: () => togglePicker('flu') },
     { type: 'separator' },
     { label: 'Tuck dock into the side when not in use', type: 'checkbox', checked: autoTuck(), click: () => { cfg.autoTuck = !autoTuck(); saveCfg(); if (autoTuck()) armTuck(); else setTucked(false); } },
@@ -409,7 +388,7 @@ ipcMain.on('win-move', (e, x, y) => {
   if (w === W.dock && !dockState.tucked) { dockState.dragging = true; clearTimeout(dockState.snapT); dockState.snapT = setTimeout(() => { if (dockState.dragging) { dockState.dragging = false; snapDock(); } }, 1200); }
 });
 ipcMain.on('dock', (e, name) => {
-  if (['calc', 'docs', 'pen', 'timer', 'qs', 'ext', 'flu', 'ptr', 'rub', 'obj', 'rx', 'poly', 'shapes'].includes(name)) armTuck();
+  if (['calc', 'docs', 'pen', 'timer', 'qs', 'ext', 'flu', 'ptr', 'rub', 'obj', 'rx', 'shapes'].includes(name)) armTuck();
   if (name === 'calc') toggleCalc();
   else if (name === 'docs') openDocs();
   else if (name === 'pen') toggleRadial();
@@ -418,7 +397,6 @@ ipcMain.on('dock', (e, name) => {
   else if (name === 'quit') confirmQuit();
   else if (name === 'obj') setTicker(!tickerOn());
   else if (name === 'rx') toggleReact();
-  else if (name === 'poly') togglePolypad();
   else if (name === 'shapes') toggleShapes();
   else if (name === 'timer') toggleTimer();
   else if (name === 'qs') togglePicker(pickerMode);   // one button for both sheets; the picker has tabs
@@ -728,7 +706,7 @@ app.whenReady().then(() => {
       tray.setToolTip('ClassTools');
       tray.setContextMenu(Menu.buildFromTemplate([
         { label: 'Show dock', click: () => { W.dock.show(); setTucked(false); } },
-        { label: 'Calculator', click: toggleCalc }, { label: 'Page / document pen', click: togglePdf }, { label: 'Screen pen tools…', click: toggleRadial }, { label: 'Clear screen drawings', click: clearAnnot }, { label: 'Timer', click: toggleTimer }, { label: 'Polypad', click: togglePolypad },
+        { label: 'Calculator', click: toggleCalc }, { label: 'Page / document pen', click: togglePdf }, { label: 'Screen pen tools…', click: toggleRadial }, { label: 'Clear screen drawings', click: clearAnnot }, { label: 'Timer', click: toggleTimer },
         { label: 'Reset positions', click: () => { cfg.dock = null; cfg.clock = null; saveCfg(); setTucked(false); W.dock.show(); } },
         { type: 'separator' }, { label: 'Quit ClassTools', click: confirmQuit }]));
       tray.on('click', () => { W.dock.show(); setTucked(false); });

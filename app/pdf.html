@@ -92,7 +92,10 @@
   .trow{display:flex;align-items:center;gap:8px;margin-top:10px;font-weight:600;font-size:13px}
   .trow input{flex:1}
   .trow b{width:40px;text-align:right}
-  #links{position:absolute;pointer-events:none;z-index:4}
+  #textEdit{position:absolute;display:none;z-index:6;margin:0;padding:0;border:2px dashed #2457d6;border-radius:3px;
+  background:rgba(255,255,255,.92);color:#111;font-family:Helvetica,Arial,sans-serif;line-height:1.25;
+  resize:none;overflow:hidden;outline:none;box-shadow:0 2px 10px rgba(0,0,0,.2)}
+#links{position:absolute;pointer-events:none;z-index:4}
   #links .lk{position:absolute;border-radius:4px;cursor:pointer;pointer-events:none}
   body.links-on #links .lk{pointer-events:auto}
   body.links-on #links .lk:hover,body.links-on #links .lk:active{background:rgba(36,87,214,.12);box-shadow:0 0 0 2px rgba(36,87,214,.45)}
@@ -206,6 +209,8 @@
       <button class="tile" data-tool="line" title="Straight line (L)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 19L19 5"/><circle cx="5" cy="19" r="1.6"/><circle cx="19" cy="5" r="1.6"/></svg><span>Line</span></button>
       <button class="tile" data-tool="shape" id="shapeBtn" title="Draw a shape (S)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 20l5-9 5 9z"/><rect x="13" y="4" width="8" height="8"/><circle cx="17" cy="17" r="3.5"/></svg><span id="shapeLbl">Shapes</span></button>
       <button class="tile" data-tool="compass" title="Compass (C)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="4" r="2"/><path d="M11 6L6 21M13 6l5 15"/><path d="M4 16a9 6 0 0 0 16 0" stroke-dasharray="2 2"/></svg><span>Compass</span></button>
+      <button class="tile" data-tool="text" title="Text box (T) – click the page to write, drag the corner to resize"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 6V4h14v2M12 4v16M9 20h6"/></svg><span>Text</span></button>
+      <button class="tile" id="imgBtn" title="Add a picture – or just paste one with Ctrl+V"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="8.5" cy="10" r="1.5"/><path d="M21 16l-5-5-6 6-2-2-5 5"/></svg><span>Picture</span></button>
       <button class="tile" data-tool="eraser" title="Rubber (E)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 20h12M5 15l9-9 5 5-9 9H8z"/><path d="M9.5 10.5l5 5"/></svg><span>Rubber</span></button>
     </div>
     <div id="compOpts">
@@ -268,6 +273,7 @@
     <div id="tint"></div>
     <canvas id="ink"></canvas>
     <canvas id="ui"></canvas>
+    <textarea id="textEdit" spellcheck="false"></textarea>
     <div id="links"></div>
   </div>
   <div id="empty">
@@ -320,7 +326,7 @@ const S = {
   comp: { placed: false, cx: 0, cy: 0, r: 4 * CM, ang: 0 },
 };
 window.__isDirty = () => S.dirty;
-window.__t = { S, save: () => savePdf(), build: () => buildAnnotated(), rotate: q => rotateDoc(q), load: (b, n) => loadBytes(b, n) };   // test hook
+window.__t = { S, save: () => savePdf(), build: () => buildAnnotated(), rotate: q => rotateDoc(q), load: (b, n) => loadBytes(b, n), tool: t => setTool(t), addImage, redraw: () => { redrawInk(); redrawUI(); }, items: () => S.ann[AK()] || [] };   // test hook
 S.groups = null; let pendingBuilds = null;
 const G = (p = S.page) => S.groups && S.groups[p - 1];
 const AK = (p = S.page) => { const g = G(p); return g ? g.key : p; };
@@ -460,7 +466,18 @@ function rotateDoc(step) {
     for (const key of Object.keys(S.ann)) {
       const d = S.dim[key]; if (!d) continue;          // a page never shown has nothing drawn on it
       const H = d[1];
-      for (const k of (S.ann[key] || [])) { const p = k.p; for (let i = 0; i < p.length; i += 2) { const x = p[i], y = p[i + 1]; p[i] = H - y; p[i + 1] = x; } }
+      for (const k of (S.ann[key] || [])) {
+        if (k.kind) {
+          // A text box or picture travels round with the page but keeps its own
+          // orientation, so writing stays readable and a photo isn't left squashed.
+          const bw = k.w, bh = (k.kind === 'image' ? k.h : Math.max(k.size, textHeight(k)));
+          const cx = k.x + bw / 2, cy = k.y + bh / 2;
+          k.x = H - cy - bw / 2; k.y = cx - bh / 2;
+          continue;
+        }
+        const p = k.p;
+        for (let i = 0; i < p.length; i += 2) { const x = p[i], y = p[i + 1]; p[i] = H - y; p[i + 1] = x; }
+      }
       S.dim[key] = [d[1], d[0]];
     }
     const H = S.ph;
@@ -666,6 +683,8 @@ async function followLink(url, dest) {
 }
 function goPage(n) {
   if (!S.doc || n < 1 || n > S.n) return;
+  if (editing) endEdit(true);
+  S.sel = null;
   S.page = n; drag = null; renderPage(); updateBar(); wrap.scrollTop = MARGIN * sc() - 16;
 }
 
@@ -682,21 +701,88 @@ function drawStroke(c, k) {
   c.save(); c.globalAlpha = k.a; c.strokeStyle = k.c; c.lineWidth = k.w; c.lineCap = 'round'; c.lineJoin = 'round';
   strokePath(c, k); c.stroke(); c.restore();
 }
+/* ---------- text boxes and pictures ----------
+   These live in the same per-page list as the ink, so undo, erase, page turns
+   and saving all treat them the same way. A stroke has no `kind`; the new ones
+   are kind 'text' and kind 'image'.                                        */
+const FONT = 'Helvetica, Arial, sans-serif';
+const imgCache = {};                 // src -> HTMLImageElement, so a redraw doesn't reload
+
+function getImg(src) {
+  let im = imgCache[src];
+  if (!im) {
+    im = imgCache[src] = new Image();
+    im.onload = () => redrawInk();   // first load arrives late; draw again once it is here
+    im.src = src;
+  }
+  return im;
+}
+
+/** Splits text into lines that fit `w`, using whatever measurer is passed in. */
+function wrapText(text, w, measure) {
+  const out = [];
+  String(text == null ? '' : text).split('\n').forEach(para => {
+    const words = para.split(/ /);
+    let line = '';
+    for (const word of words) {
+      const next = line ? line + ' ' + word : word;
+      if (line && measure(next) > w) { out.push(line); line = word; } else line = next;
+    }
+    out.push(line);
+  });
+  return out;
+}
+
+function textLines(k) {
+  const c = inkX;
+  c.save(); c.font = k.size + 'px ' + FONT;
+  const lines = wrapText(k.text, k.w, t => c.measureText(t).width);
+  c.restore();
+  return lines;
+}
+
+/** How tall a text box ends up, which is what its outline and hit area use. */
+function textHeight(k) { return textLines(k).length * k.size * 1.25; }
+
+function itemBox(k) {
+  if (k.kind === 'image') return [k.x, k.y, k.w, k.h];
+  if (k.kind === 'text') return [k.x, k.y, k.w, Math.max(k.size, textHeight(k))];
+  return null;
+}
+
+function drawItem(c, k) {
+  if (k.kind === 'image') {
+    const im = getImg(k.src);
+    if (im.complete && im.naturalWidth) c.drawImage(im, k.x, k.y, k.w, k.h);
+    else { c.save(); c.strokeStyle = '#94a3b8'; c.lineWidth = 1; c.strokeRect(k.x, k.y, k.w, k.h); c.restore(); }
+    return;
+  }
+  if (k.kind === 'text') {
+    c.save();
+    c.font = k.size + 'px ' + FONT; c.fillStyle = k.c; c.textBaseline = 'alphabetic';
+    textLines(k).forEach((line, i) => c.fillText(line, k.x, k.y + k.size * 0.95 + i * k.size * 1.25));
+    c.restore();
+    return;
+  }
+  drawStroke(c, k);
+}
+
 function redrawInk() {
   const s = sc(), d = dpr();
   inkX.setTransform(1, 0, 0, 1, 0, 0); inkX.clearRect(0, 0, inkC.width, inkC.height);
   inkX.setTransform(s * d, 0, 0, s * d, 0, 0);
-  for (const k of (S.ann[AK()] || [])) drawStroke(inkX, k);
+  for (const k of (S.ann[AK()] || [])) drawItem(inkX, k);
 }
 function snapshot() {
-  S.undo.push({ pg: AK(), list: (S.ann[AK()] || []).slice() }); if (S.undo.length > 300) S.undo.shift();
+  S.undo.push({ pg: AK(), list: (S.ann[AK()] || []).map(k => (k && k.kind) ? Object.assign({}, k) : k) }); if (S.undo.length > 300) S.undo.shift();
   S.redo = []; S.dirty = true; updateBar();
 }
-function addStroke(k) { snapshot(); (S.ann[AK()] = S.ann[AK()] || []).push(k); drawStroke(inkX, k); }
+function addStroke(k) { snapshot(); (S.ann[AK()] = S.ann[AK()] || []).push(k); drawItem(inkX, k); }
 function restore(from, to) {
   const u = from.pop(); if (!u) return;
+  S.sel = null; if (editing) endEdit(false);
   if (u.all) { to.push({ all: { ...S.ann } }); S.ann = { ...u.all }; S.dirty = true; redrawInk(); updateBar(); return; }
-  to.push({ pg: u.pg, list: (S.ann[u.pg] || []).slice() }); S.ann[u.pg] = u.list; S.dirty = true;
+  to.push({ pg: u.pg, list: (S.ann[u.pg] || []).map(k => (k && k.kind) ? Object.assign({}, k) : k) }); S.ann[u.pg] = u.list; S.dirty = true;
   if (u.pg !== S.page) goPage(u.pg); else redrawInk(); updateBar();
 }
 function newStroke(kind, pts) {
@@ -707,10 +793,27 @@ function segDist(px, py, ax, ay, bx, by) {
   const dx = bx - ax, dy = by - ay, l = dx * dx + dy * dy; let t = l ? ((px - ax) * dx + (py - ay) * dy) / l : 0;
   t = Math.max(0, Math.min(1, t)); return Math.hypot(px - ax - t * dx, py - ay - t * dy);
 }
+/** The rubber lifts a whole text box or picture, rather than nibbling at it. */
+function eraseItemAt(x, y) {
+  const list = S.ann[AK()] || [];
+  for (let i = list.length - 1; i >= 0; i--) {
+    const k = list[i], b = itemBox(k);
+    if (b && x >= b[0] && x <= b[0] + b[2] && y >= b[1] && y <= b[1] + b[3]) {
+      if (!drag || !drag.erased) { snapshot(); if (drag) drag.erased = true; }
+      list.splice(i, 1); if (S.sel === k) S.sel = null;
+      redrawInk(); redrawUI(); updateBar();
+      return true;
+    }
+  }
+  return false;
+}
+
 function eraseAt(x, y) {
   const list = S.ann[AK()]; if (!list || !list.length) return;
+  // text boxes and pictures are lifted whole by eraseItemAt; they have no points to test here
   const r = 16 / sc(); const keep = [];
   for (const k of list) {
+    if (k.kind) { keep.push(k); continue; }      // a text box or picture has no points to rub at
     const p = k.p, lim = r + k.w / 2; let hit = false;
     if (p.length === 2) hit = dist(x, y, p[0], p[1]) < lim;
     for (let i = 0; i < p.length - 2 && !hit; i += 2) if (segDist(x, y, p[i], p[i + 1], p[i + 2], p[i + 3]) < lim) hit = true;
@@ -866,6 +969,88 @@ function pill(c, text, x, y, bg) {
   c.fillStyle = bg || 'rgba(20,28,45,.88)'; c.fill(); c.fillStyle = '#fff'; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText(text, x, y + 0.5 / s); c.restore();
 }
 
+/* ---------- selecting, moving and resizing a text box or picture ---------- */
+S.sel = null;                 // the item currently selected, or null
+S.textSize = 18;              // remembered between text boxes
+const HANDLE = 11;            // corner grab square, in screen pixels
+
+function selBox() { return S.sel ? itemBox(S.sel) : null; }
+
+/** Where the resize corner sits, in page units. */
+function selHandle() { const b = selBox(); return b && [b[0] + b[2], b[1] + b[3]]; }
+
+function selectItem(k) { S.sel = k || null; redrawUI(); }
+
+/** The topmost text box or picture under a point, if any. */
+function itemAt(x, y) {
+  const list = S.ann[AK()] || [];
+  for (let i = list.length - 1; i >= 0; i--) {
+    const k = list[i], b = itemBox(k);
+    if (b && x >= b[0] && x <= b[0] + b[2] && y >= b[1] && y <= b[1] + b[3]) return k;
+  }
+  return null;
+}
+
+function deleteSel() {
+  if (!S.sel) return;
+  const list = S.ann[AK()] || [], i = list.indexOf(S.sel);
+  if (i < 0) return;
+  snapshot(); list.splice(i, 1); S.sel = null; redrawInk(); redrawUI(); updateBar();
+}
+
+/** The dashed outline and corner grab, drawn over the page. */
+function drawSelection(c) {
+  const b = selBox(); if (!b) return;
+  const s = sc();
+  c.save();
+  c.setLineDash([6 / s, 4 / s]); c.strokeStyle = '#2457d6'; c.lineWidth = 1.5 / s;
+  c.strokeRect(b[0], b[1], b[2], b[3]);
+  c.setLineDash([]);
+  const h = HANDLE / s;
+  c.fillStyle = '#fff'; c.strokeStyle = '#2457d6'; c.lineWidth = 2 / s;
+  c.fillRect(b[0] + b[2] - h / 2, b[1] + b[3] - h / 2, h, h);
+  c.strokeRect(b[0] + b[2] - h / 2, b[1] + b[3] - h / 2, h, h);
+  c.restore();
+}
+
+/* The editing box is a real textarea sitting exactly where the text will be
+   drawn, so what you type is what you get. */
+let editing = null;
+function startEdit(k) {
+  const t = $('textEdit'), s = sc(), r = ui.getBoundingClientRect(), st = stage.getBoundingClientRect();
+  editing = k;
+  t.value = k.text || '';
+  t.style.display = 'block';
+  t.style.left = Math.round(r.left - st.left + (MARGIN + k.x) * s) + 'px';
+  t.style.top = Math.round(r.top - st.top + (MARGIN + k.y) * s) + 'px';
+  t.style.width = Math.round(k.w * s) + 'px';
+  t.style.height = Math.round(Math.max(k.size, textHeight(k)) * s) + 'px';
+  t.style.fontSize = (k.size * s) + 'px';
+  t.style.color = k.c;
+  redrawInk();
+  setTimeout(() => { t.focus(); t.select(); }, 0);
+}
+function sizeEditBox() {
+  const t = $('textEdit');
+  if (!editing) return;
+  t.style.height = 'auto';
+  t.style.height = Math.max(t.scrollHeight, editing.size * sc()) + 'px';
+}
+function endEdit(keep) {
+  const t = $('textEdit'), k = editing;
+  if (!k) return;
+  editing = null; t.style.display = 'none'; t.blur();
+  const text = t.value.trim();
+  const list = S.ann[AK()] || [];
+  if (!keep || !text) {
+    const i = list.indexOf(k);
+    if (i >= 0) { list.splice(i, 1); if (S.sel === k) S.sel = null; }
+  } else if (text !== k.text) {
+    k.text = text;
+  }
+  S.dirty = true; redrawInk(); redrawUI(); updateBar();
+}
+
 let uiQueued = false;
 function redrawUI() { if (uiQueued) return; uiQueued = true; requestAnimationFrame(() => { uiQueued = false; paintUI(); }); }
 function paintUI() {
@@ -874,7 +1059,7 @@ function paintUI() {
   if (!S.doc) return;
   uiX.setTransform(s * d, 0, 0, s * d, MARGIN * s * d, MARGIN * s * d);
   const c = uiX;
-  if (drag && drag.k) drawStroke(c, drag.k);
+  if (drag && drag.k && !drag.k.kind) drawStroke(c, drag.k);
   if (S.ruler.on) drawRuler(c);
   if (S.prot.on) drawProt(c);
   if (S.tool === 'compass') drawCompass(c);
@@ -883,6 +1068,7 @@ function paintUI() {
   if (drag && (drag.m === 'rulRot' || drag.m === 'protRot')) { const o = drag.m === 'rulRot' ? S.ruler : S.prot; pill(c, mathDeg(o.a).toFixed(1) + '°', o.x, o.y - 22 / s); }
   if (S.tool === 'eraser' && hover) { c.beginPath(); c.arc(hover[0], hover[1], 16 / s, 0, Math.PI * 2); c.fillStyle = 'rgba(255,255,255,.4)'; c.fill(); c.strokeStyle = 'rgba(0,0,0,.6)'; c.lineWidth = 1.5 / s; c.stroke(); }
   if (S.tool === 'compass' && !S.comp.placed && !drag && hover) pill(c, 'Press on the centre point, drag out the radius', hover[0], hover[1] - 24 / s);
+  if (S.sel && !editing) drawSelection(c);
 }
 
 /* ---------- shapes ---------- */
@@ -961,6 +1147,34 @@ ui.addEventListener('pointerdown', e => {
   const h = e.button === 1 ? null : hitInstrument(x, y);
   if (h && h.m === 'compClose') { S.comp.placed = false; drag = null; setTool('pen'); redrawUI(); return; }
   if (h) { drag = h; drag.id = e.pointerId; redrawUI(); return; }
+  // A selected text box or picture can be dragged about, or resized by its corner,
+  // whatever tool is in hand - so you can write, draw, and still nudge things around.
+  if (S.sel && e.button !== 1) {
+    const hd = selHandle(), s = sc();
+    if (hd && Math.abs(x - hd[0]) < HANDLE / s && Math.abs(y - hd[1]) < HANDLE / s) {
+      const b = selBox();
+      drag = { m: 'itemSize', id: e.pointerId, k: S.sel, ox: x, oy: y, w0: b[2], h0: b[3], size0: S.sel.size, done: false };
+      return;
+    }
+  }
+  if (e.button !== 1 && (S.tool === 'text' || S.sel)) {
+    const hit = itemAt(x, y);
+    if (hit) {
+      if (editing && editing !== hit) endEdit(true);
+      selectItem(hit);
+      drag = { m: 'itemMove', id: e.pointerId, k: hit, ox: x - hit.x, oy: y - hit.y, done: false };
+      return;
+    }
+    if (S.sel && S.tool !== 'text') { selectItem(null); }
+  }
+  if (S.tool === 'text' && e.button !== 1) {
+    if (editing) { endEdit(true); return; }
+    selectItem(null);
+    const k = { kind: 'text', x, y, w: Math.min(260, Math.max(120, S.pw - x - 10)), size: S.textSize, c: S.color, text: '' };
+    snapshot(); (S.ann[AK()] = S.ann[AK()] || []).push(k);
+    selectItem(k); startEdit(k);
+    return;
+  }
   if (S.tool === 'hand' || e.button === 1 || (e.pointerType === 'touch' && S.sawPen)) {
     drag = { m: 'pan', id: e.pointerId, sx: e.clientX, sy: e.clientY, sl: wrap.scrollLeft, st: wrap.scrollTop, t0: performance.now(), dx: 0, swipe: S.tool === 'hand' && S.n > 1 && S.pw * sc() <= wrap.clientWidth + 4 }; stage.classList.remove('anim'); return;
   }
@@ -971,7 +1185,7 @@ ui.addEventListener('pointerdown', e => {
   if (t === 'pen' || t === 'hl') { const k = newStroke(t, [x, y]); k.sm = true; drag = { m: 'pen', id: e.pointerId, k }; }
   else if (t === 'line') { const [sx, sy, sn] = snapPoint(x, y, e.altKey); drag = { m: 'line', id: e.pointerId, ax: sx, ay: sy, k: newStroke('line', [sx, sy, sx, sy]), snapMark: sn ? [sx, sy] : null }; }
   else if (t === 'shape') { drag = { m: 'shape', id: e.pointerId, x0: x, y0: y, k: newStroke('line', [x, y]) }; }
-  else if (t === 'eraser') { drag = { m: 'erase', id: e.pointerId }; eraseAt(x, y); }
+  else if (t === 'eraser') { drag = { m: 'erase', id: e.pointerId }; if (!eraseItemAt(x, y)) eraseAt(x, y); }
   else if (t === 'compass') {
     const C = S.comp;
     if (!C.placed) { const [sx, sy] = snapPoint(x, y, e.altKey); C.cx = sx; C.cy = sy; C.r = 0.01; drag = { m: 'compSet', id: e.pointerId }; }
@@ -990,6 +1204,23 @@ function updRuleLine(u1) {
   drag.label = fmtCm(Math.abs(u1 - drag.u0)); const [lx, ly] = toWorld(R, (drag.u0 + u1) / 2, -22 / sc()); drag.lx = lx; drag.ly = ly;
 }
 ui.addEventListener('pointermove', e => {
+  if (drag && (drag.m === 'itemMove' || drag.m === 'itemSize')) {
+    const [mx, my] = ptOf(e), k = drag.k;
+    if (!drag.done) { snapshot(); drag.done = true; }        // one undo step for the whole drag
+    if (drag.m === 'itemMove') { k.x = mx - drag.ox; k.y = my - drag.oy; }
+    else {
+      const w = Math.max(24, drag.w0 + (mx - drag.ox));
+      if (k.kind === 'image') {
+        k.w = w; k.h = Math.max(16, drag.h0 * (w / drag.w0));   // pictures keep their shape
+      } else {
+        k.w = w;
+        k.size = Math.max(6, Math.round(drag.size0 * (w / drag.w0)));   // text grows with the box
+        S.textSize = k.size;
+      }
+    }
+    S.dirty = true; redrawInk(); redrawUI();
+    return;
+  }
   if (!S.doc) return;
   const [x, y] = ptOf(e);
   if (!drag || S.tool === 'eraser') hover = [x, y];
@@ -1012,7 +1243,7 @@ ui.addEventListener('pointermove', e => {
     drag.label = lineLabel(drag.ax, drag.ay, bx, by); drag.lx = (drag.ax + bx) / 2; drag.ly = (drag.ay + by) / 2 - 18 / sc();
   } else if (m === 'rline') { const [u] = toLocal(S.ruler, x, y); updRuleLine(Math.max(-RUL.m, Math.min(S.ruler.L * CM + RUL.m, u))); }
   else if (m === 'shape') { const r = shapePts(S.shape, drag.x0, drag.y0, x, y); drag.k.p = r.p; drag.label = r.label; drag.lx = r.lx; drag.ly = r.ly; }
-  else if (m === 'erase') { const evs = e.getCoalescedEvents ? e.getCoalescedEvents() : []; for (const ev of evs) { const [qx, qy] = ptOf(ev); eraseAt(qx, qy); } eraseAt(x, y); }
+  else if (m === 'erase') { const evs = e.getCoalescedEvents ? e.getCoalescedEvents() : []; for (const ev of evs) { const [qx, qy] = ptOf(ev); eraseAt(qx, qy); } if (!eraseItemAt(x, y)) eraseAt(x, y); }
   else if (m === 'rulMove') { S.ruler.x = x - drag.ox; S.ruler.y = y - drag.oy; }
   else if (m === 'protMove') { S.prot.x = x - drag.ox; S.prot.y = y - drag.oy; }
   else if (m === 'rulRot') {
@@ -1043,6 +1274,7 @@ function endDrag(e) {
   if (!drag || (e && e.pointerId !== drag.id)) return;
   const d = drag; drag = null;
   if (e && e.pointerType !== 'mouse') hover = null;
+  if (d.m === 'itemMove' || d.m === 'itemSize') { updateBar(); redrawUI(); return; }
   if (d.m === 'pan' && d.swipe) { finishSwipe(d); return; }   // no hover on a whiteboard: don't leave the rubber circle behind
   if (d.m === 'pen' || d.m === 'line' || d.m === 'rline') { if (d.k.p.length >= 2 && !(d.m !== 'pen' && dist(d.k.p[0], d.k.p[1], d.k.p[2], d.k.p[3]) < 0.5 / sc())) addStroke(d.k); }
   else if (d.m === 'shape') {         // keep any shape at least 0.1 cm across
@@ -1067,8 +1299,20 @@ function setCursor(x, y) {
 wrap.addEventListener('wheel', e => { if (!S.doc || !(e.ctrlKey || e.metaKey)) return; e.preventDefault(); setZoom(sc() * Math.exp(-e.deltaY * 0.0025), e.clientX, e.clientY); }, { passive: false });
 
 /* ---------- save ---------- */
+/** The raw bytes behind a data: URL, for handing to pdf-lib. */
+function dataUrlBytes(src) {
+  const i = String(src).indexOf(',');
+  if (i < 0) return null;
+  try {
+    const bin = atob(src.slice(i + 1)), out = new Uint8Array(bin.length);
+    for (let j = 0; j < bin.length; j++) out[j] = bin.charCodeAt(j);
+    return out;
+  } catch (err) { return null; }
+}
+
 async function buildAnnotated() {
   const L = PDFLib; const d = await L.PDFDocument.load(S.bytes.slice(), { ignoreEncryption: true });
+  let font = null;                       // embedded only if some page actually has text on it
   const pages = d.getPages();
   // Turned on screen, the file saves turned: every page carries the extra rotation, which is also
   // the space the writing was recorded in, so the ink maths below lands it in the right place.
@@ -1080,8 +1324,35 @@ async function buildAnnotated() {
       if (rot === 90) { px = vy; py = vx; } else if (rot === 180) { px = cb.width - vx; py = vy; }
       else if (rot === 270) { px = cb.width - vy; py = cb.height - vx; } else { px = vx; py = cb.height - vy; }
       return [cb.x + px, -(cb.y + py)]; };
+    // tf is shaped for drawSvgPath, which flips y itself. Text and pictures are placed
+    // with pdf-lib's ordinary y-up coordinates, so undo that negation.
+    const tp = (vx, vy) => { const q = tf(vx, vy); return [q[0], -q[1]]; };
+    const turn = L.degrees(rot);
     if (L.pushGraphicsState && L.setLineJoin && L.LineJoinStyle) pg.pushOperators(L.pushGraphicsState(), L.setLineJoin(L.LineJoinStyle.Round));
     for (const k of list) {
+      if (k.kind === 'text') {
+        if (!font) font = await d.embedFont(L.StandardFonts.Helvetica);
+        const n = parseInt(k.c.slice(1), 16);
+        const col = L.rgb(((n >> 16) & 255) / 255, ((n >> 8) & 255) / 255, (n & 255) / 255);
+        // wrap with the real font's own widths, so the saved lines break where they should
+        const lines = wrapText(k.text, k.w, t => font.widthOfTextAtSize(t, k.size));
+        lines.forEach((line, i) => {
+          if (!line) return;
+          const [bx, by] = tp(k.x, k.y + k.size * 0.95 + i * k.size * 1.25);
+          pg.drawText(line, { x: bx, y: by, size: k.size, font, color: col, rotate: turn });
+        });
+        continue;
+      }
+      if (k.kind === 'image') {
+        const bytes = dataUrlBytes(k.src);
+        if (!bytes) continue;
+        let emb;
+        try { emb = /^data:image\/jpe?g/i.test(k.src) ? await d.embedJpg(bytes) : await d.embedPng(bytes); }
+        catch (err) { continue; }
+        const [ix, iy] = tp(k.x, k.y + k.h);      // the picture's own origin, in display terms
+        pg.drawImage(emb, { x: ix, y: iy, width: k.w, height: k.h, rotate: turn });
+        continue;
+      }
       const p = k.p; const f = (i) => tf(p[i], p[i + 1]).map(n => n.toFixed(2)).join(' ');
       let path = 'M ' + f(0);
       if (p.length === 2) { const q = tf(p[0] + 0.01, p[1]); path += ' L ' + q[0].toFixed(2) + ' ' + q[1].toFixed(2); }
@@ -1160,6 +1431,8 @@ function setHint() {
   $('hint').textContent = S.doc ? h : 'Open a PDF or start with blank paper.';
 }
 function setTool(t) {
+  if (editing) endEdit(true);
+  if (t !== 'text' && S.sel) S.sel = null;
   document.body.classList.toggle('links-on', t === 'hand'); S.tool = t; document.querySelectorAll('#bar [data-tool]').forEach(b => b.classList.toggle('on', b.dataset.tool === t));
   $('compOpts').style.display = t === 'compass' ? 'flex' : 'none'; setHint(); redrawUI();
 }
@@ -1249,6 +1522,64 @@ $('zoomIn').onclick = () => setZoom(sc() * 1.2); $('zoomOut').onclick = () => se
 $('fitBtn').onclick = () => S.doc && fitPage();
 $('saveBtn').onclick = savePdf;
 $('rotBtn').onclick = () => rotateDoc(90);
+
+/* ---------- pictures ---------- */
+/** Drops a picture onto the middle of what you can see, sized to fit the page. */
+function addImage(src) {
+  if (!S.doc) return toast('Open a document first');
+  const im = new Image();
+  im.onload = () => {
+    const maxW = Math.min(S.pw * 0.6, 420);
+    let w = Math.min(im.naturalWidth, maxW), h = im.naturalHeight * (w / im.naturalWidth);
+    if (h > S.ph * 0.6) { h = S.ph * 0.6; w = im.naturalWidth * (h / im.naturalHeight); }
+    const s = sc();
+    // the centre of the visible part of the page, so it lands where you are looking
+    const cx = (wrap.scrollLeft + wrap.clientWidth / 2) / s - MARGIN;
+    const cy = (wrap.scrollTop + wrap.clientHeight / 2) / s - MARGIN;
+    const k = { kind: 'image', src, x: Math.max(4, Math.min(S.pw - w - 4, cx - w / 2)),
+                y: Math.max(4, Math.min(S.ph - h - 4, cy - h / 2)), w, h };
+    imgCache[src] = im;
+    addStroke(k); selectItem(k); updateBar();
+    toast('Picture added \u2013 drag it about, or drag its corner to resize');
+  };
+  im.onerror = () => toast('That picture could not be read');
+  im.src = src;
+}
+
+function imageFromFile(file) {
+  if (!file || !/^image\//.test(file.type)) return false;
+  const r = new FileReader();
+  r.onload = () => addImage(r.result);
+  r.readAsDataURL(file);
+  return true;
+}
+
+$('imgBtn').onclick = () => {
+  const inp = document.createElement('input');
+  inp.type = 'file'; inp.accept = 'image/*';
+  inp.onchange = () => { if (inp.files && inp.files[0]) imageFromFile(inp.files[0]); };
+  inp.click();
+};
+
+document.addEventListener('paste', e => {
+  if (editing) return;                       // typing into a text box pastes text, as you would expect
+  const items = (e.clipboardData && e.clipboardData.items) || [];
+  for (const it of items) {
+    if (it.type && it.type.indexOf('image') === 0) {
+      const f = it.getAsFile();
+      if (f && imageFromFile(f)) { e.preventDefault(); return; }
+    }
+  }
+});
+
+/* ---------- the text editing box ---------- */
+$('textEdit').addEventListener('input', sizeEditBox);
+$('textEdit').addEventListener('blur', () => { if (editing) endEdit(true); });
+$('textEdit').addEventListener('keydown', e => {
+  e.stopPropagation();                       // the page's own shortcuts shouldn't fire while typing
+  if (e.key === 'Escape') { e.preventDefault(); endEdit(false); }
+  if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); endEdit(true); }
+});
 /* ---------- size the tools to the screen ---------- */
 let barW = 0;
 function fitBar() {
@@ -1298,8 +1629,10 @@ document.addEventListener('keydown', e => {
   if ((e.ctrlKey || e.metaKey) && k === 's') { e.preventDefault(); savePdf(); return; }
   if ((e.ctrlKey || e.metaKey) && k === 'r') { e.preventDefault(); rotateDoc(90); return; }
   if (e.ctrlKey || e.metaKey || e.altKey) return;
+  if (e.key === 'Delete' || e.key === 'Backspace') { if (S.sel) { e.preventDefault(); deleteSel(); } return; }
+  if (e.key === 'Escape' && S.sel) { e.preventDefault(); selectItem(null); return; }
   if (k === 's') { openShapeMenu(); return; }
-  const map = { p: 'pen', g: 'hl', l: 'line', c: 'compass', e: 'eraser', h: 'hand' };
+  const map = { p: 'pen', g: 'hl', l: 'line', c: 'compass', e: 'eraser', h: 'hand', t: 'text' };
   if (map[k]) setTool(map[k]);
   else if (k === 'r') toggleRuler(); else if (k === 'a') toggleProt();
   else if (e.key === 'ArrowRight' || e.key === 'PageDown' || (e.key === ' ' && S.tool === 'hand')) nextStep();

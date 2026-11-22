@@ -7,13 +7,13 @@
 *{box-sizing:border-box;-webkit-user-drag:none}
 html,body{margin:0;height:100%;overflow:hidden;background:transparent;user-select:none;-webkit-user-select:none;touch-action:none;font-family:"Segoe UI",system-ui,sans-serif}
 #fan{position:absolute;inset:0}
-.item{position:absolute;width:76px;height:76px;margin:-38px 0 0 -38px;border-radius:50%;border:0;padding:0;cursor:pointer;
-  background:radial-gradient(circle at 50% 30%,#fff,#dfe3ea);box-shadow:0 4px 0 rgba(0,0,0,.45),0 6px 14px rgba(0,0,0,.35);display:flex;flex-direction:column;align-items:center;justify-content:center;
+.item{position:absolute;width:76px;height:76px;margin:-38px 0 0 -38px;border-radius:50%;border:3px solid #fff;padding:0;cursor:pointer;
+  background:#eceff4;box-shadow:0 4px 0 rgba(0,0,0,.45),0 6px 14px rgba(0,0,0,.35);display:flex;flex-direction:column;align-items:center;justify-content:center;
   transform:scale(.2);opacity:0;transition:transform .18s cubic-bezier(.2,1.5,.4,1),opacity .15s}
 body.open .item{transform:scale(1);opacity:1}
 .item svg{width:34px;height:34px}
 .item span{font-size:10.5px;font-weight:800;color:#222;margin-top:1px;letter-spacing:.02em}
-.item.on{background:radial-gradient(circle at 50% 30%,#f0fff4,#bbf7d0);box-shadow:0 0 0 3px #22c55e,0 0 16px 4px rgba(34,197,94,.7),0 4px 0 rgba(0,0,0,.45)}
+.item.on{background:#c9f7d6;box-shadow:0 0 0 3px #22c55e,0 0 16px 4px rgba(34,197,94,.7),0 4px 0 rgba(0,0,0,.45)}
 .item:active{transform:scale(.94)}
 .col{position:absolute;width:30px;height:30px;margin:-15px 0 0 -15px;border-radius:50%;border:3px solid #fff;cursor:pointer;padding:0;box-shadow:0 2px 6px rgba(0,0,0,.5);transform:scale(.2);opacity:0;transition:transform .18s .05s,opacity .15s .05s}
 body.open .col{transform:scale(1);opacity:1}
@@ -51,12 +51,12 @@ let state = { side: 'right', color: '#7a3cc8', active: {}, annotActive: false, p
 function build() {
   const W = innerWidth, H = innerHeight, cx = state.side === 'right' ? W - 36 : 36, cy = H / 2, dir = state.side === 'right' ? -1 : 1;
   let h = `<div id="hub" style="left:${cx}px;top:${cy}px">✕</div>`;
-  const items = state.annotActive ? [...ITEMS, ['away', 'Put pen away']] : ITEMS, n = items.length, span = n > 6 ? 172 : 156, rr = n > 6 ? 146 : 136;
+  const items = state.annotActive ? [...ITEMS, ['away', 'Put pen away']] : ITEMS, n = items.length, span = 170, rr = n > 6 ? 170 : 150;
   document.body.classList.toggle('many', n > 6);
   items.forEach(([id, label], i) => { const a = (-span / 2 + i * span / (n - 1)) * Math.PI / 180, r = rr;
     h += `<button class="item${state.active[id] ? ' on' : ''}${id === 'away' ? ' away' : ''}" data-id="${id}" style="left:${cx + dir * r * Math.cos(a)}px;top:${cy + r * Math.sin(a)}px;transition-delay:${i * 25}ms">${ICON[id]}<span>${label}</span></button>`; });
   const custom = !COLS.includes(state.color);
-  [...COLS, 'pick'].forEach((c, i) => { const a = (-60 + i * 24) * Math.PI / 180, r = 66;
+  [...COLS, 'pick'].forEach((c, i) => { const a = (-70 + i * 28) * Math.PI / 180, r = 84;
     const bg = c === 'pick' ? (custom ? state.color : 'conic-gradient(red,yellow,lime,cyan,blue,magenta,red)') : c;
     h += `<button class="col${(c === state.color || (c === 'pick' && custom)) ? ' on' : ''}${c === 'pick' ? ' pick' : ''}" data-c="${c}" title="${c === 'pick' ? 'More colours' : ''}" style="left:${cx + dir * r * Math.cos(a)}px;top:${cy + r * Math.sin(a)}px;background:${bg}">${c === 'pick' ? '<b>+</b>' : ''}</button>`; });
   if (state.picking) h += `<div id="grid" style="${state.side === 'right' ? 'right:58px' : 'left:58px'}">${GRID.map(c => `<button class="g${c === state.color ? ' on' : ''}" data-g="${c}" style="background:${c}"></button>`).join('')}<div class="gl">Pick a pen colour</div></div>`;

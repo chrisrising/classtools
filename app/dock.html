@@ -16,16 +16,16 @@ body.left #tab{border-radius:0 16px 16px 0;border-left:0}body.right #tab{border-
 #tab .tt.on{display:block}#tab .tt.done{background:#ffb400;color:#3a2600}
 body.tucked #dock{display:none}body.tucked #tab{display:flex}
 #dock{position:absolute;inset:4px;border-radius:36px;background:linear-gradient(160deg,rgba(46,54,70,.93),rgba(18,22,30,.93));border:1.5px solid rgba(255,255,255,.2);
-  display:flex;flex-direction:column;align-items:center;gap:9px;padding:9px 0 12px;cursor:grab;box-shadow:inset 0 1px 0 rgba(255,255,255,.18)}
+  display:flex;flex-direction:column;align-items:center;gap:9px;padding:8px 0 8px;cursor:grab;box-shadow:inset 0 1px 0 rgba(255,255,255,.18)}
 #dock.dragging{cursor:grabbing}
-.grip{width:24px;height:5px;border-radius:3px;background:rgba(255,255,255,.3);margin-bottom:1px}
+.grip{display:none}
 button{width:50px;height:50px;border-radius:50%;border:0;padding:0;background:radial-gradient(circle at 50% 30%,#ffffff,#d3d7df);display:flex;align-items:center;justify-content:center;cursor:pointer;position:relative;
   box-shadow:0 3px 0 rgba(0,0,0,.45),inset 0 1px 0 #fff;transition:transform .08s}
 button:active{transform:translateY(2px);box-shadow:0 1px 0 rgba(0,0,0,.45)}
 button svg{width:30px;height:30px}
 /* A short screen (an older projector, say) gets smaller buttons so the whole dock still fits. */
-@media (max-height:700px){#bar{gap:6px}button{width:42px;height:42px}button svg{width:25px;height:25px}}
-@media (max-height:580px){#bar{gap:4px}button{width:36px;height:36px}button svg{width:21px;height:21px}}
+@media (max-height:541px){#dock{gap:6px}button{width:42px;height:42px}button svg{width:25px;height:25px}}
+@media (max-height:469px){#dock{gap:4px}button{width:36px;height:36px}button svg{width:21px;height:21px}}
 #quit{background:radial-gradient(circle at 50% 30%,#ff6b6b,#c81e1e)}
 .sep{display:none;width:34px;height:2px;border-radius:2px;background:rgba(255,255,255,.3);margin:-2px 0}
 .ann{display:none}
@@ -75,9 +75,6 @@ body.annot.pointer #pen{box-shadow:0 3px 0 rgba(0,0,0,.45),inset 0 1px 0 #fff}
   </button>
   <button id="rx" title="Reactions (sound effects)">
     <svg viewBox="0 0 32 32"><circle cx="15" cy="17" r="11" fill="#facc15" stroke="#a16207" stroke-width="1.6"/><circle cx="11" cy="15" r="1.7" fill="#3f2a00"/><circle cx="19" cy="15" r="1.7" fill="#3f2a00"/><path d="M9.5 20.5q5.5 5 11 0" fill="none" stroke="#3f2a00" stroke-width="1.8" stroke-linecap="round"/><path d="M26 3.5l1 2.6 2.6 1-2.6 1-1 2.6-1-2.6-2.6-1 2.6-1z" fill="#fff" stroke="#2457d6" stroke-width="1"/></svg>
-  </button>
-  <button id="poly" title="Polypad (virtual maths manipulatives – needs internet)">
-    <svg viewBox="0 0 32 32"><path d="M4 26l7-12 7 12z" fill="#ef4444" stroke="#7f1d1d" stroke-width="1.2" stroke-linejoin="round"/><rect x="15" y="4" width="11" height="11" rx="1.2" fill="#3b82f6" stroke="#1e3a8a" stroke-width="1.2"/><path d="M19 17l5 0 2.5 4.3-2.5 4.3h-5l-2.5-4.3z" fill="#22c55e" stroke="#14532d" stroke-width="1.2" stroke-linejoin="round"/><circle cx="8.5" cy="8.5" r="4.2" fill="#facc15" stroke="#a16207" stroke-width="1.2"/></svg>
   </button>
   <button id="shapes" title="ShapeXplorer (3D solids and 2D shapes)">
     <svg viewBox="0 0 32 32"><path d="M16 4l11 6.3v12.4L16 29 5 22.7V10.3z" fill="#14b8a6" stroke="#0f5e57" stroke-width="1.5" stroke-linejoin="round"/><path d="M5 10.3L16 16.6 27 10.3M16 16.6V29" fill="none" stroke="#0f5e57" stroke-width="1.5" stroke-linejoin="round"/><path d="M16 16.6L27 10.3V22.7L16 29z" fill="#0d9488" opacity=".45"/></svg>
