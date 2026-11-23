@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Page & Document Pen</title>
+<title>ClassTools Presenter</title>
 <script src="lib/pdf.min.js"></script>
 <script src="lib/pdf-lib.min.js"></script>
 <style>
@@ -14,11 +14,53 @@
   *{box-sizing:border-box}
   html,body{margin:0;height:100%;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;color:var(--ink);background:var(--bg)}
   body{display:flex;flex-direction:row;overflow:hidden;box-sizing:border-box;height:100vh}
-  #bar{flex:none;background:linear-gradient(180deg,#f8f9fc,#eef1f7);border-right:1px solid var(--line);z-index:5;box-shadow:2px 0 8px rgba(0,0,0,.05);overflow-y:auto;overflow-x:hidden;scrollbar-width:thin}
+  #bar{flex:none;background:linear-gradient(180deg,#f8f9fc,#eef1f7);border-right:1px solid var(--line);z-index:5;box-shadow:2px 0 8px rgba(0,0,0,.05);overflow:hidden}
   #barIn{width:142px;box-sizing:border-box;display:flex;flex-direction:column;gap:2px;padding:8px 8px 10px}
   #barIn .g2>*,#barIn .g3>*,#reactions>*,#colours>*{min-width:0}
   #bar button.rx{padding:3px 0!important}
   #barIn .sec{min-width:0}
+  /* Three ways to show the sidebar: as it is, a narrow strip of icons, or out of the
+     way altogether. On a board, space matters more than labels once you know the tools. */
+  #barIn.icons{width:48px;padding:5px 4px 8px;align-items:center}
+  #barIn.icons .h,#barIn.icons span,#barIn.icons small,#barIn.icons .nrow{display:none}
+  #barIn.icons .g2,#barIn.icons .g3,#barIn.icons .pager{display:flex;flex-direction:column;gap:3px}
+  #barIn.icons button.tile{min-height:0!important;width:38px;height:34px;padding:0;justify-content:center;border-radius:9px}
+  #barIn.icons button.tile svg{width:19px;height:19px}
+  #barIn.icons .sec{gap:3px;padding-bottom:5px;margin-bottom:4px;border-bottom:1px solid var(--line);align-items:center}
+  /* Paging and zoom read top to bottom in this width, with the page number between the arrows. */
+  #barIn.icons .pager{background:none;border:0;padding:0;width:38px}
+  #barIn.icons .pager button{width:38px;height:28px;border-radius:8px;border:1px solid var(--line);background:#fff}
+  #barIn.icons .pager button svg{width:15px;height:15px}
+  #barIn.icons #pageInfo{font-size:11px;padding:1px 0;text-align:center}
+  #barIn.icons #zoomInfo{display:none}
+  .fiti{display:none}
+  #barIn.icons .fiti{display:block;width:17px;height:17px;margin:0 auto}
+  #barIn.icons #zoomIn .pl{display:none}
+  #barIn.icons #zoomOut{display:none}
+  #barIn.icons #zoomIn{order:1}
+  #barIn.icons #fitBtn{order:2;height:24px}
+  #barIn.icons .pager #fitBtn small{display:block;font-size:11px;font-weight:700;color:#2a3242;text-transform:none;letter-spacing:0}
+  #barIn.icons #builds{display:none}
+  /* Three dots instead of a slider, and four colours instead of six. */
+  #barIn.icons .wrow{display:flex;flex-direction:row;gap:4px;justify-content:center;background:none;border:0;padding:0}
+  #barIn.icons .wrow input,#barIn.icons .wrow .dot{display:none}
+  #barIn.icons #colours{display:grid;grid-template-columns:1fr 1fr;gap:4px;width:38px}
+  #barIn.icons #colours .sw,#barIn.icons #colours .cp{width:17px;height:17px}
+  #barIn.icons #colours [data-c="#138a36"],#barIn.icons #colours [data-c="#f2c200"]{display:none}
+  /* One face, which opens the rest. */
+  #barIn.icons #reactions{display:block;width:38px}
+  #barIn.icons #reactions .rx{display:none}
+  #barIn.icons #redoBtn{display:none}
+  #barIn.icons .wdots{display:flex}
+  .wdots{display:none;gap:2px;justify-content:center;align-items:center;padding:1px 0}
+  .wdots button{border:0;background:none;border-radius:5px;padding:0;cursor:pointer;
+    display:flex;align-items:center;justify-content:center;width:11px;height:15px}
+  .wdots button.on{background:var(--accbg)}
+  .wdots button.on i{background:var(--acc)}
+  .wdots i{display:block;border-radius:50%;background:var(--ink)}
+  #rxOne{display:none;width:38px;height:34px;border:1px solid var(--line);background:#fff;border-radius:9px;
+    cursor:pointer;font-size:17px;line-height:1;padding:0}
+  #barIn.icons #rxOne{display:block}
   #barIn.cols2{display:block;width:276px;column-count:2;column-gap:8px;column-fill:balance}
   #barIn.cols2 .sec{break-inside:avoid;-webkit-column-break-inside:avoid;display:flex}
   #barIn.cols2 .sec:nth-last-child(1){border-bottom:0}
@@ -33,6 +75,8 @@
   #bar button.tile.cursor{min-height:32px;padding:2px}
   #bar button.tile.cursor svg{width:22px;height:22px}
   .g2{display:grid;grid-template-columns:1fr 1fr;gap:5px}
+  /* Every tool tile the same size, whether its name fits on one line or two. */
+  #bar .g3 button.tile:not(.span2),#bar .g2 button.tile:not(.span2){min-height:54px}
   #bar button.tile{flex-direction:column;justify-content:center;gap:3px;width:100%;min-height:38px;padding:2px 1px 2px;border-radius:10px;background:#fff;border:1px solid #dde2ec;box-shadow:0 1px 0 rgba(20,30,60,.08);font-size:10.5px;font-weight:600;color:#2a3242;white-space:normal;text-align:center;line-height:1.1;transition:background .12s,transform .08s,box-shadow .12s}
   #bar button.tile svg{width:18px;height:18px}
   #bar button.tile span{max-width:100%;overflow:hidden;text-overflow:ellipsis}
@@ -60,8 +104,6 @@
   .pager button{width:30px;height:28px;justify-content:center;font-size:20px;font-weight:700;border-radius:9px}
   .pager button svg{width:20px;height:20px}
   .pager span{flex:1;text-align:center;font-weight:700}
-  #compOpts{flex-direction:column;gap:5px;background:#fff;border:1px solid #dde2ec;border-radius:12px;padding:8px}
-  #compOpts label{font-size:12.5px;display:flex;align-items:center;gap:5px}
   .edge{position:absolute;top:50%;z-index:6;width:58px;height:58px;margin-top:-29px;border-radius:50% !important;justify-content:center;background:rgba(255,255,255,.88) !important;border:1px solid #d4dae6 !important;box-shadow:0 4px 14px rgba(0,0,0,.18);color:#2457d6;display:none !important;opacity:.85}
   .edge svg{width:30px;height:30px}
   .edge.l{left:14px}.edge.r{right:24px}
@@ -75,6 +117,9 @@
   #builds i.on{background:#2457d6}
   #fxC{pointer-events:none;display:none}
   #stage{isolation:isolate}
+  /* No z-index: the paper must stay under the writing, which is the next canvas along.
+     With one it floated above the ink and you could not write on the page at all. */
+  #bg{position:absolute;pointer-events:none}
   #tint{position:absolute;pointer-events:none;mix-blend-mode:multiply;display:none}
   body.tinted #tint{display:block}
   #bar button.tile.on#tintBtn{background:linear-gradient(180deg,#3a6cf0,#2457d6)}
@@ -111,6 +156,102 @@
     padding:4px;border-radius:10px;background:#1f2430;box-shadow:0 6px 18px rgba(0,0,0,.4);min-width:150px}
   #fontMenu.on{display:flex}
   #fontMenu button{width:100%;height:32px;justify-content:flex-start;padding:0 9px;font-size:14px}
+  /* The same little bubble the text boxes get, for a line or a shape. */
+  #shapeBar{position:absolute;display:none;z-index:8;gap:3px;padding:4px;border-radius:10px;
+    background:#1f2430;box-shadow:0 6px 18px rgba(0,0,0,.4);align-items:center}
+  #shapeBar.on{display:flex}
+  #shapeBar button{width:30px;height:30px;border:0;border-radius:7px;background:#2c3342;color:#e8ecf5;
+    cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0}
+  #shapeBar button:hover{background:#3b465c}
+  #shapeBar button.on{background:#2457d6;color:#fff}
+  #shapeBar svg{width:22px;height:14px;display:block}
+  #shapeBar #shapeDel svg,#shapeBar #shapeDup svg{width:22px;height:22px}
+  #shapeBar #shapeDup:hover{background:#2457d6;color:#fff}
+  #shapeBar #shapeDel:hover{background:#7f1d1d;color:#fff}
+  #shapeBar .sep{width:1px;height:21px;background:#3d4759;margin:0 2px;flex:0 0 auto}
+  #shapeBar .sw{position:relative;overflow:hidden}
+  #shapeBar .sw i{position:absolute;inset:4px;border-radius:50%;border:2px solid #fff;box-sizing:border-box}
+  #shapeBar .sw.wheel i{background:conic-gradient(red,yellow,lime,cyan,blue,magenta,red)}
+  #shapeBar .sw.empty i{background:#fff}
+  #shapeBar .sw.empty i:after{content:"";position:absolute;left:-15%;top:43%;width:130%;height:14%;background:#e23;transform:rotate(-45deg)}
+  /* The custom shape builder: squared paper like ShapeXplorer, so a shape can be plotted
+     corner by corner and then dropped onto the page. */
+  #customWrap{position:fixed;inset:0;display:none;z-index:60;background:rgba(15,20,30,.45);align-items:center;justify-content:center}
+  #customWrap.on{display:flex}
+  #customBox{background:#fff;border-radius:16px;box-shadow:0 20px 60px rgba(0,0,0,.35);padding:14px;max-width:min(96vw,760px)}
+  #customBox .hd{display:flex;align-items:baseline;gap:10px;margin-bottom:10px}
+  #customBox .hd b{font-size:16px}
+  #customBox .hd span{font-size:12.5px;color:var(--mut)}
+  #customBox .hd button{margin-left:auto;border:0;background:none;font-size:22px;line-height:1;cursor:pointer;color:var(--mut)}
+  #cuGrid{display:block;border:1px solid var(--line);border-radius:10px;background:#fff;touch-action:none;cursor:crosshair}
+  #customBox .ft{display:flex;align-items:center;gap:8px;margin-top:10px;flex-wrap:wrap}
+  #customBox .ft .lbl{font-size:12px;color:var(--mut)}
+  #customBox .seg{display:flex;gap:3px;background:#eef1f6;border-radius:9px;padding:3px}
+  #customBox .seg button{border:0;background:none;border-radius:7px;padding:5px 9px;font-size:12.5px;cursor:pointer}
+  #customBox .seg button.on{background:var(--acc);color:#fff}
+  #cuInfo{font-size:12.5px;color:var(--mut);margin-left:4px;min-width:130px}
+  #customBox .ft > button{border:1px solid var(--line);background:#fff;border-radius:9px;padding:7px 11px;font-size:13px;cursor:pointer}
+  #customBox .ft > button.primary{background:var(--acc);color:#fff;border-color:var(--acc);margin-left:auto}
+  #customBox .ft > button[disabled]{opacity:.45;cursor:default}
+  /* Tap the ruler and this asks what it should be marked in. */
+  #unitPop{position:fixed;display:none;z-index:45;background:#1f2430;border-radius:12px;padding:8px;
+    box-shadow:0 10px 30px rgba(0,0,0,.45);gap:4px;align-items:center}
+  #unitPop.on{display:flex}
+  #unitPop p{margin:0 6px 0 4px;color:#9fb0cc;font:700 10.5px system-ui,sans-serif;letter-spacing:.05em;text-transform:uppercase}
+  #unitPop button{border:0;background:#2c3342;color:#e8ecf5;border-radius:8px;padding:7px 11px;font:600 13px system-ui,sans-serif;cursor:pointer}
+  #unitPop button:hover{background:#3b465c}
+  #unitPop button.on{background:#2457d6;color:#fff}
+  /* Paper is chosen when a new document is made, rather than sitting in the sidebar. */
+  #paperWrap{position:fixed;inset:0;display:none;z-index:60;background:rgba(15,20,30,.45);align-items:center;justify-content:center}
+  #paperWrap.on{display:flex}
+  #paperBox{background:#fff;border-radius:16px;box-shadow:0 20px 60px rgba(0,0,0,.35);padding:16px;width:min(94vw,470px)}
+  #paperBox .hd{display:flex;align-items:baseline;gap:9px;margin-bottom:12px}
+  #paperBox .hd b{font-size:16px}
+  #paperBox .hd span{font-size:12.5px;color:var(--mut)}
+  #paperBox .hd button{margin-left:auto;border:0;background:none;font-size:22px;line-height:1;cursor:pointer;color:var(--mut)}
+  #paperBox .pg{display:grid;grid-template-columns:repeat(3,1fr);gap:9px}
+  #paperBox .pg button{border:1px solid var(--line);border-radius:12px;background:#fff;cursor:pointer;padding:9px 6px 8px;
+    display:flex;flex-direction:column;align-items:center;gap:7px;font:600 12px system-ui,sans-serif;color:var(--ink)}
+  #paperBox .pg button:hover{border-color:#9fb4ee;background:var(--accbg)}
+  #paperBox .pg i{display:block;border:1.5px solid #9aa6bb;border-radius:3px;background:#fff}
+  /* Every page at a glance: tap the page number and jump straight to the one you want. */
+  #pagesWrap{position:fixed;inset:0;display:none;z-index:60;background:rgba(15,20,30,.45);align-items:center;justify-content:center}
+  #pagesWrap.on{display:flex}
+  #pagesBox{background:#fff;border-radius:16px;box-shadow:0 20px 60px rgba(0,0,0,.35);padding:16px;width:min(94vw,780px);max-height:88vh;display:flex;flex-direction:column}
+  #pagesBox .hd{display:flex;align-items:baseline;gap:9px;margin-bottom:12px}
+  #pagesBox .hd b{font-size:16px}
+  #pagesBox .hd span{font-size:12.5px;color:var(--mut)}
+  #pagesBox .hd button{margin-left:auto;border:0;background:none;font-size:22px;line-height:1;cursor:pointer;color:var(--mut)}
+  #pagesBox .pg{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;overflow:auto;padding:2px}
+  #pagesBox .pg button{border:1.5px solid var(--line);border-radius:10px;background:#fff;cursor:pointer;padding:6px;
+    display:flex;flex-direction:column;align-items:center;gap:5px;font:600 11.5px system-ui,sans-serif;color:var(--mut)}
+  #pagesBox .pg button:hover{border-color:#9fb4ee;background:var(--accbg)}
+  #pagesBox .pg button.on{border-color:var(--acc);box-shadow:0 0 0 2px var(--accbg);color:var(--acc)}
+  #pagesBox .pg canvas{display:block;width:100%;height:auto;border:1px solid #e3e8f0;border-radius:5px;background:#fff}
+  /* What the page itself is: plain, squared, graph or lined, in whatever colour. */
+  #bgPop{position:fixed;display:none;z-index:46;background:#1f2430;border-radius:12px;padding:10px;
+    box-shadow:0 10px 30px rgba(0,0,0,.45);width:248px}
+  #bgPop.on{display:block}
+  #bgPop .ttl{color:#9fb0cc;font:700 10.5px system-ui,sans-serif;letter-spacing:.06em;text-transform:uppercase;margin:0 0 6px}
+  #bgPop .row{display:flex;gap:6px;margin-bottom:9px}
+  #bgPop .row:last-child{margin-bottom:0}
+  #bgPop button{flex:1;border:0;background:#2c3342;border-radius:9px;padding:5px 3px 4px;cursor:pointer;
+    display:flex;flex-direction:column;align-items:center;gap:3px;color:#cdd6e6;font:600 9.5px system-ui,sans-serif}
+  #bgPop button:hover{background:#3b465c}
+  #bgPop button.on{background:#2457d6;color:#fff}
+  #bgPop svg{width:100%;height:auto;display:block}
+  #bgPop svg rect{fill:#fff;stroke:#8e99ad;stroke-width:1}
+  #bgPop svg .g path{stroke:#9ab4d8;stroke-width:1;fill:none}
+  #bgPop svg .f path{stroke:#d3e0ef;stroke-width:.7;fill:none}
+  #bgPop button.wide{flex:1 0 100%;flex-direction:row;justify-content:flex-start;gap:8px;padding:8px 10px;font-size:12.5px}
+  #bgPop i{width:16px;height:16px;border-radius:50%;border:2px solid #fff;box-shadow:0 0 0 1px rgba(0,0,0,.4);flex:0 0 auto}
+  /* The reactions, opened from the single face in the narrow sidebar. */
+  #rxPop{position:fixed;display:none;z-index:46;background:#1f2430;border-radius:12px;padding:7px;
+    box-shadow:0 10px 30px rgba(0,0,0,.45);grid-template-columns:repeat(3,1fr);gap:5px}
+  #rxPop.on{display:grid}
+  #rxPop button{border:0;background:#2c3342;border-radius:9px;width:40px;height:36px;font-size:19px;
+    line-height:1;cursor:pointer;padding:0}
+  #rxPop button:hover{background:#3b465c}
 #links{position:absolute;pointer-events:none;z-index:4}
   #links .lk{position:absolute;border-radius:4px;cursor:pointer;pointer-events:none}
   body.links-on #links .lk{pointer-events:auto}
@@ -159,6 +300,13 @@
   #pdfC{background:#fff;box-shadow:0 2px 10px rgba(0,0,0,.18)}
   #ui{touch-action:none}
   #empty{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;padding:20px}
+  /* Shown over an open document too, when Open is pressed. */
+  #empty.over{background:rgba(15,20,30,.4);z-index:55}
+  #empty.over .card{box-shadow:0 20px 60px rgba(0,0,0,.35)}
+  #empty #emptyX{position:absolute;top:8px;right:12px;border:0;background:none;font-size:22px;line-height:1;
+    cursor:pointer;color:var(--mut);padding:0;display:none}
+  #empty.over #emptyX{display:block}
+  .card{position:relative}
   .card{background:#fff;border-radius:16px;padding:28px 30px;max-width:520px;text-align:center;box-shadow:0 4px 24px rgba(0,0,0,.08)}
   .card h1{font-size:22px;margin:0 0 6px}
   .card p{color:var(--mut);margin:0 0 18px;font-size:14px;line-height:1.5}
@@ -170,19 +318,33 @@
   #toast{position:fixed;left:50%;bottom:44px;transform:translateX(-50%);background:#1d2433;color:#fff;padding:9px 14px;border-radius:10px;font-size:13px;opacity:0;transition:opacity .2s;pointer-events:none;z-index:20}
   #modal{position:fixed;inset:0;background:rgba(20,25,35,.35);display:none;align-items:center;justify-content:center;z-index:30}
   #modal .card{max-width:380px}
-  #compOpts{display:none}
   #busy{position:fixed;inset:0;background:rgba(20,25,35,.35);display:none;align-items:center;justify-content:center;z-index:35}
   #busy .card{min-width:300px}
   .spin{width:42px;height:42px;margin:0 auto;border-radius:50%;border:5px solid #dfe6f5;border-top-color:var(--acc);animation:sp 0.8s linear infinite}
   @keyframes sp{to{transform:rotate(360deg)}}
-  #shapeMenu{position:fixed;display:none;z-index:40;background:#fff;border:1px solid var(--line);border-radius:14px;box-shadow:0 10px 30px rgba(0,0,0,.18);padding:10px;width:450px;max-width:calc(100vw - 12px)}
+  #shapeMenu{position:fixed;display:none;z-index:40;background:#fff;border:1px solid var(--line);border-radius:14px;box-shadow:0 10px 30px rgba(0,0,0,.18);padding:10px;width:372px;max-width:calc(100vw - 12px)}
   #shapeMenu.on{display:block}
   #shapeMenu .ttl{font-size:12px;color:var(--mut);margin:2px 4px 6px;font-weight:600}
   #shapeMenu .row{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:6px}
-  #shapeMenu button.sh{flex:1 1 calc(33.3% - 5px);max-width:calc(33.3% - 3px);justify-content:flex-start;border:1px solid var(--line);border-radius:10px;padding:7px 8px;font-size:13px;min-width:0;white-space:normal;text-align:left;line-height:1.15}
-  #shapeMenu button.sh small{display:block;font-size:10.5px;color:var(--mut)}
-  #shapeMenu button.sh span.t{display:block}
-  #shapeMenu button.sh svg{width:20px;height:20px}
+  /* Pictures, not words: on a board at the front you want to see the shape, and for a
+     many-sided one the number of sides sits inside it. */
+  /* Four across and three down, each tile a picture of the shape and nothing else. */
+  #shapeMenu .row{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;margin-bottom:8px}
+  #shapeMenu button.sh{position:relative;width:100%;aspect-ratio:1.25;justify-content:center;align-items:center;
+    border:1px solid var(--line);border-radius:12px;padding:0;min-width:0}
+  #shapeMenu button.sh svg{width:46px;height:46px}
+  /* Underneath, the side counter and Custom share the same width as the four tiles. */
+  #shapeMenu .nrow{display:flex;align-items:stretch;gap:7px;border-top:1px solid var(--line);padding-top:9px;margin-top:2px}
+  #shapeMenu .step{flex:0 0 auto;display:flex;align-items:center;gap:4px;border:1px solid var(--line);border-radius:12px;padding:4px}
+  #shapeMenu .step .num{display:flex;flex-direction:column;align-items:center;min-width:46px;line-height:1}
+  #shapeMenu .step .num em{font:600 9.5px system-ui,sans-serif;color:var(--mut);font-style:normal;margin-top:1px}
+  #shapeMenu .step input{width:100%;text-align:center;border:0;background:none;font:700 16px system-ui,sans-serif;
+    -moz-appearance:textfield;padding:0}
+  #shapeMenu .step input::-webkit-outer-spin-button,#shapeMenu .step input::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
+  #shapeMenu .step button{flex:0 0 auto;width:34px;height:34px;border:1px solid var(--line);border-radius:9px;background:#fff;
+    font:700 17px system-ui,sans-serif;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0}
+  #shapeMenu .step button.primary{width:auto;padding:0 12px;font:600 13px system-ui,sans-serif;background:var(--acc);color:#fff;border-color:var(--acc)}
+  #shapeMenu button.cust{flex:1 1 auto;border:1px solid var(--line);border-radius:12px;font:600 14px system-ui,sans-serif;justify-content:center}
   #shapeMenu button.sh.on{background:var(--accbg);border-color:#9fb4ee;color:var(--acc)}
   #shapeMenu .sub{display:none;width:100%;gap:5px;padding:5px;margin:-1px 0 4px;background:#f5f7fb;border-radius:10px}
   #shapeMenu .sub.open{display:flex}
@@ -199,52 +361,24 @@
   <div class="sec">
     <div class="h">File</div>
     <div class="g3">
-      <button class="tile primary span2" id="openBtn" title="Open a PDF, PowerPoint or Word file"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7h6l2 2h10v10H3z"/><path d="M12 12v5M9.5 14.5L12 12l2.5 2.5"/></svg><span>Open</span></button>
-      <button class="tile" id="newBtn" title="Start a new blank document"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h9l4 4v14H6z"/><path d="M15 3v4h4M12 11v6M9 14h6"/></svg><span>New</span></button>
-      <button class="tile" id="fluBtn" title="Fluency starter: make a recall sheet"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h8M8 12h8M8 16h5"/></svg><span>Starter</span></button>
-      <button class="tile" id="extBtn" title="Extension: make a problem solving sheet"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.5 9a2.5 2.5 0 1 1 3.2 2.4c-.8.3-1.2 1-1.2 1.8v.4"/><path d="M11.5 17.5h.01"/><circle cx="12" cy="12" r="9"/></svg><span>Problems</span></button>
+      <button class="tile primary" id="openBtn" title="Open a file, or start a new one"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7h6l2 2h10v10H3z"/><path d="M12 12v5M9.5 14.5L12 12l2.5 2.5"/></svg><span>Open</span></button>
       <button class="tile" id="addPageBtn" title="Add a blank page at the end"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="3" width="11" height="15" rx="1"/><path d="M19 13v8M15 17h8"/></svg><span>Add page</span></button>
+      <button class="tile primary" id="saveBtn" title="Save your annotated copy"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></svg><span>Save</span></button>
+      <button class="tile" id="viewBtn" title="Change how this sidebar looks"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="7" height="16" rx="1.5"/><path d="M14 8h7M14 12h7M14 16h7"/></svg><span>Sidebar</span></button>
     </div>
-    <select id="paper" title="Paper for new / added pages">
-      <option value="plain">Plain A4</option>
-      <option value="squared">Squared A4 (1 cm)</option>
-      <option value="graph">Graph A4 (mm)</option>
-      <option value="plainL">Plain A4 landscape</option>
-      <option value="squaredL">Squared A4 landscape</option>
-      <option value="graphL">Graph A4 landscape</option>
-    </select>
   </div>
   <div class="sec">
-    <div class="h">Write</div>
+    <div class="h">Write &amp; draw</div>
     <button class="tile wide cursor" data-tool="hand" id="swipeBtn" title="Swipe / click mode: tap to move on, swipe to change slides, click links (H)" aria-label="Swipe and click"><svg viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"><path d="M5 2.8l13.2 11.1-6.2.6 3.7 6.9-2.7 1.4-3.7-7-4.3 4.4z"/></svg></button>
-    <div class="g2"><button class="tile" id="calcBtn" title="Open / close the calculator beside the slide"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="2.5" width="14" height="19" rx="2.5"/><rect x="8" y="5.5" width="8" height="4" rx="1"/><path d="M8.5 13h.01M12 13h.01M15.5 13h.01M8.5 16.5h.01M12 16.5h.01M15.5 16.5h.01"/></svg><span>Calculator</span></button><button class="tile" id="tintBtn" title="Coloured overlay for reading (dyslexia friendly) – black text stays black"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><rect x="3" y="5" width="12" height="14" rx="1.5"/><rect x="9" y="3" width="12" height="14" rx="1.5" fill="#fde68a" fill-opacity=".85" stroke="#b45309"/></svg><span>Overlay</span></button></div>
-    <button class="tile wide" id="shapesBtn" title="Open ShapeXplorer (3D solids and 2D shapes)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2.5l8.5 4.8v9.4L12 21.5l-8.5-4.8V7.3z"/><path d="M3.5 7.3L12 12.1l8.5-4.8M12 12.1v9.4"/></svg><span>ShapeXplorer</span></button>
     <div class="g3" id="tools">
       <button class="tile" data-tool="pen" title="Pen (P)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20l4-1L19 8l-3-3L5 16z"/><path d="M14 6l3 3"/></svg><span>Pen</span></button>
       <button class="tile" data-tool="hl" title="Highlighter (G)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 15l-4 5h6l2-2M9 15l8-11 4 3-8 11z"/></svg><span>Highlight</span></button>
       <button class="tile" data-tool="line" title="Straight line (L)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 19L19 5"/><circle cx="5" cy="19" r="1.6"/><circle cx="19" cy="5" r="1.6"/></svg><span>Line</span></button>
-      <button class="tile" data-tool="shape" id="shapeBtn" title="Draw a shape (S)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 20l5-9 5 9z"/><rect x="13" y="4" width="8" height="8"/><circle cx="17" cy="17" r="3.5"/></svg><span id="shapeLbl">Shapes</span></button>
-      <button class="tile" data-tool="compass" title="Compass (C)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="4" r="2"/><path d="M11 6L6 21M13 6l5 15"/><path d="M4 16a9 6 0 0 0 16 0" stroke-dasharray="2 2"/></svg><span>Compass</span></button>
-      <button class="tile" id="styleBtn" title="Line and shape style – colour, dashes, thickness and fill"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 6h18"/><path d="M3 12h4M11 12h4M19 12h2" /><path d="M3 18h1M7 18h1M11 18h1M15 18h1M19 18h1"/></svg><span>Style</span></button>
+      <button class="tile" data-tool="shape" id="shapeBtn" title="Draw a shape (S)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 20l5-9 5 9z"/><rect x="13" y="4" width="8" height="8"/><circle cx="17" cy="17" r="3.5"/></svg><span>Shape</span></button>
       <button class="tile" data-tool="text" title="Text box (T) – click the page to write, drag the corner to resize"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 6V4h14v2M12 4v16M9 20h6"/></svg><span>Text</span></button>
-      <button class="tile" id="imgBtn" title="Add a picture – or just paste one with Ctrl+V"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="8.5" cy="10" r="1.5"/><path d="M21 16l-5-5-6 6-2-2-5 5"/></svg><span>Picture</span></button>
+      <button class="tile" id="bgBtn" title="Page background – plain, squared, graph or lined"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2" fill="#dbeafe"/><path d="M9 4v16M15 4v16M3 9.33h18M3 14.67h18" stroke-opacity=".8"/></svg><span>Paper</span></button>
       <button class="tile" data-tool="eraser" title="Rubber (E)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 20h12M5 15l9-9 5 5-9 9H8z"/><path d="M9.5 10.5l5 5"/></svg><span>Rubber</span></button>
     </div>
-    <div id="compOpts">
-      <label>Radius <input type="number" id="radius" step="0.1" min="0.1" value="4.0"> cm</label>
-      <button id="recentre" class="small" title="Pick a new centre point">New centre</button>
-    </div>
-  </div>
-  <div class="sec">
-    <div class="h">Maths tools</div>
-    <div class="g3">
-      <button class="tile" id="rulerBtn" title="Ruler (R)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="8" width="20" height="8" rx="1"/><path d="M6 8v3M10 8v4M14 8v3M18 8v4"/></svg><span>Ruler</span></button>
-      <button class="tile" id="protBtn" title="Protractor (A)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 18h20A10 10 0 0 0 2 18z"/><path d="M12 18l5-6"/></svg><span>Protractor</span></button>
-      <button class="tile span2" id="hideBtn" title="Put away the ruler, protractor and compass (Esc)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3l18 18M10.6 6.1A9.8 9.8 0 0 1 12 6c5 0 9 6 9 6a17 17 0 0 1-3 3.4M6.6 6.6C4.3 8.2 3 12 3 12s4 6 9 6c1.6 0 3-.4 4.3-1.1"/></svg><span>Put away</span></button>
-    </div>
-  </div>
-  <div class="sec">
-    <div class="h">Colour &amp; size</div>
     <div id="colours">
       <button class="sw on" data-c="#111111" style="background:#111111" title="Black"></button>
       <button class="sw" data-c="#1f5fd1" style="background:#1f5fd1" title="Blue"></button>
@@ -254,6 +388,23 @@
       <button class="cp" id="colorPick" data-colpop title="Pick any colour"><b>+</b></button>
     </div>
     <div class="wrow"><span class="dot s"></span><input type="range" id="width" min="0.5" max="8" step="0.25" value="1.5" title="Line thickness"><span class="dot l"></span></div>
+    <div class="wdots" id="wDots">
+      <button data-w="1.5" title="Thin"><i style="width:4px;height:4px"></i></button>
+      <button data-w="3" title="Medium"><i style="width:7px;height:7px"></i></button>
+      <button data-w="6" title="Thick"><i style="width:11px;height:11px"></i></button>
+    </div>
+  </div>
+  <div class="sec">
+    <div class="h">Maths tools</div>
+    <div class="g3">
+      <button class="tile" id="rulerBtn" title="Ruler (R)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="8" width="20" height="8" rx="1"/><path d="M6 8v3M10 8v4M14 8v3M18 8v4"/></svg><span>Ruler</span></button>
+      <button class="tile" id="protBtn" title="Protractor (A)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 18h20A10 10 0 0 0 2 18z"/><path d="M12 18l5-6"/></svg><span>Protractor</span></button>
+      <button class="tile" id="traceBtn" title="Tracing paper – a see-through sheet you can draw on, then turn and move"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h12l4 4v10H4z"/><path d="M16 5v4h4"/><path d="M7 15c2-4 5-4 7 0"/></svg><span>Tracing paper</span></button>
+      <button class="tile" data-tool="compass" title="Compass (C)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="4" r="2"/><path d="M11 6L6 21M13 6l5 15"/><path d="M4 16a9 6 0 0 0 16 0" stroke-dasharray="2 2"/></svg><span>Compass</span></button>
+      <button class="tile" id="calcBtn" title="Open / close the calculator beside the slide"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="2.5" width="14" height="19" rx="2.5"/><rect x="8" y="5.5" width="8" height="4" rx="1"/><path d="M8.5 13h.01M12 13h.01M15.5 13h.01M8.5 16.5h.01M12 16.5h.01M15.5 16.5h.01"/></svg><span>Calculator</span></button>
+      <button class="tile" id="hideBtn" title="Put away the ruler, protractor and compass (Esc)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3l18 18M10.6 6.1A9.8 9.8 0 0 1 12 6c5 0 9 6 9 6a17 17 0 0 1-3 3.4M6.6 6.6C4.3 8.2 3 12 3 12s4 6 9 6c1.6 0 3-.4 4.3-1.1"/></svg><span>Put away</span></button>
+      <button class="tile span2" id="shapesBtn" title="Open ShapeXplorer (3D solids and 2D shapes)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2.5l8.5 4.8v9.4L12 21.5l-8.5-4.8V7.3z"/><path d="M3.5 7.3L12 12.1l8.5-4.8M12 12.1v9.4"/></svg><span>ShapeXplorer</span></button>
+    </div>
   </div>
   <div class="sec">
     <div class="h">Edit</div>
@@ -267,16 +418,15 @@
     <div class="h">Page &amp; zoom</div>
     <div class="pager"><button id="prevBtn" title="Previous page"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" stroke-width="2.6"><path d="M15 5l-7 7 7 7"/></svg></button><span id="pageInfo">–</span><button id="nextBtn" title="Next page"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" stroke-width="2.6"><path d="M9 5l7 7-7 7"/></svg></button></div>
     <div id="builds" title="Animations on this slide"></div>
-    <div class="pager"><button id="zoomOut" title="Zoom out">−</button><button id="fitBtn" class="zl" title="Tap to fit the page"><span id="zoomInfo">–</span><small>fit</small></button><button id="zoomIn" title="Zoom in">+</button></div>
-    <button class="tile wide" id="rotBtn" title="Turn the page a quarter turn (Ctrl+R)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 4v7h-7"/></svg><span>Rotate</span></button>
+    <div class="pager"><button id="zoomOut" title="Zoom out">−</button><button id="fitBtn" class="zl" title="Tap to fit the page"><span id="zoomInfo">–</span><small>Fit</small></button><button id="zoomIn" title="Zoom in"><span class="pl">+</span><svg class="fiti" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="6.5"/><path d="M20 20l-4.6-4.6"/><path d="M8.5 11h5M11 8.5v5"/></svg></button></div>
+    <div class="g2"><button class="tile" id="tintBtn" title="Coloured overlay for reading (dyslexia friendly) – black text stays black"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><rect x="3" y="5" width="12" height="14" rx="1.5"/><rect x="9" y="3" width="12" height="14" rx="1.5" fill="#fde68a" fill-opacity=".85" stroke="#b45309"/></svg><span>Overlay</span></button><button class="tile" id="rotBtn" title="Turn the page a quarter turn (Ctrl+R)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 4v7h-7"/></svg><span>Rotate</span></button></div>
   </div>
   <div class="sec">
     <div class="h">Reactions</div>
+    <button id="rxOne" title="Reactions">👏</button>
     <div id="reactions"><button class="rx" data-snd="sad-violin" title="Play Violin"><b>🎻</b><span>Violin</span></button><button class="rx" data-snd="bruh" title="Play Bruh"><b>😐</b><span>Bruh</span></button><button class="rx" data-snd="applause" title="Play Clap"><b>👏</b><span>Clap</span></button><button class="rx" data-snd="oof" title="Play Oof"><b>😖</b><span>Oof</span></button><button class="rx" data-snd="wow" title="Play Wow"><b>🤩</b><span>Wow</span></button><button class="rx" data-snd="really" title="Play Really?"><b>🤨</b><span>Really?</span></button></div>
   </div>
   <div class="sec last">
-
-    <button class="tile wide primary" id="saveBtn" title="Save your annotated copy"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></svg><span>Save</span></button>
   </div>
 </div></div>
 
@@ -287,10 +437,28 @@
   <div id="stage">
     <canvas id="pdfC"></canvas>
     <canvas id="fxC"></canvas>
+    <canvas id="bg"></canvas>
     <div id="tint"></div>
     <canvas id="ink"></canvas>
     <canvas id="ui"></canvas>
     <div id="textEdit" contenteditable="true" spellcheck="false"></div>
+    <div id="shapeBar">
+      <button data-d="solid" title="Straight line"><svg viewBox="0 0 44 12"><path d="M3 6h38" stroke="currentColor" stroke-width="3" fill="none" stroke-linecap="round"/></svg></button>
+      <button data-d="dash" title="Dashed"><svg viewBox="0 0 44 12"><path d="M3 6h38" stroke="currentColor" stroke-width="3" fill="none" stroke-linecap="round" stroke-dasharray="9 6"/></svg></button>
+      <button data-d="dot" title="Dotted"><svg viewBox="0 0 44 12"><path d="M3 6h38" stroke="currentColor" stroke-width="3" fill="none" stroke-linecap="round" stroke-dasharray="0.5 6"/></svg></button>
+      <button data-d="wave" title="Hand drawn"><svg viewBox="0 0 44 12"><path d="M3 6q5-4 9.5 0t9.5 0 9.5 0 9.5 0" stroke="currentColor" stroke-width="3" fill="none" stroke-linecap="round"/></svg></button>
+      <div class="sep"></div>
+      <button data-w="2" title="Thickness"><svg viewBox="0 0 22 16"><path d="M2 8h18" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round"/></svg></button>
+      <button data-w="4" title="Thickness"><svg viewBox="0 0 22 16"><path d="M2 8h18" stroke="currentColor" stroke-width="4" fill="none" stroke-linecap="round"/></svg></button>
+      <button data-w="7" title="Thickness"><svg viewBox="0 0 22 16"><path d="M2 8h18" stroke="currentColor" stroke-width="7" fill="none" stroke-linecap="round"/></svg></button>
+      <button data-w="12" title="Thickness"><svg viewBox="0 0 22 16"><path d="M2 8h18" stroke="currentColor" stroke-width="12" fill="none" stroke-linecap="round"/></svg></button>
+      <div class="sep"></div>
+      <button class="sw wheel" id="shapeCol" data-colpop title="Line colour"><i></i></button>
+      <button class="sw empty" id="shapeFill" data-colpop title="Fill"><i></i></button>
+      <div class="sep"></div>
+      <button id="shapeDup" title="Make a copy of this shape"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><rect x="3" y="3" width="12" height="12" rx="2"/><rect x="9" y="9" width="12" height="12" rx="2" fill="#2c3342"/></svg></button>
+      <button id="shapeDel" title="Delete this shape"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></svg></button>
+    </div>
     <div id="textBar">
       <button data-cmd="font" title="Font (F)"><b>F</b></button>
       <button data-cmd="bold" title="Bold"><b>B</b></button>
@@ -304,13 +472,16 @@
   </div>
   <div id="empty">
     <div class="card">
-      <h1>Page &amp; Document Pen</h1>
-      <p>Open a PDF, PowerPoint or Word file (or drop one here) – every slide or page becomes a page you can write on – and use a pen with a pen, straight lines, a true-scale ruler, a protractor and a compass. Measurements match the real paper size, so 1&nbsp;cm on the ruler is 1&nbsp;cm when printed.</p>
+      <button id="emptyX" title="Close">&times;</button>
+      <h1>ClassTools &ndash; Presenter</h1>
+      <p>Open a PDF, PowerPoint or Word file (or drop one here)</p>
       <div class="row">
         <button class="primary" id="openBtn2">Open a file…</button>
         <button data-blank="plain">Blank A4</button>
         <button data-blank="squared">Squared A4</button>
         <button data-blank="graph">Graph paper</button>
+        <button data-blank="plainL">Blank landscape</button>
+        <button data-blank="squaredL">Squared landscape</button>
       </div>
     </div>
   </div>
@@ -329,20 +500,63 @@
 <div id="busy"><div class="card"><div class="spin"></div><p id="busyMsg" style="color:var(--ink);margin:12px 0 0">Opening…</p><p style="font-size:12px;margin:6px 0 0">Big slide shows can take a few seconds.</p></div></div>
 <input type="file" id="file" accept=".pdf,.pptx,.ppt,.ppsx,.pps,.pptm,.docx,.doc,.docm,.rtf,.odt,.odp,application/pdf" hidden>
 
-<div id="stylePop">
-  <p class="ttl">Line</p>
-  <div class="srow" id="dashRow">
-    <button data-d="solid" title="Straight"><svg viewBox="0 0 60 12"><path d="M3 6h54" stroke="currentColor" stroke-width="3" fill="none" stroke-linecap="round"/></svg></button>
-    <button data-d="dash" title="Dashed"><svg viewBox="0 0 60 12"><path d="M3 6h54" stroke="currentColor" stroke-width="3" fill="none" stroke-linecap="round" stroke-dasharray="10 7"/></svg></button>
-    <button data-d="dot" title="Dotted"><svg viewBox="0 0 60 12"><path d="M3 6h54" stroke="currentColor" stroke-width="3" fill="none" stroke-linecap="round" stroke-dasharray="0.5 7"/></svg></button>
-    <button data-d="wave" title="Hand drawn"><svg viewBox="0 0 60 12"><path d="M3 6q6-4 11 0t11 0 11 0 11 0 11 0" stroke="currentColor" stroke-width="3" fill="none" stroke-linecap="round"/></svg></button>
+<select id="paper" hidden>
+  <option value="plain">Plain A4</option>
+  <option value="squared">Squared A4 (1 cm)</option>
+  <option value="graph">Graph A4 (mm)</option>
+  <option value="plainL">Plain A4 landscape</option>
+  <option value="squaredL">Squared A4 landscape</option>
+  <option value="graphL">Graph A4 landscape</option>
+</select>
+<div id="bgPop">
+  <p class="ttl">Page background</p>
+  <div class="row">
+    <button data-bg="plain" title="Plain"><svg viewBox="0 0 30 24"><rect x="1" y="1" width="28" height="22" rx="2"/></svg><span>Plain</span></button>
+    <button data-bg="squared" title="Squared, 1 cm"><svg viewBox="0 0 30 24"><rect x="1" y="1" width="28" height="22" rx="2"/><g class="g"><path d="M8 1v22M15 1v22M22 1v22M1 7h28M1 13h28M1 19h28"/></g></svg><span>Squared</span></button>
+    <button data-bg="graph" title="Graph, 1 cm with 2 mm divisions"><svg viewBox="0 0 30 24"><rect x="1" y="1" width="28" height="22" rx="2"/><g class="f"><path d="M4 1v22M6 1v22M11 1v22M13 1v22M18 1v22M20 1v22M25 1v22M27 1v22M1 4h28M1 6h28M1 10h28M1 12h28M1 16h28M1 18h28M1 22h28"/></g><g class="g"><path d="M8.5 1v22M15.5 1v22M22.5 1v22M1 8h28M1 14h28M1 20h28"/></g></svg><span>Graph</span></button>
+    <button data-bg="lined" title="Lined"><svg viewBox="0 0 30 24"><rect x="1" y="1" width="28" height="22" rx="2"/><g class="g"><path d="M1 7h28M1 13h28M1 19h28"/></g></svg><span>Lined</span></button>
   </div>
-  <p class="ttl">Thickness</p>
-  <div class="srow" id="wRow"></div>
-  <p class="ttl">Colour</p>
-  <div class="srow"><button id="styleCol" data-colpop class="wide"><i id="styleColDot"></i><span>Line colour</span></button></div>
-  <p class="ttl">Fill (shapes)</p>
-  <div class="srow"><button id="styleFill" data-colpop class="wide"><i id="styleFillDot"></i><span id="styleFillTxt">No fill</span></button></div>
+  <p class="ttl">Paper colour</p>
+  <div class="row"><button id="bgCol" class="wide" data-colpop><i id="bgColDot"></i><span>Choose a colour</span></button></div>
+</div>
+<div id="rxPop">
+  <button class="rx" data-snd="sad-violin" title="Violin">🎻</button>
+  <button class="rx" data-snd="bruh" title="Bruh">😐</button>
+  <button class="rx" data-snd="applause" title="Clap">👏</button>
+  <button class="rx" data-snd="oof" title="Oof">😖</button>
+  <button class="rx" data-snd="wow" title="Wow">🤩</button>
+  <button class="rx" data-snd="really" title="Really?">🤨</button>
+</div>
+<div id="pagesWrap">
+  <div id="pagesBox">
+    <div class="hd"><b>Pages</b><span id="pagesSub"></span><button id="pagesX" title="Close">&times;</button></div>
+    <div class="pg" id="pagesGrid"></div>
+  </div>
+</div>
+<div id="paperWrap">
+  <div id="paperBox">
+    <div class="hd"><b>New document</b><span>Which paper?</span><button id="paperX" title="Close">&times;</button></div>
+    <div class="pg" id="paperGrid"></div>
+  </div>
+</div>
+<div id="customWrap">
+  <div id="customBox">
+    <div class="hd"><b>Draw your own shape</b><span id="cuHint">Tap the grid to put down a corner. Tap the first corner again to close the shape.</span>
+      <button id="cuClose" title="Close">&times;</button></div>
+    <canvas id="cuGrid"></canvas>
+    <div class="ft">
+      <span class="lbl">Snap</span>
+      <div class="seg" id="cuSnap"><button data-s="1" class="on">Whole</button><button data-s="0.5">1/2</button><button data-s="0.25">1/4</button><button data-s="0">Off</button></div>
+      <span id="cuInfo"></span>
+      <button id="cuUndo">Undo corner</button>
+      <button id="cuClear">Start again</button>
+      <button id="cuUse" class="primary" disabled>Use this shape</button>
+    </div>
+  </div>
+</div>
+<div id="unitPop">
+  <p>Ruler marked in</p>
+  <button data-u="mm">mm</button><button data-u="cm">cm</button><button data-u="m">m</button><button data-u="in">inches</button>
 </div>
 <script src="colourpop.js"></script>
 <script>
@@ -363,12 +577,13 @@ const S = {
   zoom: 1, ann: {}, undo: [], redo: [], dirty: false,
   rot: 0, dim: {},          // quarter turns applied to the view, and each page's size as last shown
   tool: 'pen', color: '#111111', width: 1.5, sawPen: false,
-  ruler: { on: false, x: 0, y: 0, a: 0, L: 30 },
-  prot: { on: false, x: 0, y: 0, a: 0, arm: 60 },
+  traces: {}, trace: null,          // tracing paper, one sheet per page
+  ruler: { on: false, x: 0, y: 0, a: 0, L: 30, unit: 'cm' },
+  prot: { on: false, x: 0, y: 0, a: 0, arm: 60, full: false },
   comp: { placed: false, cx: 0, cy: 0, r: 4 * CM, ang: 0 },
 };
 window.__isDirty = () => S.dirty;
-window.__t = { style: { pop: () => $('stylePop'), apply: applyStyle, last: lastShapeOnPage, toggle: toggleStylePop }, colours: { open: openColourPop, recent: recentColours, remember: rememberColour, pop: () => $('colPop') }, dashFor, renderPts, S, save: () => savePdf(), build: () => buildAnnotated(), rotate: q => rotateDoc(q), load: (b, n) => loadBytes(b, n), tool: t => setTool(t), addImage, redraw: () => { redrawInk(); redrawUI(); }, items: () => S.ann[AK()] || [], handles: () => selHandles(), handlePt, fit: fitText, lines: k=>textLayout(k) };   // test hook
+window.__t = { MARGIN, CM, compPencil: () => compPencil(), compHinge: () => compHinge(), trace: { handles: () => traceHandles(), toPage: (a,b) => traceToPage(a,b), toLocal: (a,b) => tracePageToLocal(a,b) }, dragMode: () => (drag ? drag.m : null), scale: () => sc(), pick: pickShape, menu: buildShapeMenu, custom: { open: () => openCustom(), st: () => CU, draw: () => cuDraw(), use: () => cuUse() }, join: joinLines, snapLines: snapToLines, shapes: { isShape, bar: () => $('shapeBar'), sync: syncShapeBar, box: itemBox, at: itemAt, select: selectItem, turned: turnedPts }, colours: { open: openColourPop, recent: () => window.recentColours(), remember: c => window.rememberColour(c), pop: () => document.getElementById('colPop') }, dashFor, renderPts, S, save: () => savePdf(), build: () => buildAnnotated(), rotate: q => rotateDoc(q), load: (b, n) => loadBytes(b, n), tool: t => setTool(t), addImage, redraw: () => { redrawInk(); redrawUI(); }, items: () => S.ann[AK()] || [], handles: () => selHandles(), handlePt, fit: fitText, lines: k=>textLayout(k) };   // test hook
 S.groups = null; let pendingBuilds = null;
 const G = (p = S.page) => S.groups && S.groups[p - 1];
 const AK = (p = S.page) => { const g = G(p); return g ? g.key : p; };
@@ -410,6 +625,8 @@ async function loadBytes(bytes, name, keepAnn, gotoPage, fit) {
     pendingBuilds = null;
     $('empty').style.display = 'none';
     S.page = Math.min(gotoPage || 1, S.n);
+    S.traces = {}; S.trace = null;      // a fresh document starts with no tracing paper
+    for (const k of Object.keys(BG)) delete BG[k];
     const pg = await doc.getPage(S.page); const vp = pg.getViewport(vpOpts(pg, 1));
     S.pw = vp.width; S.ph = vp.height; S.dim[S.page] = [S.pw, S.ph];
     if (!keepAnn) (fit === 'page' ? fitPage() : fitWidth(true)); else await renderPage();
@@ -441,8 +658,8 @@ async function openFile(f) {
 function busy(msg) { const b = $('busy'); if (!msg) { b.style.display = 'none'; return; } $('busyMsg').textContent = msg; b.style.display = 'flex'; }
 if (window.cc) cc.on('doc-progress', m => { if ($('busy').style.display === 'flex') $('busyMsg').textContent = m; });
 function paperSize(kind) { return kind.endsWith('L') ? [841.89, 595.28] : [595.28, 841.89]; }
-function addBlankPage(d, kind) {
-  const { rgb } = PDFLib; const [w, h] = paperSize(kind); const p = d.addPage([w, h]); const k = kind.replace(/L$/, '');
+function addBlankPage(d, kind, size) {
+  const { rgb } = PDFLib; const [w, h] = size || paperSize(kind); const p = d.addPage([w, h]); const k = kind.replace(/L$/, '');
   const vline = (x, t, c) => p.drawLine({ start: { x, y: 0 }, end: { x, y: h }, thickness: t, color: c });
   const hline = (y, t, c) => p.drawLine({ start: { x: 0, y }, end: { x: w, y }, thickness: t, color: c });
   if (k === 'squared') {
@@ -462,7 +679,10 @@ async function newBlank(kind) {
 }
 async function addPage() {
   if (!S.doc) return newBlank($('paper').value);
-  const d = await PDFLib.PDFDocument.create(); addBlankPage(d, $('paper').value);
+  // A page added to a document matches the page you are on, so a landscape deck does
+  // not suddenly sprout a portrait A4 in the middle of it.
+  const cur = S.dim[S.page] || [S.pw, S.ph];
+  const d = await PDFLib.PDFDocument.create(); addBlankPage(d, $('paper').value, cur);
   await insertPdfPages(await d.save(), 'Blank page added');
 }
 
@@ -471,14 +691,15 @@ function layout() {
   const s = sc(), d = dpr();
   const W = (S.pw + 2 * MARGIN) * s, H = (S.ph + 2 * MARGIN) * s;
   stage.style.width = W + 'px'; stage.style.height = H + 'px';
-  for (const c of [pdfC, inkC, $('tint')]) { c.style.left = c.style.top = MARGIN * s + 'px'; c.style.width = S.pw * s + 'px'; c.style.height = S.ph * s + 'px'; }
+  for (const c of [pdfC, inkC, $('tint'), $('bg')]) { c.style.left = c.style.top = MARGIN * s + 'px'; c.style.width = S.pw * s + 'px'; c.style.height = S.ph * s + 'px'; }
+  const bg = $('bg'); bg.width = Math.round(S.pw * s * d); bg.height = Math.round(S.ph * s * d);
   inkC.width = Math.round(S.pw * s * d); inkC.height = Math.round(S.ph * s * d);
   ui.style.left = ui.style.top = '0px'; ui.style.width = W + 'px'; ui.style.height = H + 'px';
   ui.width = Math.round(W * d); ui.height = Math.round(H * d);
   $('zoomInfo').textContent = Math.round(s / (96 / 72) * 100) + '%';
   wrap.style.overflowX = S.pw * s <= wrap.clientWidth ? 'hidden' : 'auto';
   wrap.style.overflowY = S.ph * s <= wrap.clientHeight - 8 ? 'hidden' : 'auto';
-  redrawInk(); redrawUI();
+  drawBg(); redrawInk(); redrawUI();
 }
 async function renderPage() {
   if (!S.doc) return;
@@ -519,6 +740,7 @@ function rotateDoc(step) {
         }
         const p = k.p;
         for (let i = 0; i < p.length; i += 2) { const x = p[i], y = p[i + 1]; p[i] = H - y; p[i + 1] = x; }
+        delete k._wk;                                  // the hand-drawn wobble is worked out afresh
       }
       S.dim[key] = [d[1], d[0]];
     }
@@ -650,7 +872,7 @@ async function playBuild(n) {
   for (const k of ['left', 'top', 'width', 'height']) fxC.style[k] = pdfC.style[k];
   fxC.getContext('2d').drawImage(oldC, 0, 0); fxC.style.display = 'block';
   const me = buildBusy = { raf: 0 };
-  S.page = n; drag = null; updateBar(); redrawInk();
+  S.page = n; drag = null; syncTrace(); updateBar(); drawBg(); redrawInk();
   await renderPage();
   if (me.done) return;
   const fail = () => { if (buildBusy === me) { buildBusy = null; fxC.style.display = 'none'; } };
@@ -727,7 +949,7 @@ function goPage(n) {
   if (!S.doc || n < 1 || n > S.n) return;
   if (editing) endEdit(true);
   S.sel = null;
-  S.page = n; drag = null; renderPage(); updateBar(); wrap.scrollTop = MARGIN * sc() - 16;
+  S.page = n; drag = null; syncTrace(); renderPage(); updateBar(); drawBg(); wrap.scrollTop = MARGIN * sc() - 16;
 }
 
 /* ---------- strokes ---------- */
@@ -761,6 +983,19 @@ function renderPts(k) {
   if (k._wk !== key) { k._wk = key; k._wp = wavyPts(k.p, amp); }
   return k._wp;
 }
+/** The points as they sit on the page, with any turn the user has given the shape
+    baked in - what the screen shows, and so what the saved file should contain. */
+function turnedPts(k) {
+  const p = renderPts(k);
+  if (!k.rot) return p;
+  const b = itemBox(k), cx = b[0] + b[2] / 2, cy = b[1] + b[3] / 2;
+  const co = Math.cos(k.rot), si = Math.sin(k.rot), out = new Array(p.length);
+  for (let i = 0; i < p.length; i += 2) {
+    const dx = p[i] - cx, dy = p[i + 1] - cy;
+    out[i] = cx + dx * co - dy * si; out[i + 1] = cy + dx * si + dy * co;
+  }
+  return out;
+}
 /** Dashes in page units, scaled with the pen so a thick dashed line still reads as dashed. */
 function dashFor(k) {
   if (k.d === 'dash') return [Math.max(7, k.w * 3.4), Math.max(5, k.w * 2.4)];
@@ -776,9 +1011,13 @@ function strokePath(c, k) {
   } else for (let i = 2; i < p.length; i += 2) c.lineTo(p[i], p[i + 1]);
 }
 function drawStroke(c, k) {
-  c.save(); c.globalAlpha = k.a; c.strokeStyle = k.c; c.lineWidth = k.w; c.lineCap = k.d === 'dot' ? 'round' : 'round'; c.lineJoin = 'round';
+  c.save(); c.globalAlpha = k.a; c.strokeStyle = k.c; c.lineWidth = k.w; c.lineCap = 'round'; c.lineJoin = 'round';
+  if (k.rot) { const b = itemBox(k), cx = b[0] + b[2] / 2, cy = b[1] + b[3] / 2;
+    c.translate(cx, cy); c.rotate(k.rot); c.translate(-cx, -cy); }
   strokePath(c, k);
-  if (k.sh && k.f) { c.fillStyle = k.f; c.fill(); }     // shapes can be filled; a line never is
+  if (k.sh && k.f) {                                   // shapes can be filled; a line never is
+    c.save(); c.globalAlpha = k.a * (k.fa == null ? 1 : k.fa); c.fillStyle = k.f; c.fill(); c.restore();
+  }
   const dash = dashFor(k); if (dash) c.setLineDash(dash);
   c.stroke(); c.restore();
 }
@@ -907,7 +1146,8 @@ function textHeight(k) { return Math.max(1, textLayout(k).length) * k.size * 1.2
 /** Turns a page point into the item's own frame, so a turned picture still hits right. */
 function localPt(k, x, y) {
   if (!k.rot) return [x, y];
-  const cx = k.x + k.w / 2, cy = k.y + (k.kind === 'image' ? k.h : Math.max(k.size, textHeight(k))) / 2;
+  const b = itemBox(k); if (!b) return [x, y];
+  const cx = b[0] + b[2] / 2, cy = b[1] + b[3] / 2;
   const co = Math.cos(-k.rot), si = Math.sin(-k.rot), dx = x - cx, dy = y - cy;
   return [cx + dx * co - dy * si, cy + dx * si + dy * co];
 }
@@ -925,9 +1165,22 @@ function fitText(k) {
   k.w = Math.max(24, Math.ceil(Math.min(limit, w)) + 2);
 }
 
+/** True for the lines and shapes you can pick up again; freehand pen and
+    highlighter marks stay as ink and are rubbed out rather than selected. */
+function isShape(k) { return !k.kind && k.d !== undefined; }
 function itemBox(k) {
   if (k.kind === 'image') return [k.x, k.y, k.w, k.h];
   if (k.kind === 'text') return [k.x, k.y, k.w, Math.max(k.size, textHeight(k))];
+  if (isShape(k)) {
+    const p = k.p; if (!p || p.length < 2) return null;
+    let x0 = p[0], y0 = p[1], x1 = p[0], y1 = p[1];
+    for (let i = 2; i < p.length; i += 2) {
+      if (p[i] < x0) x0 = p[i]; if (p[i] > x1) x1 = p[i];
+      if (p[i + 1] < y0) y0 = p[i + 1]; if (p[i + 1] > y1) y1 = p[i + 1];
+    }
+    const pad = k.w / 2;                       // the line sits astride its own path
+    return [x0 - pad, y0 - pad, (x1 - x0) + k.w, (y1 - y0) + k.w];
+  }
   return null;
 }
 
@@ -971,16 +1224,92 @@ function redrawInk() {
   inkX.setTransform(s * d, 0, 0, s * d, 0, 0);
   for (const k of (S.ann[AK()] || [])) drawItem(inkX, k);
 }
+/** A copy of an item deep enough that undo can put back a move, a resize or a restyle. */
+function copyItem(k) {
+  if (!k) return k;
+  if (k.kind) return Object.assign({}, k);
+  if (k.d !== undefined) { const c = Object.assign({}, k); c.p = k.p.slice(); delete c._wp; delete c._wk; return c; }
+  return k;                               // plain ink is never edited, so it can be shared
+}
 function snapshot() {
-  S.undo.push({ pg: AK(), list: (S.ann[AK()] || []).map(k => (k && k.kind) ? Object.assign({}, k) : k) }); if (S.undo.length > 300) S.undo.shift();
+  S.undo.push({ pg: AK(), list: (S.ann[AK()] || []).map(copyItem) }); if (S.undo.length > 300) S.undo.shift();
   S.redo = []; S.dirty = true; updateBar();
 }
+/* ---------- building a shape line by line ----------
+   With the line tool still selected, a line that starts or finishes on the end of
+   another one is pulled onto it and the two become a single outline. Draw four and
+   you have a quadrilateral you can pick up, fill and resize in one piece.          */
+const JOIN_NEAR = 13;                       // how close an end has to be, in screen pixels
+function lineEnds(k) { return [[k.p[0], k.p[1]], [k.p[k.p.length - 2], k.p[k.p.length - 1]]]; }
+/** Pulls an end of a freshly drawn line onto a loose end near it, carefully: a line is
+    never pulled onto itself at both ends, and never shrunk away to a dot. */
+function snapToLines(k) {
+  const near = JOIN_NEAR / sc(), list = S.ann[AK()] || [];
+  const nearest = px => {
+    let best = null, bd = near;
+    for (const o of list) {
+      if (o === k || !isShape(o) || o.sh) continue;
+      for (const q of lineEnds(o)) {
+        const d = dist(k.p[px], k.p[px + 1], q[0], q[1]);
+        if (d < bd) { bd = d; best = { q, d }; }
+      }
+    }
+    return best;
+  };
+  const last = k.p.length - 2;
+  const a = nearest(0), b = nearest(last);
+  // Both ends reaching for the same corner would fold the line into a dot: keep the closer.
+  let useA = a, useB = b;
+  if (a && b && dist(a.q[0], a.q[1], b.q[0], b.q[1]) < 0.01) { if (a.d <= b.d) useB = null; else useA = null; }
+  const want = [useA ? useA.q : [k.p[0], k.p[1]], useB ? useB.q : [k.p[last], k.p[last + 1]]];
+  if (dist(want[0][0], want[0][1], want[1][0], want[1][1]) < 2) return;   // would leave nothing to see
+  if (useA) { k.p[0] = want[0][0]; k.p[1] = want[0][1]; }
+  if (useB) { k.p[last] = want[1][0]; k.p[last + 1] = want[1][1]; }
+}
+/** True when a point is on or near one of the lines or shapes already drawn. */
+function nearAnyLine(x, y) {
+  const near = Math.max(tol(), 0.35 * CM);
+  for (const o of (S.ann[AK()] || [])) {
+    if (!isShape(o)) continue;
+    const p = o.p;
+    for (let i = 0; i < p.length - 2; i += 2) if (distToSeg(x, y, [p[i], p[i + 1]], [p[i + 2], p[i + 3]]) < near) return true;
+  }
+  return false;
+}
+/** Joins a line to any it now touches, end to end, into one outline. */
+function joinLines(k) {
+  const list = S.ann[AK()] || [], same = (a, b) => dist(a[0], a[1], b[0], b[1]) < 0.01;
+  let grew = true;
+  while (grew) {
+    grew = false;
+    for (const o of list) {
+      if (o === k || !isShape(o) || o.sh || o.kind) continue;
+      const [ka, kb] = lineEnds(k), [oa, ob] = lineEnds(o);
+      let joined = null;
+      if (same(kb, oa)) joined = k.p.concat(o.p.slice(2));
+      else if (same(kb, ob)) joined = k.p.concat(revPts(o.p).slice(2));
+      else if (same(ka, ob)) joined = o.p.concat(k.p.slice(2));
+      else if (same(ka, oa)) joined = revPts(o.p).concat(k.p.slice(2));
+      if (joined) {
+        k.p = joined; delete k._wk;
+        list.splice(list.indexOf(o), 1);
+        // Closed back on itself: it is a shape now, and can be filled.
+        const [a, b] = lineEnds(k);
+        if (k.p.length > 6 && same(a, b)) { k.sh = true; k.f = S.fill; }
+        grew = true; break;
+      }
+    }
+  }
+  redrawInk();
+}
+function revPts(p) { const o = []; for (let i = p.length - 2; i >= 0; i -= 2) o.push(p[i], p[i + 1]); return o; }
+
 function addStroke(k) { snapshot(); (S.ann[AK()] = S.ann[AK()] || []).push(k); drawItem(inkX, k); }
 function restore(from, to) {
   const u = from.pop(); if (!u) return;
   S.sel = null; if (editing) endEdit(false);
   if (u.all) { to.push({ all: { ...S.ann } }); S.ann = { ...u.all }; S.dirty = true; redrawInk(); updateBar(); return; }
-  to.push({ pg: u.pg, list: (S.ann[u.pg] || []).map(k => (k && k.kind) ? Object.assign({}, k) : k) }); S.ann[u.pg] = u.list; S.dirty = true;
+  to.push({ pg: u.pg, list: (S.ann[u.pg] || []).map(copyItem) }); S.ann[u.pg] = u.list; S.dirty = true;
   if (u.pg !== S.page) goPage(u.pg); else redrawInk(); updateBar();
 }
 function newStroke(kind, pts) {
@@ -1033,38 +1362,286 @@ function snapPoint(x, y, skip) {
   return best ? [best[0], best[1], true] : [x, y, false];
 }
 
+/* ---------- tracing paper ----------
+   A see-through sheet laid over the page. Anything drawn on it while it is out belongs
+   to the sheet, and travels with it when it is moved, turned or resized - which is the
+   whole point: draw a shape, then slide it over another to see whether they match.
+   A pin dropped on the sheet becomes the point it turns about.                        */
+const TRACE = { pad: 0.55 * CM, grip: 0.42 * CM };
+function traceOn() { return !!(S.trace && S.trace.on); }
+/** The sheet's four corners in page coordinates, turned about whatever it pivots on. */
+function tracePivot() {
+  const T = S.trace;
+  return T.pin ? [T.x + T.pin[0] * T.w, T.y + T.pin[1] * T.h] : [T.x + T.w / 2, T.y + T.h / 2];
+}
+function traceToPage(lx, ly) {
+  const T = S.trace, [px, py] = tracePivot(), co = Math.cos(T.a), si = Math.sin(T.a);
+  const dx = T.x + lx - px, dy = T.y + ly - py;
+  return [px + dx * co - dy * si, py + dx * si + dy * co];
+}
+function tracePageToLocal(x, y) {
+  const T = S.trace, [px, py] = tracePivot(), co = Math.cos(-T.a), si = Math.sin(-T.a);
+  const dx = x - px, dy = y - py;
+  return [px + dx * co - dy * si - T.x, py + dx * si + dy * co - T.y];
+}
+const traceCorners = () => [[0, 0], [S.trace.w, 0], [S.trace.w, S.trace.h], [0, S.trace.h]].map(q => traceToPage(q[0], q[1]));
+/** Where each grab sits, in the sheet's own frame. */
+function traceHandles() {
+  const T = S.trace, out = TRACE.pad;
+  const col = T.w + out + 0.5 * CM;                 // the handles stack outside the right edge
+  return {
+    size: [T.w, T.h],                              // bottom right corner
+    turn: [col, -out - 0.5 * CM],
+    hand: [col, 0.45 * CM],                        // pick the sheet up
+    pen:  [col, 1.4 * CM],                         // draw on it in pencil grey
+    del:  [col, 2.35 * CM],                        // throw the sheet away
+    pinBtn: [T.w - 0.55 * CM, -out - 0.45 * CM]    // the pin, on the sheet's top right
+  };
+}
+function traceHit(x, y) {
+  if (!traceOn()) return null;
+  const T = S.trace, [lx, ly] = tracePageToLocal(x, y), r = Math.max(tol(), 0.5 * CM), H = traceHandles();
+  const near = (h) => dist(lx, ly, h[0], h[1]) < r;
+  if (near(H.pinBtn)) return { m: 'tracePinBtn' };
+  if (T.pin) {
+    const pxp = T.pin[0] * T.w, pyp = T.pin[1] * T.h;
+    if (dist(lx, ly, pxp, pyp) < Math.max(tol(), 0.38 * CM)) return { m: 'tracePinOut' };
+  }
+  if (near(H.turn)) return { m: 'traceTurn', a0: T.a, g0: Math.atan2(y - tracePivot()[1], x - tracePivot()[0]) };
+  if (near(H.del)) return { m: 'traceDel' };
+  if (near(H.pen)) return { m: 'tracePenBtn' };
+  if (near(H.hand)) return { m: 'traceMove', ox: x - T.x, oy: y - T.y };
+  if (near(H.size)) return { m: 'traceSize', w0: T.w, h0: T.h, lx0: lx, ly0: ly };
+  if (T.pinning && lx >= 0 && lx <= T.w && ly >= 0 && ly <= T.h) return { m: 'tracePinDrop' };
+  // With the pointer in hand the whole sheet is a handle: press it anywhere and slide it.
+  if (S.tool === 'hand' && lx >= 0 && lx <= T.w && ly >= 0 && ly <= T.h) return { m: 'traceMove', ox: x - T.x, oy: y - T.y };
+  return null;
+}
+/** True when a point is on the sheet, so drawing there belongs to the sheet. */
+function overTrace(x, y) {
+  if (!traceOn()) return false;
+  const [lx, ly] = tracePageToLocal(x, y);
+  return lx >= 0 && lx <= S.trace.w && ly >= 0 && ly <= S.trace.h;
+}
+function addTrace() {
+  const [cx, cy] = visibleCentre();
+  const w = S.pw * 0.5, h = S.ph * 0.5;                    // about a quarter of the page
+  S.trace = { on: true, x: cx - w / 2, y: cy - h / 2, w, h, a: 0, pin: null, pinning: false, ink: [] };
+  S.trace.sel = true;
+  S.traces[AK()] = S.trace;                                // it stays on the page it was laid on
+  redrawUI(); setHint();
+}
+function dropTrace() { delete S.traces[AK()]; S.trace = null; redrawUI(); setHint(); }
+/** Brings forward whichever sheet belongs to the page now showing, if any. */
+function syncTrace() { S.trace = S.traces[AK()] || null; }
+function drawTrace(c, live) {
+  if (!traceOn()) return;
+  const T = S.trace, s = sc(), [px, py] = tracePivot();
+  c.save();
+  c.translate(px, py); c.rotate(T.a); c.translate(-px, -py);
+  c.translate(T.x, T.y);
+  // the sheet itself
+  c.fillStyle = 'rgba(255,255,255,0.40)'; c.fillRect(0, 0, T.w, T.h);
+  c.strokeStyle = T.sel ? 'rgba(36,87,214,.95)' : 'rgba(36,87,214,.45)'; c.lineWidth = (T.sel ? 2.2 : 1.4) / s; c.setLineDash([7 / s, 5 / s]);
+  c.strokeRect(0, 0, T.w, T.h); c.setLineDash([]);
+  // whatever has been drawn on it
+  c.save(); c.beginPath(); c.rect(0, 0, T.w, T.h); c.clip();
+  for (const k of T.ink) drawItem(c, k);
+  if (live) drawItem(c, live);
+  c.restore();
+  const H = traceHandles();
+  // corner grab
+  c.fillStyle = '#2457d6'; c.strokeStyle = '#fff'; c.lineWidth = 2 / s;
+  c.beginPath(); c.rect(H.size[0] - TRACE.grip / 2, H.size[1] - TRACE.grip / 2, TRACE.grip, TRACE.grip); c.fill(); c.stroke();
+  // turn, move and pen grabs, stacked outside the right edge
+  handleKnob(c, H.turn[0], H.turn[1], 0.42 * CM, drag && drag.m === 'traceTurn');
+  // a four-way mover: four arms, each finished with a head square to its own arm
+  c.beginPath(); c.arc(H.hand[0], H.hand[1], 0.42 * CM, 0, Math.PI * 2);
+  c.fillStyle = drag && drag.m === 'traceMove' ? 'rgba(36,87,214,.95)' : 'rgba(36,87,214,.78)'; c.fill();
+  c.save(); c.translate(H.hand[0], H.hand[1]);
+  c.strokeStyle = '#fff'; c.fillStyle = '#fff'; c.lineWidth = 0.07 * CM; c.lineCap = 'butt';
+  const arm = 0.155 * CM, head = 0.13 * CM;
+  c.beginPath();
+  c.moveTo(-arm, 0); c.lineTo(arm, 0); c.moveTo(0, -arm); c.lineTo(0, arm);
+  c.stroke();
+  for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) arrowHead(c, dx * arm, dy * arm, dx, dy, head, head * 0.75);
+  c.restore();
+  // the pin button: a real drawing pin, white faced with a silver shaft
+  c.beginPath(); c.arc(H.pinBtn[0], H.pinBtn[1], 0.4 * CM, 0, Math.PI * 2);
+  c.fillStyle = '#fff'; c.fill();
+  c.strokeStyle = (T.pinning || T.pin) ? 'rgba(220,38,38,.95)' : 'rgba(140,150,165,.9)';
+  c.lineWidth = (T.pinning || T.pin) ? 0.09 * CM : 0.05 * CM; c.stroke();
+  drawPin(c, H.pinBtn[0], H.pinBtn[1] - 0.04 * CM, 0.42 * CM);
+  if (T.pin) {
+    // Stuck in where it was tapped: a small red head to show the point it turns about,
+    // and a target you can tap again to pull it out.
+    const pxp = T.pin[0] * T.w, pyp = T.pin[1] * T.h;
+    c.beginPath(); c.arc(pxp, pyp, 0.38 * CM, 0, Math.PI * 2); c.strokeStyle = 'rgba(220,38,38,.45)';
+    c.lineWidth = 1.2 / s; c.setLineDash([4 / s, 4 / s]); c.stroke(); c.setLineDash([]);
+    c.beginPath(); c.arc(pxp, pyp, 0.17 * CM, 0, Math.PI * 2);
+    c.fillStyle = '#dc2626'; c.fill();
+    c.strokeStyle = '#fff'; c.lineWidth = 0.05 * CM; c.stroke();
+  }
+  // the bin
+  c.beginPath(); c.arc(H.del[0], H.del[1], 0.42 * CM, 0, Math.PI * 2);
+  c.fillStyle = 'rgba(255,255,255,.92)'; c.fill();
+  c.strokeStyle = 'rgba(190,30,30,.9)'; c.lineWidth = 0.05 * CM; c.stroke();
+  c.save(); c.translate(H.del[0], H.del[1]);
+  c.strokeStyle = 'rgba(190,30,30,.95)'; c.lineWidth = 0.062 * CM; c.lineCap = 'round'; c.lineJoin = 'round';
+  c.beginPath();
+  c.moveTo(-0.27 * CM, -0.15 * CM); c.lineTo(0.27 * CM, -0.15 * CM);
+  c.moveTo(-0.2 * CM, -0.15 * CM); c.lineTo(-0.16 * CM, 0.29 * CM); c.lineTo(0.16 * CM, 0.29 * CM); c.lineTo(0.2 * CM, -0.15 * CM);
+  c.moveTo(-0.1 * CM, -0.15 * CM); c.lineTo(-0.1 * CM, -0.27 * CM); c.lineTo(0.1 * CM, -0.27 * CM); c.lineTo(0.1 * CM, -0.15 * CM);
+  c.moveTo(-0.06 * CM, -0.02 * CM); c.lineTo(-0.045 * CM, 0.18 * CM);
+  c.moveTo(0.06 * CM, -0.02 * CM); c.lineTo(0.045 * CM, 0.18 * CM);
+  c.stroke(); c.restore();
+  // the pencil button
+  c.beginPath(); c.arc(H.pen[0], H.pen[1], 0.42 * CM, 0, Math.PI * 2);
+  const penOn = S.tool === 'pen' && S.color.toLowerCase() === TRACE_INK;
+  c.fillStyle = penOn ? 'rgba(68,74,84,.95)' : 'rgba(255,255,255,.92)'; c.fill();
+  c.strokeStyle = 'rgba(68,74,84,.9)'; c.lineWidth = 0.05 * CM; c.stroke();
+  c.save(); c.translate(H.pen[0], H.pen[1]); c.rotate(-Math.PI / 4);
+  c.strokeStyle = penOn ? '#fff' : 'rgba(68,74,84,.95)'; c.fillStyle = c.strokeStyle;
+  c.lineWidth = 0.055 * CM; c.lineJoin = 'round';
+  c.beginPath(); c.rect(-0.07 * CM, -0.2 * CM, 0.14 * CM, 0.28 * CM); c.stroke();
+  c.beginPath(); c.moveTo(-0.07 * CM, 0.08 * CM); c.lineTo(0, 0.22 * CM); c.lineTo(0.07 * CM, 0.08 * CM); c.closePath(); c.fill();
+  c.restore();
+  c.restore();
+}
+const TRACE_INK = '#4b5563';          // the soft pencil grey the sheet's own pen writes in
+/** A drawing pin: round red head on a long silver spike. */
+function drawPin(c, x, y, d) {
+  c.save(); c.translate(x, y);
+  // the spike, tapering to a point
+  const top = -d * 0.02, tip = d * 0.72, halfW = d * 0.085;
+  const g = c.createLinearGradient(-halfW, 0, halfW, 0);
+  g.addColorStop(0, '#9aa3b0'); g.addColorStop(0.4, '#eef1f5'); g.addColorStop(1, '#8e97a5');
+  c.beginPath(); c.moveTo(-halfW, top); c.lineTo(halfW, top); c.lineTo(0, tip); c.closePath();
+  c.fillStyle = g; c.fill();
+  c.strokeStyle = 'rgba(110,120,136,.75)'; c.lineWidth = d * 0.035; c.stroke();
+  // the head
+  c.beginPath(); c.arc(0, -d * 0.2, d * 0.29, 0, Math.PI * 2);
+  c.fillStyle = '#dc2626'; c.fill();
+  c.strokeStyle = 'rgba(150,20,20,.9)'; c.lineWidth = d * 0.05; c.stroke();
+  c.beginPath(); c.arc(-d * 0.1, -d * 0.29, d * 0.09, 0, Math.PI * 2);
+  c.fillStyle = 'rgba(255,255,255,.55)'; c.fill();                 // a touch of shine
+  c.restore();
+}
+
 /* ---------- instruments: geometry ---------- */
-const RUL = { m: 0.8 * CM, W: 3.2 * CM };
+const RUL = { m: 0.8 * CM, W: 3.2 * CM, bar: 0.9 * CM, grip: 0.5 * CM };
 const rulerHandle = () => [S.ruler.L * CM - 0.9 * CM, RUL.W - 0.95 * CM];
-const PR = { R: 5.5 * CM, b: 0.5 * CM };
+/* The units the ruler can be marked in. `per` is how many page centimetres one unit is,
+   and `step` how many small divisions sit between the numbers. */
+const RUL_UNITS = {
+  mm: { per: 1, step: 10, name: 'mm', label: i => String(i * 10) },
+  cm: { per: 1, step: 10, name: 'cm', label: i => String(i) },
+  m:  { per: 1, step: 10, name: 'm',  label: i => (i / 100).toFixed(2) },
+  in: { per: 2.54, step: 8, name: 'inches', label: i => String(i) }
+};
+const rulerUnit = () => RUL_UNITS[S.ruler.unit || 'cm'];
+/* The blue strip along the bottom turns the ruler; the last half centimetre of it makes
+   the ruler longer or shorter. Both are big targets, which a whiteboard needs. */
+const rulerBarTop = () => RUL.W - RUL.bar;
+const rulerGripX = () => S.ruler.L * CM + RUL.m - RUL.grip;
+/** The little box holding the unit name, in the ruler's own frame. */
+const RUL_UNIT_W = { mm: 0.95, cm: 0.95, m: 0.95, in: 1.55 };
+function rulerUnitBox(w) {
+  const width = w || RUL_UNIT_W[S.ruler.unit || 'cm'] * CM;
+  return [0.16 * CM, 1.18 * CM, width, 0.46 * CM];
+}
+const PR = { R: 5.5 * CM, b: 0.5 * CM, rim: 0.5 * CM };   // the outer 5 mm is the turning rim
 const protRotHandle = () => [0, PR.b + 0.6 * CM];
+/* The 360 button sits just inside the rim at the top, where nothing is being measured. */
+const protFullBtn = () => [0, -(PR.R - 2.1 * CM)];
+const protFullR = () => 0.46 * CM;
 const protArmKnob = () => { const t = S.prot.arm * Math.PI / 180, r = PR.R + 0.75 * CM; return [r * Math.cos(t), -r * Math.sin(t)]; };
 const compPencil = () => [S.comp.cx + S.comp.r * Math.cos(S.comp.ang), S.comp.cy + S.comp.r * Math.sin(S.comp.ang)];
 function compHinge() { const C = S.comp, [px, py] = compPencil(), r = C.r, L = Math.max(r * 0.6, r / 2 + 2.8 * CM), h = Math.sqrt(Math.max(0, L * L - (r / 2) * (r / 2)));
   return [(C.cx + px) / 2 + Math.sin(C.ang) * h, (C.cy + py) / 2 - Math.cos(C.ang) * h]; }
 const COMP_X = () => 11 / sc();   // radius of the red close button on the hinge
+/** How far a point lies from a line segment. */
+function distToSeg(x, y, a, b) {
+  const dx = b[0] - a[0], dy = b[1] - a[1], L = dx * dx + dy * dy;
+  let t = L ? ((x - a[0]) * dx + (y - a[1]) * dy) / L : 0;
+  t = Math.max(0, Math.min(1, t));
+  return dist(x, y, a[0] + dx * t, a[1] + dy * t);
+}
+/** Stands the compass in the middle of what is on screen, ready to use. */
+function placeCompass() {
+  const C = S.comp;
+  if (C.placed) return;
+  const [cx, cy] = visibleCentre();
+  C.cx = cx - 2 * CM; C.cy = cy + 1.5 * CM;
+  C.r = Math.max(CM, S.comp.r || 4 * CM);
+  C.ang = -Math.PI / 4; C.placed = true;
+}
 
+/** Starts a turn that follows the exact point grabbed, so nothing jumps on first touch. */
+function rotGrab(which, x, y) {
+  const o = which === 'rul' ? S.ruler : S.prot;
+  return { m: which === 'rul' ? 'rulRot' : 'protRot', a0: o.a, g0: Math.atan2(y - o.y, x - o.x) };
+}
 function hitInstrument(x, y) {
   const T = tol();
   if (S.tool === 'compass' && S.comp.placed) { const [qx, qy] = compHinge(); if (dist(x, y, qx, qy) < COMP_X() * 1.35) return { m: 'compClose' }; }
   if (S.tool === 'compass' && S.comp.placed) {
-    const [px, py] = compPencil();
-    if (dist(x, y, px, py) < T * 1.2) return { m: 'compR' };
-    if (dist(x, y, S.comp.cx, S.comp.cy) < T * 1.2) return { m: 'compMove', ox: x - S.comp.cx, oy: y - S.comp.cy };
+    const C = S.comp, [px, py] = compPencil(), [hx, hy] = compHinge();
+    // The pencil draws, the arm it sits on opens the compass out, and holding it
+    // anywhere else picks the whole thing up - the way a real pair of compasses works.
+    if (dist(x, y, px, py) < Math.max(T * 1.2, 0.5 * CM)) {
+      // Start from where the pencil already is: swinging the arm to meet the pointer
+      // made it feel magnetic, and lost the line you were lining up.
+      const a0 = C.ang;
+      return { m: 'compDraw', prev: a0, acc: 0, a0, grab: Math.atan2(y - C.cy, x - C.cx) - a0,
+               k: newStroke('pen', [px, py]) };
+    }
+    if (distToSeg(x, y, [hx, hy], [px, py]) < Math.max(T, 0.4 * CM)) return { m: 'compR' };
+    if (distToSeg(x, y, [hx, hy], [C.cx, C.cy]) < Math.max(T, 0.45 * CM)
+        || dist(x, y, hx, hy) < Math.max(T, 0.5 * CM)
+        || dist(x, y, C.cx, C.cy) < Math.max(T, 0.45 * CM))
+      return { m: 'compMove', ox: x - C.cx, oy: y - C.cy };
   }
   if (S.prot.on) {
-    const P = S.prot; const [lx, ly] = toLocal(P, x, y);
+    const P = S.prot, full = !!P.full; const [lx, ly] = toLocal(P, x, y);
     const [kx, ky] = protArmKnob(); if (dist(lx, ly, kx, ky) < Math.max(T, 0.35 * CM)) return { m: 'protArm' };
-    const [hx, hy] = protRotHandle(); if (dist(lx, ly, hx, hy) < Math.max(T, 0.4 * CM)) return { m: 'protRot' };
-    if (lx * lx + ly * ly <= PR.R * PR.R && ly <= PR.b || (Math.abs(lx) <= PR.R && ly >= 0 && ly <= PR.b)) return { m: 'protMove', ox: x - P.x, oy: y - P.y };
+    const [bx, by] = protFullBtn(); if (dist(lx, ly, bx, by) < Math.max(T, protFullR())) return { m: 'protFull' };
+    const rr = Math.hypot(lx, ly);
+    // The outer five millimetres is the rim: hold it anywhere and the protractor turns.
+    if (rr <= PR.R && rr >= PR.R - PR.rim && (full || ly <= PR.b)) return rotGrab('prot', x, y);
+    if (!full) {
+      const [hx, hy] = protRotHandle(); if (dist(lx, ly, hx, hy) < Math.max(T, 0.4 * CM)) return rotGrab('prot', x, y);
+    }
+    if (full ? rr <= PR.R : (rr <= PR.R && ly <= PR.b) || (Math.abs(lx) <= PR.R && ly >= 0 && ly <= PR.b))
+      return { m: 'protMove', ox: x - P.x, oy: y - P.y };
   }
   if (S.ruler.on) {
     const R = S.ruler; const [u, v] = toLocal(R, x, y);
-    const [hx, hy] = rulerHandle(); if (dist(u, v, hx, hy) < Math.max(T, 0.45 * CM)) return { m: 'rulRot' };
-    if (u >= -RUL.m && u <= R.L * CM + RUL.m && v >= 0 && v <= RUL.W) return { m: 'rulMove', ox: x - R.x, oy: y - R.y };
+    const inRuler = u >= -RUL.m && u <= R.L * CM + RUL.m && v >= 0 && v <= RUL.W;
+    if (inRuler && u >= rulerGripX()) return { m: 'rulLen', u0: u, L0: R.L };   // the end grip: longer or shorter
+    if (inRuler && v >= rulerBarTop()) return rotGrab('rul', x, y);              // the strip: turn it
+    const ub = rulerUnitBox();
+    if (inRuler && u >= ub[0] && u <= ub[0] + ub[2] && v >= ub[1] && v <= ub[1] + ub[3]) return { m: 'rulUnit' };
+    if (inRuler) return { m: 'rulMove', ox: x - R.x, oy: y - R.y };
   }
   return null;
 }
+/** Opens the units chooser over the ruler itself, where the tap landed. */
+function openUnitPop(px, py) {
+  const pop = $('unitPop'), s = sc(), r = ui.getBoundingClientRect();
+  for (const b of pop.querySelectorAll('button')) b.classList.toggle('on', b.dataset.u === (S.ruler.unit || 'cm'));
+  pop.classList.add('on');
+  pop.style.left = Math.round(Math.max(6, Math.min(innerWidth - pop.offsetWidth - 6, r.left + (px + MARGIN) * s - pop.offsetWidth / 2))) + 'px';
+  pop.style.top = Math.round(Math.max(6, r.top + (py + MARGIN) * s - pop.offsetHeight - 14)) + 'px';
+}
+$('unitPop').addEventListener('click', e => {
+  const b = e.target.closest('button[data-u]'); if (!b) return;
+  S.ruler.unit = b.dataset.u; $('unitPop').classList.remove('on'); redrawUI(); setHint();
+});
+document.addEventListener('pointerdown', e => {
+  if ($('unitPop').classList.contains('on') && !e.target.closest('#unitPop')) $('unitPop').classList.remove('on');
+}, true);
+
 function rulerSnap(x, y) {
   if (!S.ruler.on) return null; const R = S.ruler; const [u, v] = toLocal(R, x, y);
   if (v >= -tol() * 1.6 && v < 0.02 * CM && u >= -RUL.m && u <= R.L * CM + RUL.m) return u;
@@ -1077,50 +1654,152 @@ function visibleCentre() {
 /* ---------- instruments: drawing ---------- */
 function roundRect(c, x, y, w, h, r) { c.beginPath(); c.moveTo(x + r, y); c.arcTo(x + w, y, x + w, y + h, r); c.arcTo(x + w, y + h, x, y + h, r); c.arcTo(x, y + h, x, y, r); c.arcTo(x, y, x + w, y, r); c.closePath(); }
 function handleKnob(c, x, y, r, active) {
+  c.save();
   c.beginPath(); c.arc(x, y, r, 0, Math.PI * 2); c.fillStyle = active ? 'rgba(36,87,214,.95)' : 'rgba(36,87,214,.78)'; c.fill();
-  c.strokeStyle = '#fff'; c.lineWidth = r * 0.16; c.beginPath(); c.arc(x, y, r * 0.5, -Math.PI * 0.15, Math.PI * 1.35); c.stroke();
-  const a = Math.PI * 1.35, ax = x + r * 0.5 * Math.cos(a), ay = y + r * 0.5 * Math.sin(a);
-  c.beginPath(); c.moveTo(ax - r * 0.25, ay - r * 0.05); c.lineTo(ax, ay); c.lineTo(ax + r * 0.08, ay - r * 0.28); c.stroke();
+  turnArc(c, x, y, r * 0.5, r * 0.19, '#fff');
+  c.restore();
+}
+/** An arrowhead sitting on the end of a line: its base is centred exactly where the
+    line stops and square across it, with the point carrying on the same way. */
+function arrowHead(c, bx, by, dx, dy, len, halfW) {
+  const l = Math.hypot(dx, dy) || 1, ux = dx / l, uy = dy / l, px = -uy, py = ux;
+  c.beginPath();
+  c.moveTo(bx + ux * len, by + uy * len);
+  c.lineTo(bx + px * halfW, by + py * halfW);
+  c.lineTo(bx - px * halfW, by - py * halfW);
+  c.closePath(); c.fill();
+}
+/** Draws a turn arrow: an almost-closed circle finished with a head on the tangent. */
+function turnArc(c, x, y, r, lw, col) {
+  const a0 = Math.PI * 0.62, a1 = Math.PI * 2.18;      // open at the top left
+  c.strokeStyle = col; c.fillStyle = col; c.lineWidth = lw; c.lineCap = 'butt';
+  c.beginPath(); c.arc(x, y, r, a0, a1); c.stroke();
+  // where it stops, and the way it was going when it got there
+  const ex = x + r * Math.cos(a1), ey = y + r * Math.sin(a1);
+  arrowHead(c, ex, ey, -Math.sin(a1), Math.cos(a1), lw * 2.4, lw * 1.5);
+}
+/** A small turn arrow, drawn flat so it can be repeated along the ruler's blue strip. */
+function turnGlyph(c, x, y, r, col) {
+  c.save(); turnArc(c, x, y, r, r * 0.34, col); c.restore();
 }
 function drawRuler(c) {
-  const R = S.ruler, L = R.L * CM, s = sc();
+  const R = S.ruler, L = R.L * CM, s = sc(), U = rulerUnit();
   c.save(); c.translate(R.x, R.y); c.rotate(R.a);
   roundRect(c, -RUL.m, 0, L + 2 * RUL.m, RUL.W, 0.18 * CM);
   c.fillStyle = 'rgba(232,242,255,0.80)'; c.fill(); c.strokeStyle = 'rgba(40,70,130,.75)'; c.lineWidth = 1.2 / s; c.stroke();
+
+  // the scale, in whichever unit the ruler is set to
+  const span = L / (U.per * CM);                           // how many whole units fit along it
+  const whole = Math.floor(span + 1e-9), smalls = Math.round(whole * U.step);
   c.strokeStyle = 'rgba(20,30,60,.9)'; c.lineWidth = Math.max(0.45, 0.8 / s); c.beginPath();
-  for (let i = 0; i <= R.L * 10; i++) { const u = i * CM / 10, len = i % 10 === 0 ? 0.62 * CM : i % 5 === 0 ? 0.42 * CM : 0.24 * CM; c.moveTo(u, 0); c.lineTo(u, len); }
+  for (let i = 0; i <= smalls; i++) {
+    const u = i * U.per * CM / U.step;
+    const big = i % U.step === 0, mid = U.step % 2 === 0 && i % (U.step / 2) === 0;
+    c.moveTo(u, 0); c.lineTo(u, big ? 0.62 * CM : mid ? 0.42 * CM : 0.24 * CM);
+  }
   c.stroke();
-  c.fillStyle = 'rgba(20,30,60,.95)'; c.font = `600 ${0.34 * CM}px system-ui,sans-serif`; c.textAlign = 'center'; c.textBaseline = 'top';
-  for (let i = 0; i <= R.L; i++) c.fillText(String(i), i * CM, 0.72 * CM);
-  c.font = `${0.28 * CM}px system-ui,sans-serif`; c.textAlign = 'left'; c.fillStyle = 'rgba(40,60,110,.7)';
-  c.fillText('cm', 0.15 * CM, 1.35 * CM);
-  const [hx, hy] = rulerHandle(); handleKnob(c, hx, hy, 0.42 * CM, drag && drag.m === 'rulRot');
+  // Every whole one gets a number: a ruler that counts in twos is no use to a learner
+  // reading off 7 cm.
+  c.fillStyle = 'rgba(20,30,60,.95)'; c.textAlign = 'center'; c.textBaseline = 'top';
+  c.font = `600 ${(S.ruler.unit === 'm' ? 0.26 : 0.34) * CM}px system-ui,sans-serif`;
+  for (let i = 0; i <= whole; i++) c.fillText(U.label(i), i * U.per * CM, 0.72 * CM);
+  // The units live in a little box of their own, because a word you can press should
+  // look like a button and not like a label printed on the ruler.
+  c.font = `600 ${0.3 * CM}px system-ui,sans-serif`; c.textAlign = 'center'; c.textBaseline = 'middle';
+  const uw = Math.max(0.95 * CM, c.measureText(U.name).width + 0.42 * CM);
+  const ub = rulerUnitBox(uw);
+  roundRect(c, ub[0], ub[1], ub[2], ub[3], 0.13 * CM);
+  c.fillStyle = drag && drag.m === 'rulUnit' ? 'rgba(36,87,214,.3)' : 'rgba(255,255,255,.9)'; c.fill();
+  c.strokeStyle = 'rgba(36,87,214,.75)'; c.lineWidth = 0.045 * CM; c.stroke();
+  c.fillStyle = 'rgba(28,62,140,.95)';
+  c.fillText(U.name, ub[0] + ub[2] / 2, ub[1] + ub[3] / 2 + 0.01 * CM);
+  c.textBaseline = 'top';
+
+  // the blue strip along the bottom: press it anywhere to turn the ruler
+  const top = rulerBarTop(), gx = rulerGripX();
+  c.save();
+  // Square across the top so it reads as part of the ruler, rounded only at the bottom
+  // where the ruler itself is.
+  c.beginPath();
+  c.moveTo(-RUL.m, top); c.lineTo(L + RUL.m, top);
+  c.lineTo(L + RUL.m, RUL.W - 0.18 * CM);
+  c.arcTo(L + RUL.m, RUL.W, L + RUL.m - 0.18 * CM, RUL.W, 0.18 * CM);
+  c.lineTo(-RUL.m + 0.18 * CM, RUL.W);
+  c.arcTo(-RUL.m, RUL.W, -RUL.m, RUL.W - 0.18 * CM, 0.18 * CM);
+  c.closePath(); c.clip();
+  c.fillStyle = drag && drag.m === 'rulRot' ? 'rgba(36,87,214,.34)' : 'rgba(36,87,214,.22)';
+  c.fillRect(-RUL.m, top, L + 2 * RUL.m, RUL.bar);
+  const cy = top + RUL.bar / 2, gr = RUL.bar * 0.3, ink = 'rgba(28,62,140,.85)';
+  turnGlyph(c, L / 2, cy, gr, ink);        // one, in the middle, where a hand naturally goes
+  c.restore();
+
+  // The whole right-hand edge, top to bottom, makes the ruler longer or shorter.
+  c.save();
+  roundRect(c, -RUL.m, 0, L + 2 * RUL.m, RUL.W, 0.18 * CM); c.clip();
+  c.fillStyle = drag && drag.m === 'rulLen' ? 'rgba(36,87,214,.42)' : 'rgba(36,87,214,.26)';
+  c.fillRect(gx, 0, RUL.grip + RUL.m + 0.2 * CM, RUL.W);
+  // Centred in the part of the grip you can actually see: the ruler's own rounded edge
+  // clips anything past it, which was lopping the right-hand head clean off.
+  c.strokeStyle = 'rgba(28,62,140,.95)'; c.fillStyle = 'rgba(28,62,140,.95)';
+  const mx = gx + RUL.grip / 2, my = RUL.W / 2, reach = 0.1 * CM, head = 0.1 * CM;
+  c.lineWidth = 0.065 * CM; c.lineCap = 'butt';
+  c.beginPath(); c.moveTo(mx - reach, my); c.lineTo(mx + reach, my); c.stroke();
+  arrowHead(c, mx - reach, my, -1, 0, head, head * 0.8);
+  arrowHead(c, mx + reach, my, 1, 0, head, head * 0.8);
+  c.restore();
   c.restore();
 }
 function drawProt(c) {
-  const P = S.prot, R = PR.R, s = sc();
+  const P = S.prot, R = PR.R, s = sc(), full = !!P.full, TOP = full ? 360 : 180;
   c.save(); c.translate(P.x, P.y); c.rotate(P.a);
-  c.beginPath(); c.moveTo(-R, PR.b); c.lineTo(R, PR.b); c.lineTo(R, 0); c.arc(0, 0, R, 0, -Math.PI, true); c.closePath();
+  c.beginPath();
+  if (full) c.arc(0, 0, R, 0, Math.PI * 2);
+  else { c.moveTo(-R, PR.b); c.lineTo(R, PR.b); c.lineTo(R, 0); c.arc(0, 0, R, 0, -Math.PI, true); c.closePath(); }
   c.fillStyle = 'rgba(255,246,222,0.80)'; c.fill(); c.strokeStyle = 'rgba(120,80,20,.75)'; c.lineWidth = 1.2 / s; c.stroke();
+
+  // the turning rim: the outer five millimetres, shaded so it is clear it can be held
+  c.save();
+  c.beginPath();
+  if (full) { c.arc(0, 0, R, 0, Math.PI * 2); c.arc(0, 0, R - PR.rim, 0, Math.PI * 2, true); }
+  else { c.moveTo(-R, PR.b); c.lineTo(R, PR.b); c.lineTo(R, 0); c.arc(0, 0, R, 0, -Math.PI, true); c.closePath();
+         c.moveTo(-(R - PR.rim), PR.b); c.lineTo(R - PR.rim, PR.b); c.lineTo(R - PR.rim, 0); c.arc(0, 0, R - PR.rim, 0, -Math.PI, true); c.closePath(); }
+  c.fillStyle = drag && drag.m === 'protRot' ? 'rgba(36,87,214,.40)' : 'rgba(36,87,214,.22)';
+  c.fill('evenodd');
+  c.restore();
+
   c.strokeStyle = 'rgba(50,35,10,.9)'; c.lineWidth = Math.max(0.4, 0.75 / s); c.beginPath();
-  for (let d = 0; d <= 180; d++) {
+  for (let d = 0; d <= TOP; d++) {
     const t = d * Math.PI / 180, len = d % 10 === 0 ? 0.42 * CM : d % 5 === 0 ? 0.28 * CM : 0.16 * CM, cs = Math.cos(t), sn = Math.sin(t);
     c.moveTo((R - len) * cs, -(R - len) * sn); c.lineTo(R * cs, -R * sn);
   }
   c.moveTo(-R, 0); c.lineTo(R, 0);
+  if (full) { c.moveTo(0, -R); c.lineTo(0, R); }
   c.moveTo(0, 0); c.lineTo(0, -0.5 * CM); c.moveTo(-0.3 * CM, 0); c.lineTo(0.3 * CM, 0);
   c.stroke();
-  c.beginPath(); c.arc(0, 0, R - 1.45 * CM, 0, -Math.PI, true); c.lineWidth = Math.max(0.3, 0.5 / s); c.stroke();
+  c.beginPath(); full ? c.arc(0, 0, R - 1.45 * CM, 0, Math.PI * 2) : c.arc(0, 0, R - 1.45 * CM, 0, -Math.PI, true);
+  c.lineWidth = Math.max(0.3, 0.5 / s); c.stroke();
   c.beginPath(); c.lineWidth = Math.max(0.25, 0.4 / s); c.strokeStyle = 'rgba(50,35,10,.35)';
-  for (let d = 10; d < 180; d += 10) { const t = d * Math.PI / 180; c.moveTo((R - 1.45 * CM) * Math.cos(t), -(R - 1.45 * CM) * Math.sin(t)); c.lineTo(0.9 * CM * Math.cos(t), -0.9 * CM * Math.sin(t)); }
+  for (let d = 10; d < TOP; d += 10) { const t = d * Math.PI / 180; c.moveTo((R - 1.45 * CM) * Math.cos(t), -(R - 1.45 * CM) * Math.sin(t)); c.lineTo(0.9 * CM * Math.cos(t), -0.9 * CM * Math.sin(t)); }
   c.stroke();
   c.textAlign = 'center'; c.textBaseline = 'middle';
-  for (let d = 0; d <= 180; d += 10) {
+  for (let d = 0; d < TOP || (!full && d === 180); d += 10) {
     const t = d * Math.PI / 180;
-    for (const [r, val, fs, col] of [[R - 0.68 * CM, 180 - d, 0.27 * CM, 'rgba(40,25,5,.95)'], [R - 1.12 * CM, d, 0.22 * CM, 'rgba(160,40,20,.9)']]) {
+    const rows = full ? [[R - 0.68 * CM, d, 0.27 * CM, 'rgba(40,25,5,.95)']]
+                      : [[R - 0.68 * CM, 180 - d, 0.27 * CM, 'rgba(40,25,5,.95)'], [R - 1.12 * CM, d, 0.22 * CM, 'rgba(160,40,20,.9)']];
+    for (const [r, val, fs, col] of rows) {
       c.save(); c.translate(r * Math.cos(t), -r * Math.sin(t)); c.rotate(Math.PI / 2 - t);
       c.font = `600 ${fs}px system-ui,sans-serif`; c.fillStyle = col; c.fillText(String(val), 0, 0); c.restore();
     }
+  }
+  // the 360 button
+  {
+    const [bx, by] = protFullBtn(), br = protFullR();
+    c.save(); c.beginPath(); c.arc(bx, by, br, 0, Math.PI * 2);
+    c.fillStyle = full ? 'rgba(36,87,214,.30)' : 'rgba(255,255,255,.35)'; c.fill();
+    c.strokeStyle = 'rgba(36,87,214,.85)'; c.lineWidth = 0.1 * CM; c.stroke();
+    c.fillStyle = 'rgba(28,62,140,.95)';
+    c.font = `700 ${0.26 * CM}px system-ui,sans-serif`; c.textAlign = 'center'; c.textBaseline = 'middle';
+    c.fillText('360', bx, by); c.restore();
   }
   c.beginPath(); c.arc(0, 0, 0.07 * CM, 0, Math.PI * 2); c.fillStyle = 'rgba(200,30,30,.9)'; c.fill();
   // measuring arm
@@ -1128,10 +1807,10 @@ function drawProt(c) {
   c.strokeStyle = 'rgba(210,30,30,.9)'; c.lineWidth = Math.max(0.6, 1.2 / s); c.beginPath(); c.moveTo(0, 0); c.lineTo(ar * Math.cos(t), -ar * Math.sin(t)); c.stroke();
   const [kx, ky] = protArmKnob(); c.beginPath(); c.arc(kx, ky, 0.28 * CM, 0, Math.PI * 2); c.fillStyle = 'rgba(210,30,30,.85)'; c.fill();
   c.strokeStyle = '#fff'; c.lineWidth = 0.05 * CM; c.stroke();
-  const [hx, hy] = protRotHandle(); handleKnob(c, hx, hy, 0.4 * CM, drag && drag.m === 'protRot');
+  if (!full) { const [hx, hy] = protRotHandle(); handleKnob(c, hx, hy, 0.4 * CM, drag && drag.m === 'protRot'); }
   c.restore();
   const lr = PR.R + 1.45 * CM; const [wx, wy] = toWorld(P, lr * Math.cos(t), -lr * Math.sin(t));
-  pill(c, `${P.arm}°  (${180 - P.arm}°)`, wx, wy, '#c81e1e');
+  pill(c, full ? `${P.arm}°` : `${P.arm}°  (${180 - P.arm}°)`, wx, wy, '#c81e1e');
 }
 function drawCompass(c) {
   const C = S.comp, s = sc();
@@ -1154,7 +1833,33 @@ function drawCompass(c) {
   // pin & pencil tips
   c.beginPath(); c.arc(C.cx, C.cy, 4 / s, 0, Math.PI * 2); c.fillStyle = '#fff'; c.fill(); c.strokeStyle = '#333'; c.lineWidth = 1.5 / s; c.stroke();
   c.beginPath(); c.moveTo(C.cx - 7 / s, C.cy); c.lineTo(C.cx + 7 / s, C.cy); c.moveTo(C.cx, C.cy - 7 / s); c.lineTo(C.cx, C.cy + 7 / s); c.lineWidth = 1 / s; c.stroke();
-  c.beginPath(); c.arc(px, py, 5 / s, 0, Math.PI * 2); c.fillStyle = S.color; c.fill(); c.strokeStyle = '#fff'; c.lineWidth = 1.5 / s; c.stroke();
+  // A real pencil clipped to the drawing arm, pointing down the arm to its tip, so it
+  // is obvious which leg draws and where the line will come from.
+  {
+    const ax = px - hx, ay = py - hy, al = Math.hypot(ax, ay) || 1;
+    const ux = ax / al, uy = ay / al, vx = -uy, vy = ux;
+    const tipL = 0.42 * CM, bodyL = 1.25 * CM, w = 0.17 * CM;
+    const bx = px - ux * tipL, by = py - uy * tipL;                 // where the wood meets the lead
+    const kx = bx - ux * bodyL, ky = by - uy * bodyL;               // the blunt end
+    c.lineJoin = 'round';
+    c.beginPath();                                                   // the barrel
+    c.moveTo(bx + vx * w, by + vy * w); c.lineTo(kx + vx * w, ky + vy * w);
+    c.lineTo(kx - vx * w, ky - vy * w); c.lineTo(bx - vx * w, by - vy * w); c.closePath();
+    c.fillStyle = '#e9b949'; c.fill(); c.strokeStyle = 'rgba(90,70,20,.85)'; c.lineWidth = 0.05 * CM; c.stroke();
+    c.beginPath();                                                   // the sharpened end
+    c.moveTo(bx + vx * w, by + vy * w); c.lineTo(px, py); c.lineTo(bx - vx * w, by - vy * w); c.closePath();
+    c.fillStyle = '#f3dfb6'; c.fill(); c.stroke();
+    c.beginPath();                                                   // the lead itself, in the pen colour
+    const lb = 0.14 * CM;
+    c.moveTo(px - ux * lb + vx * lb * 0.42, py - uy * lb + vy * lb * 0.42);
+    c.lineTo(px, py);
+    c.lineTo(px - ux * lb - vx * lb * 0.42, py - uy * lb - vy * lb * 0.42);
+    c.closePath(); c.fillStyle = S.color; c.fill();
+    c.beginPath();                                                   // the ferrule
+    c.moveTo(kx + ux * 0.22 * CM + vx * w, ky + uy * 0.22 * CM + vy * w);
+    c.lineTo(kx + ux * 0.22 * CM - vx * w, ky + uy * 0.22 * CM - vy * w);
+    c.strokeStyle = 'rgba(120,130,150,.9)'; c.lineWidth = 0.09 * CM; c.stroke();
+  }
   { const [qx, qy] = compHinge(), R = COMP_X(); c.beginPath(); c.arc(qx, qy, R, 0, Math.PI * 2); c.fillStyle = '#dc2626'; c.fill(); c.lineWidth = R * 0.22; c.strokeStyle = '#fff'; c.stroke();
     const a = R * 0.42; c.beginPath(); c.moveTo(qx - a, qy - a); c.lineTo(qx + a, qy + a); c.moveTo(qx + a, qy - a); c.lineTo(qx - a, qy + a); c.lineWidth = R * 0.28; c.lineCap = 'round'; c.stroke(); }
   c.restore();
@@ -1191,7 +1896,7 @@ function selHandles() {
   const out = HANDLE * 0.75 / sc();        // just beyond the edge, clear of the editing box
   const h = { size: [b[0] + b[2] + out, b[1] + b[3] + out] };        // corner: bigger / smaller
   if (k.kind === 'text') h.width = [b[0] + b[2] + out, b[1] + b[3] / 2];   // right edge, halfway down
-  h.turn = [b[0] + b[2] / 2, b[1] - 26 / sc()];
+  h.turn = [b[0] + b[2] + 26 / sc(), b[1] + b[3] / 2];     // out to the right, clear of the bar above
   return h;
 }
 
@@ -1214,16 +1919,85 @@ function handleAt(x, y) {
   return null;
 }
 
-function selectItem(k) { S.sel = k || null; if (!S.sel) ui.style.cursor = ''; redrawUI(); }
+function selectItem(k) { S.sel = k || null; if (!S.sel) ui.style.cursor = ''; syncShapeBar(); redrawUI(); }
 
-/** The topmost text box or picture under a point, if any. */
+/* ---------- the bubble over a line or shape ----------
+   Same idea as the one over a text box: pick the shape, and the things you can
+   change about it appear just above it, where you are already looking.        */
+function shapeBarOn() { return S.sel && isShape(S.sel); }
+function syncShapeBar() {
+  const bar = $('shapeBar');
+  if (!shapeBarOn()) { bar.classList.remove('on'); return; }
+  const k = S.sel;
+  bar.classList.add('on');
+  for (const b of bar.querySelectorAll('[data-d]')) b.classList.toggle('on', b.dataset.d === (k.d || 'solid'));
+  let best = null;
+  for (const b of bar.querySelectorAll('[data-w]')) {
+    if (best === null || Math.abs(+b.dataset.w - k.w) < Math.abs(best - k.w)) best = +b.dataset.w;
+  }
+  for (const b of bar.querySelectorAll('[data-w]')) b.classList.toggle('on', +b.dataset.w === best);
+  $('shapeCol').querySelector('i').style.background = k.c;
+  const fill = $('shapeFill');
+  fill.style.display = k.sh ? '' : 'none';                 // a line has nothing to fill
+  fill.classList.toggle('empty', !k.f);
+  fill.querySelector('i').style.background = k.f || '#fff';
+  placeShapeBar();
+}
+/** Sits the bubble just above the shape, nudged back on screen if it would hang off. */
+function placeShapeBar() {
+  const bar = $('shapeBar'), b = selBox(); if (!b) return;
+  const s = sc(), r = ui.getBoundingClientRect(), st = stage.getBoundingClientRect();
+  const left = r.left - st.left + (b[0] + MARGIN) * s;
+  const top = r.top - st.top + (b[1] + MARGIN) * s - bar.offsetHeight - 10;
+  bar.style.left = Math.max(4, Math.round(Math.min(left, stage.clientWidth - bar.offsetWidth - 4))) + 'px';
+  bar.style.top = Math.round(Math.max(4, top)) + 'px';
+}
+/** Changes the chosen shape, and sets how the next one comes out. */
+function shapeStyle(toShape, toDefault) {
+  const k = S.sel;
+  if (k && isShape(k)) { snapshot(); toShape(k); delete k._wk; redrawInk(); }
+  toDefault();
+  syncShapeBar(); redrawUI();
+}
+$('shapeBar').addEventListener('click', e => {
+  const d = e.target.closest('[data-d]'), w = e.target.closest('[data-w]');
+  if (d) shapeStyle(k => k.d = d.dataset.d, () => S.dash = d.dataset.d);
+  else if (w) { const v = +w.dataset.w; shapeStyle(k => k.w = v, () => { S.width = v; const sl = $('width'); if (sl) sl.value = v; }); }
+});
+$('shapeCol').addEventListener('click', e => {
+  const k = S.sel;
+  openColourPop(e.currentTarget, k ? k.c : S.color, v => { if (v) shapeStyle(st => st.c = v, () => setColour(v)); }, false,
+    { alpha: k ? (k.a == null ? 1 : k.a) : 1, onAlpha: v => { if (S.sel) { S.sel.a = v; redrawInk(); } } });
+});
+$('shapeDel').addEventListener('click', () => deleteSel());
+$('shapeDup').addEventListener('click', () => duplicateSel());
+/** A copy of the chosen shape, set down a little below and to the right of it. */
+function duplicateSel() {
+  const k = S.sel; if (!k || !isShape(k)) return;
+  snapshot();
+  const copy = copyItem(k);
+  const off = 0.5 * CM;
+  for (let i = 0; i < copy.p.length; i += 2) { copy.p[i] += off; copy.p[i + 1] += off; }
+  delete copy._wk; delete copy._wp;
+  (S.ann[AK()] = S.ann[AK()] || []).push(copy);
+  S.dirty = true;
+  selectItem(copy); redrawInk(); redrawUI();
+}
+$('shapeFill').addEventListener('click', e => {
+  const k = S.sel;
+  openColourPop(e.currentTarget, k ? k.f : S.fill, v => shapeStyle(st => { if (st.sh) st.f = v; }, () => S.fill = v), true,
+    { alpha: k ? (k.fa == null ? 1 : k.fa) : 1, onAlpha: v => { if (S.sel) { S.sel.fa = v; redrawInk(); } } });
+});
+
+/** The topmost text box, picture, line or shape under a point, if any. */
 function itemAt(x, y) {
   const list = S.ann[AK()] || [];
   for (let i = list.length - 1; i >= 0; i--) {
     const k = list[i], b = itemBox(k);
     if (!b) continue;
     const [lx, ly] = localPt(k, x, y);
-    if (lx >= b[0] && lx <= b[0] + b[2] && ly >= b[1] && ly <= b[1] + b[3]) return k;
+    const g = isShape(k) ? 6 / sc() : 0;      // a thin line is hard to hit dead on
+    if (lx >= b[0] - g && lx <= b[0] + b[2] + g && ly >= b[1] - g && ly <= b[1] + b[3] + g) return k;
   }
   return null;
 }
@@ -1245,8 +2019,8 @@ function drawSelection(c) {
   c.strokeRect(b[0], b[1], b[2], b[3]);
   c.setLineDash([]);
   c.lineWidth = 2 / s;
-  if (hs.turn) {   // a stalk up to the turn grip, so it reads as a handle and not a speck
-    c.strokeStyle = '#2457d6'; c.beginPath(); c.moveTo(b[0] + b[2] / 2, b[1]); c.lineTo(hs.turn[0], hs.turn[1]); c.stroke();
+  if (hs.turn) {   // a stalk out to the turn grip, so it reads as a handle and not a speck
+    c.strokeStyle = '#2457d6'; c.beginPath(); c.moveTo(b[0] + b[2], b[1] + b[3] / 2); c.lineTo(hs.turn[0], hs.turn[1]); c.stroke();
     c.beginPath(); c.arc(hs.turn[0], hs.turn[1], h * 0.6, 0, Math.PI * 2);
     c.fillStyle = '#fff'; c.fill(); c.stroke();
   }
@@ -1367,7 +2141,10 @@ function paintUI() {
   if (!S.doc) return;
   uiX.setTransform(s * d, 0, 0, s * d, MARGIN * s * d, MARGIN * s * d);
   const c = uiX;
-  if (drag && drag.k && !drag.k.kind) drawStroke(c, drag.k);
+  // A stroke being drawn on the tracing paper is painted by the sheet itself, in the
+  // sheet's own frame - painting it here as well left a ghost copy on the page.
+  if (drag && drag.k && !drag.k.kind && drag.m !== 'tracePen') drawStroke(c, drag.k);
+  drawTrace(c, drag && drag.m === 'tracePen' ? drag.k : null);
   if (S.ruler.on) drawRuler(c);
   if (S.prot.on) drawProt(c);
   if (S.tool === 'compass') drawCompass(c);
@@ -1377,122 +2154,188 @@ function paintUI() {
   if (S.tool === 'eraser' && hover) { c.beginPath(); c.arc(hover[0], hover[1], 16 / s, 0, Math.PI * 2); c.fillStyle = 'rgba(255,255,255,.4)'; c.fill(); c.strokeStyle = 'rgba(0,0,0,.6)'; c.lineWidth = 1.5 / s; c.stroke(); }
   if (S.tool === 'compass' && !S.comp.placed && !drag && hover) pill(c, 'Press on the centre point, drag out the radius', hover[0], hover[1] - 24 / s);
   if (S.sel) drawSelection(c);
+  if (shapeBarOn()) placeShapeBar(); else $('shapeBar').classList.remove('on');
 }
 
 /* ---------- shapes ---------- */
 const POLY = { 5: 'Pentagon', 6: 'Hexagon', 7: 'Heptagon', 8: 'Octagon', 9: 'Nonagon', 10: 'Decagon', 11: 'Hendecagon', 12: 'Dodecagon' };
-S.shape = { kind: 'circle', n: 0 };
+S.shape = { kind: 'round', n: 0 };
 S.dash = 'solid'; S.fill = '';
 
-/* ---------- the style panel ----------
-   Changes the line or shape you have just drawn, and sets how the next one comes
-   out - so you can draw it, look at it on the board, and then change your mind. */
-const STYLE_W = [2, 4, 6, 9, 14];
-function lastShapeOnPage() {
-  const list = S.ann[S.page] || [];
-  for (let i = list.length - 1; i >= 0; i--) { const k = list[i]; if (!k.kind && k.d) return k; }
-  return null;
-}
-function styleOpen() { return $('stylePop').classList.contains('on'); }
-function closeStylePop() { $('stylePop').classList.remove('on'); $('styleBtn').classList.remove('on'); closeColourPop(); }
-function paintStylePop() {
-  const k = lastShapeOnPage();
-  const d = k ? (k.d || 'solid') : S.dash, w = k ? k.w : S.width, col = k ? k.c : S.color, fill = k ? (k.sh ? k.f : S.fill) : S.fill;
-  [...$('dashRow').children].forEach(b => b.classList.toggle('on', b.dataset.d === d));
-  $('wRow').innerHTML = STYLE_W.map(v =>
-    `<button data-w="${v}" class="${Math.abs(v - w) < 0.6 ? 'on' : ''}" title="${v}"><svg viewBox="0 0 40 16"><path d="M3 8h34" stroke="currentColor" stroke-width="${v}" fill="none" stroke-linecap="round"/></svg></button>`).join('');
-  $('styleColDot').style.background = col;
-  $('styleFillDot').style.background = fill || '#fff';
-  $('styleFillDot').style.borderStyle = fill ? 'solid' : 'dashed';
-  $('styleFillTxt').textContent = fill ? 'Filled' : 'No fill';
-}
-/** Changes the line or shape just drawn, and sets the same as the default for the next one. */
-function applyStyle(toStroke, toDefault) {
-  const k = lastShapeOnPage();
-  if (k) { snapshot(); toStroke(k); delete k._wk; redrawInk(); }
-  toDefault();
-  paintStylePop();
-}
-function toggleStylePop() {
-  if (styleOpen()) { closeStylePop(); return; }
-  paintStylePop();
-  const pop = $('stylePop'); pop.classList.add('on'); $('styleBtn').classList.add('on');
-  const r = $('styleBtn').getBoundingClientRect();
-  pop.style.left = Math.round(Math.max(6, Math.min(innerWidth - pop.offsetWidth - 6, r.left))) + 'px';
-  pop.style.top = Math.round(Math.min(innerHeight - pop.offsetHeight - 6, r.bottom + 6)) + 'px';
-}
-$('styleBtn').addEventListener('click', toggleStylePop);
-$('dashRow').addEventListener('click', e => {
-  const b = e.target.closest('button[data-d]'); if (!b) return;
-  applyStyle(k => k.d = b.dataset.d, () => S.dash = b.dataset.d);
-});
-$('wRow').addEventListener('click', e => {
-  const b = e.target.closest('button[data-w]'); if (!b) return;
-  const v = +b.dataset.w;
-  applyStyle(k => k.w = v, () => { S.width = v; const sl = $('width'); if (sl) sl.value = v; });
-});
-$('styleCol').addEventListener('click', e => {
-  const k = lastShapeOnPage();
-  openColourPop(e.currentTarget, k ? k.c : S.color, v => { if (v) applyStyle(st => st.c = v, () => setColour(v)); });
-});
-$('styleFill').addEventListener('click', e => {
-  const k = lastShapeOnPage();
-  openColourPop(e.currentTarget, k && k.sh ? k.f : S.fill, v => applyStyle(st => { if (st.sh) st.f = v; }, () => S.fill = v), true);
-});
-document.addEventListener('pointerdown', e => {
-  if (styleOpen() && !e.target.closest('#stylePop') && !e.target.closest('#styleBtn') && !e.target.closest('#colPop')) closeStylePop();
-}, true);
-const shapeName = sh => ({ circle: 'Circle', oval: 'Oval', semi: 'Semicircle', equi: 'Equilateral triangle', isos: 'Isosceles triangle', right: 'Right-angled triangle', square: 'Square', rect: 'Rectangle' })[sh.kind] || (POLY[sh.n] || sh.n + '-sided polygon');
+const shapeName = sh => ({ round: 'Circle', circle: 'Circle', oval: 'Oval', semi: 'Semicircle', equi: 'Equilateral triangle', isos: 'Isosceles triangle', right: 'Right-angled triangle', square: 'Square', rect: 'Rectangle', trap: 'Isosceles trapezium', para: 'Parallelogram', custom: 'Custom shape' })[sh.kind] || (POLY[sh.n] || sh.n + '-sided polygon');
 function shapePts(sh, x0, y0, x1, y1) {
   let w = x1 - x0, h = y1 - y0; const sg = v => (v < 0 ? -1 : 1);
   if (sh.kind === 'semi') h = sg(h) * Math.abs(w) / 2;
   else if (sh.kind === 'equi') h = sg(h) * Math.abs(w) * Math.sqrt(3) / 2;
+  else if (sh.kind === 'round') {
+    // One button for both: drag out square-on and you get a circle, drag long and
+    // thin and you get the oval you were clearly after.
+    const aw = Math.abs(w), ah = Math.abs(h), m = Math.max(aw, ah);
+    if (m > 0 && Math.min(aw, ah) / m >= Math.tan(35 * Math.PI / 180)) { w = sg(w) * m; h = sg(h) * m; }
+  }
   else if (['circle', 'square', 'poly'].includes(sh.kind)) { const m = Math.max(Math.abs(w), Math.abs(h)); w = sg(w) * m; h = sg(h) * m; }
   const L = Math.min(x0, x0 + w), T = Math.min(y0, y0 + h), Rr = Math.max(x0, x0 + w), B = Math.max(y0, y0 + h), cx = (L + Rr) / 2, cy = (T + B) / 2, rx = (Rr - L) / 2, ry = (B - T) / 2;
   const p = [];
-  if (sh.kind === 'circle' || sh.kind === 'oval') { for (let i = 0; i <= 120; i++) { const a = i / 120 * 2 * Math.PI; p.push(cx + rx * Math.cos(a), cy + ry * Math.sin(a)); } }
+  if (sh.kind === 'circle' || sh.kind === 'oval' || sh.kind === 'round') { for (let i = 0; i <= 120; i++) { const a = i / 120 * 2 * Math.PI; p.push(cx + rx * Math.cos(a), cy + ry * Math.sin(a)); } }
   else if (sh.kind === 'semi') { for (let i = 0; i <= 64; i++) { const a = Math.PI + Math.PI * i / 64; p.push(cx + rx * Math.cos(a), B + rx * Math.sin(a)); } p.push(L, B); }
   else if (sh.kind === 'equi' || sh.kind === 'isos') p.push(L, B, Rr, B, cx, T, L, B);
-  else if (sh.kind === 'right') p.push(L, B, Rr, B, L, T, L, B);
+  else if (sh.kind === 'right') {
+    // The upright side follows the way the drag went, so dragging left puts the right
+    // angle on the right - the mirror image a textbook often wants.
+    if (x1 < x0) p.push(Rr, B, L, B, Rr, T, Rr, B);
+    else p.push(L, B, Rr, B, L, T, L, B);
+  }
+  else if (sh.kind === 'trap') { const i = (Rr - L) * 0.22; p.push(L, B, Rr, B, Rr - i, T, L + i, T, L, B); }
+  else if (sh.kind === 'para') { const i = (Rr - L) * 0.25; p.push(L, B, Rr - i, B, Rr, T, L + i, T, L, B); }
   else if (sh.kind === 'square' || sh.kind === 'rect') p.push(L, T, Rr, T, Rr, B, L, B, L, T);
+  else if (sh.kind === 'custom' && sh.pts && sh.pts.length > 2) {
+    // The outline drawn on the little grid, stretched to fill the box being dragged out.
+    const X = sh.pts.map(q => q[0]), Y = sh.pts.map(q => q[1]);
+    const gx0 = Math.min(...X), gx1 = Math.max(...X), gy0 = Math.min(...Y), gy1 = Math.max(...Y);
+    const gw = Math.max(1e-6, gx1 - gx0), gh = Math.max(1e-6, gy1 - gy0);
+    for (const q of sh.pts) p.push(L + (q[0] - gx0) / gw * (Rr - L), B - (q[1] - gy0) / gh * (B - T));
+    p.push(L + (sh.pts[0][0] - gx0) / gw * (Rr - L), B - (sh.pts[0][1] - gy0) / gh * (B - T));
+  }
   else { const n = sh.n, r = Math.min(rx, ry), a0 = Math.PI / 2 + Math.PI / n; for (let i = 0; i <= n; i++) { const a = a0 + 2 * Math.PI * i / n; p.push(cx + r * Math.cos(a), cy + r * Math.sin(a)); } }
   let label = shapeName(sh);
-  if (sh.kind === 'circle') label += ' · r = ' + fmtCm(rx);
+  if (sh.kind === 'circle' || (sh.kind === 'round' && Math.abs(rx - ry) < 0.01)) label = 'Circle · r = ' + fmtCm(rx);
+  else if (sh.kind === 'round') label = `Oval · ${fmtCm(2 * rx)} × ${fmtCm(2 * ry)}`;
   else if (sh.kind === 'semi') label += ' · d = ' + fmtCm(2 * rx);
-  else if (sh.kind === 'oval' || sh.kind === 'rect' || sh.kind === 'isos' || sh.kind === 'right') label += ` · ${fmtCm(2 * rx)} × ${fmtCm(2 * ry)}`;
+  else if (['oval', 'rect', 'isos', 'right', 'trap', 'para'].includes(sh.kind)) label += ` · ${fmtCm(2 * rx)} × ${fmtCm(2 * ry)}`;
   else if (sh.kind === 'square' || sh.kind === 'equi') label += ' · side ' + fmtCm(2 * rx);
+  else if (sh.kind === 'custom') label = `Custom ${cuName(sh.pts ? sh.pts.length : 0)} · ${fmtCm(2 * rx)} × ${fmtCm(2 * ry)}`;
   else label += ' · side ' + fmtCm(2 * Math.min(rx, ry) * Math.sin(Math.PI / sh.n));
   return { p, label, lx: cx, ly: T - 18 / sc() };
 }
 const ICO = (d) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round">${d}</svg>`;
 const polyIco = n => { let d = ''; const a0 = Math.PI / 2 + Math.PI / n; for (let i = 0; i <= n; i++) { const a = a0 + 2 * Math.PI * i / n; d += (i ? 'L' : 'M') + (12 + 9 * Math.cos(a)).toFixed(1) + ' ' + (12 + 9 * Math.sin(a)).toFixed(1); } return ICO(`<path d="${d}"/>`); };
+const QUAD_KINDS = ['square', 'rect', 'trap', 'para'];
+const TRI_KINDS = ['equi', 'isos', 'right'];
+/* Every shape on one board of pictures: what it looks like, with how many sides it has
+   written inside it. Nothing hidden behind a sub-menu, nothing to read. */
+const SHAPE_TILES = [
+  ['round', '<circle cx="12" cy="12" r="9.5"/>', 'Circle \u2013 drag square-on for a circle, long for an oval'],
+  ['semi',  '<path d="M2 17.5a10 10 0 0 1 20 0z"/>', 'Semicircle'],
+  ['equi',  '<path d="M12 2.5l9.5 17H2.5z"/>', 'Equilateral triangle'],
+  ['isos',  '<path d="M12 2.5l7.5 17H4.5z"/>', 'Isosceles triangle'],
+  ['right', '<path d="M3.5 20.5V3.5l17 17z"/>', 'Right-angled triangle'],
+  ['square','<rect x="3.5" y="3.5" width="17" height="17"/>', 'Square'],
+  ['rect',  '<rect x="1.5" y="6" width="21" height="12"/>', 'Rectangle'],
+  ['trap',  '<path d="M2 19.5h20l-4-15H6z"/>', 'Isosceles trapezium'],
+  ['para',  '<path d="M2 19.5h15l5-15H7z"/>', 'Parallelogram']
+];
 function buildShapeMenu() {
   const on = k => S.shape.kind === k ? ' on' : '';
-  let h = `<div class="ttl">Choose a shape, then drag on the page to draw it</div>
-  <div class="row"><button class="sh${S.shape.kind === 'circle' || S.shape.kind === 'oval' ? ' on' : ''}" data-grp="circ">${ICO('<circle cx="12" cy="12" r="9"/>')}Circle ▸</button>
-  <button class="sh${on('semi')}" data-k="semi">${ICO('<path d="M3 17a9 9 0 0 1 18 0z"/>')}Semicircle</button>
-  <button class="sh${['equi', 'isos', 'right'].includes(S.shape.kind) ? ' on' : ''}" data-grp="tri">${ICO('<path d="M12 3l9 17H3z"/>')}Triangle ▸</button></div>
-  <div class="sub" id="sub-circ"><button data-k="circle" class="${on('circle')}">Circle</button><button data-k="oval" class="${on('oval')}">Oval</button></div>
-  <div class="sub" id="sub-tri"><button data-k="equi" class="${on('equi')}">Equilateral</button><button data-k="isos" class="${on('isos')}">Isosceles</button><button data-k="right" class="${on('right')}">Right-angled</button></div>
-  <div class="row"><button class="sh${S.shape.kind === 'square' || S.shape.kind === 'rect' ? ' on' : ''}" data-grp="quad">${ICO('<rect x="4" y="4" width="16" height="16"/>')}Square ▸</button>`;
-  [5, 6].forEach(n => { h += `<button class="sh${S.shape.kind === 'poly' && S.shape.n === n ? ' on' : ''}" data-n="${n}">${polyIco(n)}${POLY[n]}</button>`; });
-  h += `</div><div class="sub" id="sub-quad"><button data-k="square" class="${on('square')}">Square</button><button data-k="rect" class="${on('rect')}">Rectangle</button></div><div class="row">`;
-  [7, 8, 9, 10, 11, 12].forEach(n => { h += `<button class="sh${S.shape.kind === 'poly' && S.shape.n === n ? ' on' : ''}" data-n="${n}" title="${n} sides">${polyIco(n)}<span class="t">${n === 7 ? 'Heptagon<small>(septagon)</small>' : POLY[n]}</span></button>`; });
-  h += `</div><div class="nrow">Any number of sides: <input type="number" id="nSides" min="3" max="100" value="${S.shape.kind === 'poly' && !POLY[S.shape.n] ? S.shape.n : 20}"><button class="primary" id="nGo">Use</button></div>
-  <div class="tip">Shapes use the pen colour and thickness. Circles, squares, equilateral triangles and polygons stay regular as you drag.</div>`;
-  const m = $('shapeMenu'); m.innerHTML = h;
-  const k = S.shape.kind; if (k === 'circle' || k === 'oval') $('sub-circ').classList.add('open'); if (['equi', 'isos', 'right'].includes(k)) $('sub-tri').classList.add('open'); if (k === 'square' || k === 'rect') $('sub-quad').classList.add('open');
+  const tile = (attr, svg, title) => `<button class="sh${attr.cls || ''}" ${attr.a} title="${title}">${svg}</button>`;
+  let h = `<div class="ttl">Choose a shape, then drag on the page to draw it</div><div class="row">`;
+  for (const [k, d, title] of SHAPE_TILES) {
+    const lit = k === 'round' ? ['round', 'circle', 'oval'].includes(S.shape.kind) : S.shape.kind === k;
+    h += tile({ a: `data-k="${k}"`, cls: lit ? ' on' : '' }, ICO(d), title);
+  }
+  [5, 6, 8].forEach(n => { h += tile({ a: `data-n="${n}"`, cls: S.shape.kind === 'poly' && S.shape.n === n ? ' on' : '' }, polyIco(n), POLY[n]); });
+  const sides = S.shape.kind === 'poly' && !POLY[S.shape.n] ? S.shape.n : 12;
+  h += `</div><div class="nrow">
+    <div class="step">
+      <button id="nDown" title="Fewer sides">\u2212</button>
+      <span class="num"><input type="number" id="nSides" min="3" max="100" value="${sides}"><em>sides</em></span>
+      <button id="nUp" title="More sides">+</button>
+      <button class="primary" id="nGo">Add</button>
+    </div>
+    <button class="cust" id="customBtn" title="Draw your own shape on a grid">Custom\u2026</button>
+  </div>`;
+  $('shapeMenu').innerHTML = h;
 }
-function pickShape(sh) { S.shape = sh; $('shapeLbl').textContent = shapeName(sh).replace(' triangle', ' △').replace('-sided polygon', '-gon'); setTool('shape'); $('shapeMenu').classList.remove('on'); }
+/* ---------- drawing your own shape ----------
+   The same squared paper as ShapeXplorer: tap to put down a corner, tap the first one
+   again to close it. What comes out is a plain outline the page can draw like any other
+   shape, so it can be moved, resized, filled and saved with the rest.               */
+const CU = { pts: [], snap: 1, u: 34, pad: 16, w: 20, h: 14 };
+function cuXY(gx, gy) { return [CU.pad + gx * CU.u, CU.pad + (CU.h - gy) * CU.u]; }
+function cuGrid(ev) {
+  const cv = $('cuGrid'), r = cv.getBoundingClientRect();
+  const gx = (ev.clientX - r.left - CU.pad) / CU.u, gy = CU.h - (ev.clientY - r.top - CU.pad) / CU.u;
+  const sn = v => CU.snap > 0 ? Math.round(v / CU.snap) * CU.snap : Math.round(v * 100) / 100;
+  return [Math.max(0, Math.min(CU.w, sn(gx))), Math.max(0, Math.min(CU.h, sn(gy)))];
+}
+function cuDraw(live) {
+  const cv = $('cuGrid'), c = cv.getContext('2d');
+  c.setTransform(1, 0, 0, 1, 0, 0); c.clearRect(0, 0, cv.width, cv.height);
+  const dpr = cv.width / (CU.w * CU.u + CU.pad * 2); c.scale(dpr, dpr);
+  c.fillStyle = '#fff'; c.fillRect(0, 0, CU.w * CU.u + CU.pad * 2, CU.h * CU.u + CU.pad * 2);
+  // the paper
+  for (const [step, col, lw] of [[0.5, '#eef1f6', 1], [1, '#d7dde8', 1]]) {
+    if (step < 1 && CU.snap > 0.5) continue;
+    c.strokeStyle = col; c.lineWidth = lw; c.beginPath();
+    for (let x = 0; x <= CU.w + 1e-9; x += step) { const [px] = cuXY(x, 0); c.moveTo(px, cuXY(0, CU.h)[1]); c.lineTo(px, cuXY(0, 0)[1]); }
+    for (let y = 0; y <= CU.h + 1e-9; y += step) { const [, py] = cuXY(0, y); c.moveTo(cuXY(0, 0)[0], py); c.lineTo(cuXY(CU.w, 0)[0], py); }
+    c.stroke();
+  }
+  const P = CU.pts;
+  if (P.length) {
+    c.strokeStyle = S.color; c.lineWidth = 3; c.lineJoin = 'round'; c.lineCap = 'round';
+    c.beginPath();
+    P.forEach((q, i) => { const [x, y] = cuXY(q[0], q[1]); i ? c.lineTo(x, y) : c.moveTo(x, y); });
+    if (live) { const [x, y] = cuXY(live[0], live[1]); c.setLineDash([6, 5]); c.lineTo(x, y); }
+    c.stroke(); c.setLineDash([]);
+    P.forEach((q, i) => {
+      const [x, y] = cuXY(q[0], q[1]);
+      c.fillStyle = i === 0 ? '#16a34a' : '#fff'; c.strokeStyle = i === 0 ? '#16a34a' : S.color; c.lineWidth = 2.5;
+      c.beginPath(); c.arc(x, y, i === 0 ? 7 : 5, 0, Math.PI * 2); c.fill(); c.stroke();
+    });
+  }
+  $('cuInfo').textContent = P.length < 3 ? (P.length ? P.length + ' corner' + (P.length > 1 ? 's' : '') : '')
+    : P.length + ' corners \u00b7 ' + cuName(P.length);
+  $('cuUse').disabled = P.length < 3;
+}
+const cuName = n => ({3:'triangle',4:'quadrilateral',5:'pentagon',6:'hexagon',7:'heptagon',8:'octagon',9:'nonagon',10:'decagon'})[n] || n + ' sides';
+function openCustom() {
+  const cv = $('cuGrid'), dpr = Math.min(2, devicePixelRatio || 1);
+  const w = CU.w * CU.u + CU.pad * 2, h = CU.h * CU.u + CU.pad * 2;
+  cv.style.width = w + 'px'; cv.style.height = h + 'px';
+  cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr);
+  CU.pts = []; cuDraw(); $('customWrap').classList.add('on'); $('shapeMenu').classList.remove('on');
+}
+function closeCustom() { $('customWrap').classList.remove('on'); }
+$('cuClose').onclick = closeCustom;
+$('customWrap').addEventListener('pointerdown', e => { if (e.target.id === 'customWrap') closeCustom(); });
+$('cuUndo').onclick = () => { CU.pts.pop(); cuDraw(); };
+$('cuClear').onclick = () => { CU.pts = []; cuDraw(); };
+$('cuSnap').addEventListener('click', e => {
+  const b = e.target.closest('button[data-s]'); if (!b) return;
+  CU.snap = +b.dataset.s;
+  [...$('cuSnap').children].forEach(x => x.classList.toggle('on', x === b));
+  cuDraw();
+});
+$('cuGrid').addEventListener('pointerdown', e => {
+  const q = cuGrid(e), P = CU.pts;
+  if (P.length > 2 && Math.hypot(q[0] - P[0][0], q[1] - P[0][1]) < 0.55) { cuUse(true); return; }
+  if (P.length && Math.hypot(q[0] - P[P.length - 1][0], q[1] - P[P.length - 1][1]) < 0.01) return;
+  P.push(q); cuDraw();
+});
+$('cuGrid').addEventListener('pointermove', e => { if (CU.pts.length) cuDraw(cuGrid(e)); });
+$('cuGrid').addEventListener('pointerleave', () => cuDraw());
+$('cuUse').onclick = () => cuUse(true);
+/** Hands the drawn outline to the shape tool, ready to be dragged onto the page. */
+function cuUse() {
+  if (CU.pts.length < 3) return;
+  pickShape({ kind: 'custom', n: 0, pts: CU.pts.map(q => q.slice()) });
+  closeCustom();
+}
+
+function pickShape(sh) { S.shape = sh; setTool('shape'); $('shapeMenu').classList.remove('on'); }
 function openShapeMenu() {
   buildShapeMenu(); const b = $('shapeBtn').getBoundingClientRect(), m = $('shapeMenu');
-  m.classList.add('on'); m.style.left = ($('bar').getBoundingClientRect().right + 8) + 'px'; m.style.top = Math.max(6, Math.min(b.top - 10, innerHeight - m.offsetHeight - 6)) + 'px';
+  m.classList.add('on'); m.style.left = popLeft(m) + 'px'; m.style.top = Math.max(6, Math.min(b.top - 10, innerHeight - m.offsetHeight - 6)) + 'px';
 }
 $('shapeMenu').addEventListener('click', e => {
-  const g = e.target.closest('[data-grp]'), k = e.target.closest('[data-k]'), n = e.target.closest('[data-n]');
-  if (g) { document.querySelectorAll('#shapeMenu .sub').forEach(x => x.classList.remove('open')); $('sub-' + g.dataset.grp).classList.add('open'); return; }
+  const k = e.target.closest('[data-k]'), n = e.target.closest('[data-n]');
   if (k) { pickShape({ kind: k.dataset.k, n: 0 }); return; }
   if (n) { pickShape({ kind: 'poly', n: +n.dataset.n }); return; }
+  if (e.target.closest('#customBtn')) { openCustom(); return; }
+  if (e.target.id === 'nUp' || e.target.id === 'nDown') {
+    const f = $('nSides'); f.value = Math.max(3, Math.min(100, (+f.value || 3) + (e.target.id === 'nUp' ? 1 : -1)));
+    return;
+  }
   if (e.target.id === 'nGo') { let v = Math.round(+$('nSides').value); if (!(v >= 3)) v = 3; v = Math.min(100, v); pickShape(v === 3 ? { kind: 'equi', n: 0 } : v === 4 ? { kind: 'square', n: 0 } : { kind: 'poly', n: v }); }
 });
 $('shapeMenu').addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.id === 'nSides') $('nGo').click(); });
@@ -1504,7 +2347,53 @@ function lineLabel(ax, ay, bx, by) {
   const len = dist(ax, ay, bx, by); let deg = Math.atan2(-(by - ay), bx - ax) * 180 / Math.PI; if (deg < 0) deg += 180; if (deg >= 180) deg -= 180;
   return fmtCm(len) + '  ·  ' + deg.toFixed(0) + '°';
 }
+/* ---------- pinch to zoom ----------
+   Two fingers on the page scale it about the point between them, the way every other
+   touch surface behaves. The first finger's drawing is abandoned as the second lands,
+   so a pinch never leaves half a stroke behind.                                      */
+const pinch = { pts: new Map(), z0: 1, d0: 0, cx: 0, cy: 0, sl: 0, st: 0, on: false };
+function pinchDist() {
+  const [a, b] = [...pinch.pts.values()];
+  return Math.hypot(a.x - b.x, a.y - b.y);
+}
+function pinchMid() {
+  const [a, b] = [...pinch.pts.values()];
+  return [(a.x + b.x) / 2, (a.y + b.y) / 2];
+}
 ui.addEventListener('pointerdown', e => {
+  if (e.pointerType !== 'touch') return;
+  pinch.pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
+  if (pinch.pts.size === 2 && S.doc) {
+    if (drag) { if (drag.m === 'pen' && drag.k) drag.k.p.length = 0; drag = null; redrawUI(); }
+    const r = wrap.getBoundingClientRect(), [mx, my] = pinchMid();
+    pinch.on = true; pinch.z0 = S.zoom; pinch.d0 = pinchDist() || 1;
+    pinch.cx = mx - r.left; pinch.cy = my - r.top;
+    pinch.sl = wrap.scrollLeft; pinch.st = wrap.scrollTop;
+  }
+}, true);
+ui.addEventListener('pointermove', e => {
+  if (e.pointerType !== 'touch' || !pinch.pts.has(e.pointerId)) return;
+  pinch.pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
+  if (!pinch.on || pinch.pts.size !== 2) return;
+  e.preventDefault(); e.stopPropagation();
+  const f = pinchDist() / pinch.d0;
+  const z = Math.max(0.3, Math.min(8, pinch.z0 * f));
+  if (Math.abs(z - S.zoom) < 1e-4) return;
+  // Keep whatever sits between the fingers under the fingers.
+  const k = z / pinch.z0;
+  S.zoom = z; layout();
+  wrap.scrollLeft = (pinch.sl + pinch.cx) * k - pinch.cx;
+  wrap.scrollTop = (pinch.st + pinch.cy) * k - pinch.cy;
+  clearTimeout(pinch.rt); pinch.rt = setTimeout(() => renderPage(), 140);
+}, true);
+for (const ev of ['pointerup', 'pointercancel']) ui.addEventListener(ev, e => {
+  if (e.pointerType !== 'touch') return;
+  pinch.pts.delete(e.pointerId);
+  if (pinch.pts.size < 2 && pinch.on) { pinch.on = false; renderPage(); }
+}, true);
+
+ui.addEventListener('pointerdown', e => {
+  if (pinch.on || (e.pointerType === 'touch' && pinch.pts.size > 1)) return;
   if (!S.doc || drag) return;
   if (e.pointerType === 'pen') S.sawPen = true;
   if (e.pointerType === 'mouse' && e.button !== 0 && e.button !== 1) return;
@@ -1512,8 +2401,29 @@ ui.addEventListener('pointerdown', e => {
   const [x, y] = ptOf(e);
   // grab the ruler, protractor or compass first, whatever the mode: a finger on an instrument moves
   // it even in swipe mode or after the pen has been used. Middle-click still pans.
+  const th = e.button === 1 ? null : traceHit(x, y);
+  if (th) {
+    S.trace.sel = true;                               // touching it anywhere picks it out
+    if (th.m === 'traceDel') { dropTrace(); return; }
+    if (th.m === 'tracePinOut') { S.trace.pin = null; S.trace.pinning = false; redrawUI(); setHint(); return; }
+    if (th.m === 'tracePinBtn') {
+      // The button puts a pin in; pressing it again takes one out.
+      if (S.trace.pin) { S.trace.pin = null; S.trace.pinning = false; }
+      else S.trace.pinning = !S.trace.pinning;
+      redrawUI(); setHint(); return;
+    }
+    if (th.m === 'tracePenBtn') { setTool('pen'); setColour(TRACE_INK); redrawUI(); setHint(); return; }
+    if (th.m === 'tracePinDrop') {
+      const [lx, ly] = tracePageToLocal(x, y);
+      S.trace.pin = [lx / S.trace.w, ly / S.trace.h]; S.trace.pinning = false; redrawUI(); setHint(); return;
+    }
+    drag = th; drag.id = e.pointerId; redrawUI(); return;
+  }
+  if (traceOn() && S.trace.sel && !overTrace(x, y)) { S.trace.sel = false; redrawUI(); }
   const h = e.button === 1 ? null : hitInstrument(x, y);
   if (h && h.m === 'compClose') { S.comp.placed = false; drag = null; setTool('pen'); redrawUI(); return; }
+  if (h && h.m === 'rulUnit') { drag = h; drag.id = e.pointerId; redrawUI(); return; }
+  if (h && h.m === 'protFull') { S.prot.full = !S.prot.full; if (!S.prot.full) S.prot.arm = Math.min(180, S.prot.arm); drag = null; redrawUI(); setHint(); return; }
   if (h) { drag = h; drag.id = e.pointerId; redrawUI(); return; }
   // A selected text box or picture can be dragged about, or resized by its corner,
   // whatever tool is in hand - so you can write, draw, and still nudge things around.
@@ -1525,18 +2435,26 @@ ui.addEventListener('pointerdown', e => {
       drag = { m: grab === 'turn' ? 'itemTurn' : grab === 'width' ? 'itemWidth' : 'itemSize',
                id: e.pointerId, k, ox: x, oy: y, w0: b[2], h0: b[3], size0: k.size,
                rot0: k.rot || 0, a0: Math.atan2(y - cy, x - cx), done: false };
+      if (isShape(k)) { drag.p0 = k.p.slice(); drag.bx = b[0] + k.w / 2; drag.by = b[1] + k.w / 2; }
       return;
     }
   }
   // Swipe mode included: a press on something you added takes hold of it rather than
   // turning the page. The pen and highlighter still draw straight over the top.
-  if (e.button !== 1 && (S.tool === 'text' || S.tool === 'hand' || S.sel)) {
+  // Drawing tools always draw: with the shape or line tool in hand a press starts a new
+  // one, even on top of something already there. Picking things up and moving them is
+  // the pointer's job. The grab handles above still work, so a shape just drawn can be
+  // resized and turned without swapping tools.
+  const arranging = S.tool !== 'shape' && S.tool !== 'line';
+  if (e.button !== 1 && arranging && (S.tool === 'text' || S.tool === 'hand' || S.sel)) {
     const hit = itemAt(x, y);
     if (hit) {
       if (editing && editing !== hit) endEdit(true);
       if (editing === hit) return;              // already writing in it: let the textarea have the press
       selectItem(hit);
-      drag = { m: 'itemMove', id: e.pointerId, k: hit, ox: x - hit.x, oy: y - hit.y, done: false,
+      drag = { m: 'itemMove', id: e.pointerId, k: hit, done: false,
+               ox: isShape(hit) ? x : x - hit.x, oy: isShape(hit) ? y : y - hit.y,
+               p0: isShape(hit) ? hit.p.slice() : null,
                sx: e.clientX, sy: e.clientY, t0: performance.now() };
       return;
     }
@@ -1557,18 +2475,26 @@ ui.addEventListener('pointerdown', e => {
   if ((t === 'pen' || t === 'hl' || t === 'line') && rulerSnap(x, y) != null) {
     const u = rulerSnap(x, y); drag = { m: 'rline', id: e.pointerId, u0: u, k: newStroke(t, []) }; updRuleLine(u); return;
   }
-  if (t === 'pen' || t === 'hl') { const k = newStroke(t, [x, y]); k.sm = true; drag = { m: 'pen', id: e.pointerId, k }; }
+  if (t === 'pen' || t === 'hl') {
+    // Drawing on the tracing paper belongs to the tracing paper: the stroke is kept in
+    // the sheet's own frame, so it travels with it when the sheet is moved or turned.
+    if (overTrace(x, y)) {
+      const [lx, ly] = tracePageToLocal(x, y);
+      const k = newStroke(t, [lx, ly]); k.sm = true;
+      S.trace.sel = true;                     // drawing on it picks it out, like touching it
+      drag = { m: 'tracePen', id: e.pointerId, k };
+      return;
+    }
+    const k = newStroke(t, [x, y]); k.sm = true; drag = { m: 'pen', id: e.pointerId, k };
+  }
   else if (t === 'line') { const [sx, sy, sn] = snapPoint(x, y, e.altKey); drag = { m: 'line', id: e.pointerId, ax: sx, ay: sy, k: newStroke('line', [sx, sy, sx, sy]), snapMark: sn ? [sx, sy] : null }; }
   else if (t === 'shape') { const k = newStroke('line', [x, y]); k.sh = true; k.f = S.fill; drag = { m: 'shape', id: e.pointerId, x0: x, y0: y, k }; }
   else if (t === 'eraser') { drag = { m: 'erase', id: e.pointerId }; if (!eraseItemAt(x, y)) eraseAt(x, y); }
   else if (t === 'compass') {
+    // Pressing clear of the compass stands it somewhere new, point first.
     const C = S.comp;
-    if (!C.placed) { const [sx, sy] = snapPoint(x, y, e.altKey); C.cx = sx; C.cy = sy; C.r = 0.01; drag = { m: 'compSet', id: e.pointerId }; }
-    else {
-      const a0 = Math.atan2(y - C.cy, x - C.cx); C.ang = a0;
-      const [px, py] = compPencil();
-      drag = { m: 'compDraw', id: e.pointerId, prev: a0, acc: 0, a0, k: newStroke('pen', [px, py]) };
-    }
+    const [sx, sy] = snapPoint(x, y, e.altKey); C.cx = sx; C.cy = sy; C.placed = true;
+    drag = { m: 'compMove', id: e.pointerId, ox: 0, oy: 0 };
   }
   redrawUI();
 });
@@ -1581,8 +2507,20 @@ function updRuleLine(u1) {
 ui.addEventListener('pointermove', e => {
   if (drag && (drag.m === 'itemMove' || drag.m === 'itemSize' || drag.m === 'itemWidth' || drag.m === 'itemTurn')) {
     const [mx, my] = ptOf(e), k = drag.k;
-    if (!drag.done) { snapshot(); drag.done = true; }        // one undo step for the whole drag
-    if (drag.m === 'itemMove') { k.x = mx - drag.ox; k.y = my - drag.oy; }
+    if (!drag.done) {
+      snapshot(); drag.done = true;                          // one undo step for the whole drag
+      // Whatever was moved last belongs on top, so it is not left behind something older.
+      if (drag.m === 'itemMove') {
+        const lst = S.ann[AK()] || [], at = lst.indexOf(k);
+        if (at >= 0 && at !== lst.length - 1) { lst.splice(at, 1); lst.push(k); }
+      }
+    }
+    if (drag.m === 'itemMove') {
+      if (isShape(k)) { const dx = mx - drag.ox, dy = my - drag.oy;
+        for (let i = 0; i < k.p.length; i += 2) { k.p[i] = drag.p0[i] + dx; k.p[i + 1] = drag.p0[i + 1] + dy; }
+        delete k._wk; }
+      else { k.x = mx - drag.ox; k.y = my - drag.oy; }
+    }
     else if (drag.m === 'itemTurn') {
       const b = itemBox(k), cx = b[0] + b[2] / 2, cy = b[1] + b[3] / 2;
       let a = drag.rot0 + (Math.atan2(my - cy, mx - cx) - drag.a0);
@@ -1594,7 +2532,24 @@ ui.addEventListener('pointermove', e => {
       const co = Math.cos(k.rot || 0), si = Math.sin(k.rot || 0);
       const along = (mx - drag.ox) * co + (my - drag.oy) * si;
       const w = Math.max(24, drag.w0 + along);
-      if (drag.m === 'itemWidth') { k.w = w; k.fixedW = true; }     // their width now, and it stays
+      if (isShape(k)) {
+        // Scaled about the top-left corner, so the corner being held is the only one that
+        // moves. It keeps its proportions while the drag stays near them, and lets go of
+        // them once you pull more than a tenth away - so a circle stays a circle unless
+        // you really mean to squash it.
+        const across = (mx - drag.ox) * co + (my - drag.oy) * si;
+        const down   = (my - drag.oy) * co - (mx - drag.ox) * si;
+        let fx = Math.max(12, drag.w0 + across) / drag.w0;
+        let fy = Math.max(12, drag.h0 + down) / drag.h0;
+        if (Math.abs(fy - fx) <= 0.10 * Math.abs(fx)) fy = fx;      // near enough: hold the shape
+        drag.freeRatio = fy !== fx;
+        for (let i = 0; i < k.p.length; i += 2) {
+          k.p[i] = drag.bx + (drag.p0[i] - drag.bx) * fx;
+          k.p[i + 1] = drag.by + (drag.p0[i + 1] - drag.by) * fy;
+        }
+        delete k._wk;
+      }
+      else if (drag.m === 'itemWidth') { k.w = w; k.fixedW = true; }     // their width now, and it stays
       else if (k.kind === 'image') { k.w = w; k.h = Math.max(16, drag.h0 * (w / drag.w0)); }
       else { k.w = w; k.size = Math.max(6, Math.round(drag.size0 * (w / drag.w0))); S.textSize = k.size; }
     }
@@ -1615,33 +2570,69 @@ ui.addEventListener('pointermove', e => {
   if (m === 'pen') {
     const evs = e.getCoalescedEvents ? e.getCoalescedEvents() : [e]; const p = drag.k.p, minD = 0.7 / sc();
     for (const ev of (evs.length ? evs : [e])) { const [qx, qy] = ptOf(ev); if (dist(p[p.length - 2], p[p.length - 1], qx, qy) >= minD) p.push(qx, qy); }
+  } else if (m === 'tracePen') {
+    const p = drag.k.p, minD = 0.7 / sc(), [lx, ly] = tracePageToLocal(x, y);
+    if (dist(p[p.length - 2], p[p.length - 1], lx, ly) >= minD) p.push(lx, ly);
   } else if (m === 'line') {
     let bx = x, by = y, sn = false;
     if (e.shiftKey) { const a = Math.round(Math.atan2(y - drag.ay, x - drag.ax) / (Math.PI / 12)) * (Math.PI / 12), l = dist(drag.ax, drag.ay, x, y); bx = drag.ax + l * Math.cos(a); by = drag.ay + l * Math.sin(a); }
-    else [bx, by, sn] = snapPoint(x, y, e.altKey);
+    else {
+      [bx, by, sn] = snapPoint(x, y, e.altKey);
+      // Within a couple of degrees of level or upright, make it exactly that: a line meant
+      // to be straight across should not come out one degree off.
+      const dx = bx - drag.ax, dy = by - drag.ay, len = Math.hypot(dx, dy);
+      if (len > 2 && !sn) {
+        const a = Math.atan2(dy, dx), PULL = 2 * Math.PI / 180;
+        for (const t of [0, Math.PI / 2, Math.PI, -Math.PI / 2]) {
+          let d = a - t; while (d > Math.PI) d -= 2 * Math.PI; while (d < -Math.PI) d += 2 * Math.PI;
+          if (Math.abs(d) <= PULL) { bx = drag.ax + len * Math.round(Math.cos(t)); by = drag.ay + len * Math.round(Math.sin(t)); break; }
+        }
+      }
+    }
     drag.k.p = [drag.ax, drag.ay, bx, by]; drag.snapMark = sn ? [bx, by] : null;
     drag.label = lineLabel(drag.ax, drag.ay, bx, by); drag.lx = (drag.ax + bx) / 2; drag.ly = (drag.ay + by) / 2 - 18 / sc();
   } else if (m === 'rline') { const [u] = toLocal(S.ruler, x, y); updRuleLine(Math.max(-RUL.m, Math.min(S.ruler.L * CM + RUL.m, u))); }
   else if (m === 'shape') { const r = shapePts(S.shape, drag.x0, drag.y0, x, y); drag.k.p = r.p; drag.label = r.label; drag.lx = r.lx; drag.ly = r.ly; }
   else if (m === 'erase') { const evs = e.getCoalescedEvents ? e.getCoalescedEvents() : []; for (const ev of evs) { const [qx, qy] = ptOf(ev); eraseAt(qx, qy); } if (!eraseItemAt(x, y)) eraseAt(x, y); }
+  else if (m === 'traceMove') { S.trace.x = x - drag.ox; S.trace.y = y - drag.oy; }
+  else if (m === 'traceTurn') {
+    let a = drag.a0 + (Math.atan2(y - tracePivot()[1], x - tracePivot()[0]) - drag.g0);
+    if (e.shiftKey) a = Math.round(a / (Math.PI / 12)) * (Math.PI / 12);
+    S.trace.a = a;
+  }
+  else if (m === 'traceSize') {
+    const [lx, ly] = tracePageToLocal(x, y);
+    const nw = Math.max(2 * CM, drag.w0 + (lx - drag.lx0)), nh = Math.max(2 * CM, drag.h0 + (ly - drag.ly0));
+    // The drawing on the sheet stretches with it, so a traced shape keeps its proportions
+    // against the sheet it was drawn on.
+    const fx = nw / S.trace.w, fy = nh / S.trace.h;
+    for (const k of S.trace.ink) for (let i = 0; i < k.p.length; i += 2) { k.p[i] *= fx; k.p[i + 1] *= fy; }
+    S.trace.w = nw; S.trace.h = nh;
+  }
   else if (m === 'rulMove') { S.ruler.x = x - drag.ox; S.ruler.y = y - drag.oy; }
+  else if (m === 'rulLen') {
+    const [u] = toLocal(S.ruler, x, y);
+    S.ruler.L = Math.max(4, Math.min(60, Math.round((drag.L0 + (u - drag.u0) / CM) * 2) / 2));
+  }
   else if (m === 'protMove') { S.prot.x = x - drag.ox; S.prot.y = y - drag.oy; }
   else if (m === 'rulRot') {
-    const [hu, hv] = rulerHandle(); let a = Math.atan2(y - S.ruler.y, x - S.ruler.x) - Math.atan2(hv, hu);
+    let a = drag.a0 + (Math.atan2(y - S.ruler.y, x - S.ruler.x) - drag.g0);
     if (e.shiftKey) a = Math.round(a / (Math.PI / 12)) * (Math.PI / 12); S.ruler.a = a;
   } else if (m === 'protRot') {
-    let a = Math.atan2(y - S.prot.y, x - S.prot.x) - Math.PI / 2;
+    let a = drag.a0 + (Math.atan2(y - S.prot.y, x - S.prot.x) - drag.g0);
     if (e.shiftKey) a = Math.round(a / (Math.PI / 12)) * (Math.PI / 12); S.prot.a = a;
   } else if (m === 'protArm') {
     const [lx, ly] = toLocal(S.prot, x, y); let d = Math.atan2(-ly, lx) * 180 / Math.PI;
-    if (d < -90) d = 180; else if (d < 0) d = 0; S.prot.arm = Math.round(Math.max(0, Math.min(180, d)));
+    if (S.prot.full) { if (d < 0) d += 360; S.prot.arm = Math.round(d) % 360; }
+    else { if (d < -90) d = 180; else if (d < 0) d = 0; S.prot.arm = Math.round(Math.max(0, Math.min(180, d))); }
   } else if (m === 'compSet' || m === 'compR') {
-    const C = S.comp; C.r = Math.max(0.01, dist(C.cx, C.cy, x, y)); C.ang = Math.atan2(y - C.cy, x - C.cx);
+    const C = S.comp; C.r = Math.max(0.3 * CM, dist(C.cx, C.cy, x, y)); C.ang = Math.atan2(y - C.cy, x - C.cx);
     if (e.shiftKey) C.r = Math.round(C.r / (CM / 10)) * (CM / 10) || CM / 10;
-    $('radius').value = (C.r / CM).toFixed(1);
   } else if (m === 'compMove') { S.comp.cx = x - drag.ox; S.comp.cy = y - drag.oy; }
   else if (m === 'compDraw') {
-    const C = S.comp, a = Math.atan2(y - C.cy, x - C.cx); let dA = a - drag.prev;
+    // The pointer keeps whatever offset it had when the pencil was picked up, so the
+    // arm turns with your hand rather than snapping under it.
+    const C = S.comp, a = Math.atan2(y - C.cy, x - C.cx) - (drag.grab || 0); let dA = a - drag.prev;
     while (dA > Math.PI) dA -= 2 * Math.PI; while (dA < -Math.PI) dA += 2 * Math.PI;
     const target = Math.max(-2 * Math.PI, Math.min(2 * Math.PI, drag.acc + dA));
     const steps = Math.max(1, Math.ceil(Math.abs(target - drag.acc) / (Math.PI / 180)));
@@ -1664,11 +2655,36 @@ function endDrag(e) {
     if (still && d.k.kind === 'text') startEdit(d.k);
     return;
   }
+  if (d.m === 'rulUnit') {       // the little box of units was pressed
+    const ub = rulerUnitBox(), R = S.ruler, co = Math.cos(R.a), si = Math.sin(R.a);
+    const lx = ub[0] + ub[2] / 2, ly = ub[1];
+    openUnitPop(R.x + lx * co - ly * si, R.y + lx * si + ly * co);
+    return;
+  }
+  if (d.m === 'tracePen') { if (d.k.p.length >= 4 && traceOn()) { S.trace.ink.push(d.k); S.dirty = true; } redrawUI(); return; }
+  if (d.m === 'traceMove' || d.m === 'traceTurn' || d.m === 'traceSize') { redrawUI(); return; }
   if (d.m === 'pan' && d.swipe) { finishSwipe(d); return; }   // no hover on a whiteboard: don't leave the rubber circle behind
-  if (d.m === 'pen' || d.m === 'line' || d.m === 'rline') { if (d.k.p.length >= 2 && !(d.m !== 'pen' && dist(d.k.p[0], d.k.p[1], d.k.p[2], d.k.p[3]) < 0.5 / sc())) addStroke(d.k); }
+  if (d.m === 'pen' || d.m === 'line' || d.m === 'rline') {
+    const tiny = d.m !== 'pen' && dist(d.k.p[0], d.k.p[1], d.k.p[2], d.k.p[3]) < 0.5 / sc();
+    if (d.k.p.length >= 2 && !tiny) {
+      // With the line tool still in hand you are drawing, not arranging: the line is
+      // left alone so the next one can go straight down. A line that lands on the end
+      // of another joins onto it, so a shape can be built up side by side.
+      if (isShape(d.k) && S.tool === 'line') { snapToLines(d.k); addStroke(d.k); joinLines(d.k); }
+      else { addStroke(d.k); if (isShape(d.k)) selectItem(d.k); }
+    } else if (tiny && d.m === 'line') {
+      // Pressed without drawing anything: if that was clear of every line, the lesson has
+      // moved on from drawing lines, so hand back the pointer.
+      const [px, py] = [d.k.p[0], d.k.p[1]];
+      if (!nearAnyLine(px, py)) { setTool('hand'); }
+    }
+  }
   else if (d.m === 'shape') {         // keep any shape at least 0.1 cm across
     const xs = d.k.p.filter((_, i) => !(i & 1)), ys = d.k.p.filter((_, i) => i & 1);
-    if (d.k.p.length > 4 && Math.max(Math.max(...xs) - Math.min(...xs), Math.max(...ys) - Math.min(...ys)) >= 0.1 * CM - 1e-6) addStroke(d.k);
+    if (d.k.p.length > 4 && Math.max(Math.max(...xs) - Math.min(...xs), Math.max(...ys) - Math.min(...ys)) >= 0.1 * CM - 1e-6) {
+      // A shape is usually drawn once and then arranged, so the pointer comes back.
+      addStroke(d.k); setTool('hand'); selectItem(d.k);
+    }
   }
   else if (d.m === 'compDraw') { if (Math.abs(d.acc) > 0.01) addStroke(d.k); }
   else if (d.m === 'compSet') { if (S.comp.r > 2 / sc()) { S.comp.placed = true; } else { S.comp.placed = false; } setHint(); }
@@ -1712,6 +2728,30 @@ async function buildAnnotated() {
   // Turned on screen, the file saves turned: every page carries the extra rotation, which is also
   // the space the writing was recorded in, so the ink maths below lands it in the right place.
   if (S.rot) for (const pg of pages) pg.setRotation(L.degrees((((pg.getRotation().angle || 0) + S.rot) % 360 + 360) % 360));
+  // Paper first, so the squares or lines sit under the writing in the saved file too.
+  for (const key of Object.keys(BG)) {
+    const b = BG[key], pg = pages[key - 1];
+    if (!pg || !b || (b.kind === 'plain' && !b.colour)) continue;
+    const cb = pg.getCropBox(), W = cb.width, H = cb.height;
+    const hex = h => { const n = parseInt(String(h).slice(1), 16); return L.rgb(((n >> 16) & 255) / 255, ((n >> 8) & 255) / 255, (n & 255) / 255); };
+    if (b.colour) pg.drawRectangle({ x: cb.x, y: cb.y, width: W, height: H, color: hex(b.colour), opacity: 0.35 });
+    const vline = (x, t, col, op) => pg.drawLine({ start: { x: cb.x + x, y: cb.y }, end: { x: cb.x + x, y: cb.y + H }, thickness: t, color: col, opacity: op });
+    const hline = (y, t, col, op) => pg.drawLine({ start: { x: cb.x, y: cb.y + H - y }, end: { x: cb.x + W, y: cb.y + H - y }, thickness: t, color: col, opacity: op });
+    const blue = L.rgb(.42, .6, .8), pale = L.rgb(.6, .74, .88), red = L.rgb(.84, .47, .51);
+    if (b.kind === 'squared') {
+      for (let x = 0; x <= W + 0.01; x += CM) vline(x, 0.5, blue, 0.55);
+      for (let y = 0; y <= H + 0.01; y += CM) hline(y, 0.5, blue, 0.55);
+    } else if (b.kind === 'graph') {
+      const mm2 = CM / 5;
+      for (let x = 0; x <= W + 0.01; x += mm2) vline(x, 0.3, pale, 0.4);
+      for (let y = 0; y <= H + 0.01; y += mm2) hline(y, 0.3, pale, 0.4);
+      for (let x = 0; x <= W + 0.01; x += CM) vline(x, 0.7, blue, 0.75);
+      for (let y = 0; y <= H + 0.01; y += CM) hline(y, 0.7, blue, 0.75);
+    } else if (b.kind === 'lined') {
+      for (let y = 0.8 * CM; y <= H - 0.2 * CM; y += 0.8 * CM) hline(y, 0.6, blue, 0.6);
+      vline(2 * CM, 0.6, red, 0.55);
+    }
+  }
   for (const key of Object.keys(S.ann)) {
     const list = S.ann[key], pg = pages[key - 1]; if (!pg || !list || !list.length) continue;
     const cb = pg.getCropBox(), rot = (((pg.getRotation().angle || 0) % 360) + 360) % 360;
@@ -1796,7 +2836,7 @@ async function buildAnnotated() {
         pg.drawImage(emb, { x: ix, y: iy, width: k.w, height: k.h, rotate: L.degrees(deg) });
         continue;
       }
-      const p = renderPts(k); const f = (i) => tf(p[i], p[i + 1]).map(n => n.toFixed(2)).join(' ');
+      const p = turnedPts(k); const f = (i) => tf(p[i], p[i + 1]).map(n => n.toFixed(2)).join(' ');
       let path = 'M ' + f(0);
       if (p.length === 2) { const q = tf(p[0] + 0.01, p[1]); path += ' L ' + q[0].toFixed(2) + ' ' + q[1].toFixed(2); }
       else if (k.sm && p.length > 4) {
@@ -1808,7 +2848,7 @@ async function buildAnnotated() {
       if (L.LineCapStyle) opts.borderLineCap = L.LineCapStyle.Round;
       const dash = dashFor(k);
       if (dash) { opts.borderDashArray = dash; opts.borderDashPhase = 0; }
-      if (k.sh && k.f) { opts.color = hex(k.f); opts.opacity = k.a; }   // a filled shape keeps its fill in the file
+      if (k.sh && k.f) { opts.color = hex(k.f); opts.opacity = k.a * (k.fa == null ? 1 : k.fa); }   // a filled shape keeps its fill in the file
       pg.drawSvgPath(path, opts);
     }
     if (L.popGraphicsState && L.setLineJoin) pg.pushOperators(L.popGraphicsState());
@@ -1865,7 +2905,7 @@ const HINTS = {
   pen: 'Pen: draw freely. Start a stroke just above the ruler’s top edge to draw a perfectly straight line along it.',
   hl: 'Highlighter: see-through marker. Works along the ruler edge too.',
   line: 'Line: drag to draw a straight line (length and angle shown). Ends snap to other line ends; hold Shift to lock to 15° steps, Alt to stop snapping.',
-  compass: 'Compass: press on the centre and drag out the radius (Shift = whole mm). Then drag anywhere to draw an arc. Drag the pin to move it, or the pencil tip to change the radius.',
+  compass: 'Compass: drag the pencil to draw an arc, the arm it sits on to open it out (Shift = whole mm), or the legs to move the whole thing. Press clear of it to stand it somewhere new.',
   eraser: 'Eraser: touch any line to remove it.',
   hand: 'Swipe: drag left or right to change slide/page (or tap the big arrows). Tap Pen to write. Ctrl + scroll to zoom.',
   shape: 'Shapes: drag on the page to draw the chosen shape (it uses the pen colour and thickness). Click Shapes ▾ to choose another.',
@@ -1873,14 +2913,17 @@ const HINTS = {
 function setHint() {
   let h = HINTS[S.tool] || '';
   if (S.tool === 'compass' && S.comp.placed) h = 'Compass set: drag anywhere around the pin to draw an arc. Drag the pin to move it, drag the pencil tip to change the radius, or type an exact radius above.';
-  if (S.ruler.on || S.prot.on) h += '  ·  Drag an instrument to move it; drag its blue ⟳ knob to rotate (Shift = 15° steps).' + (S.prot.on ? ' Drag the red knob to read an angle.' : '');
+  if (S.ruler.on) h += '  ·  Ruler: drag it to move, the blue strip to turn it, the dark end to make it longer or shorter. Tap it to change the units.';
+  if (S.prot.on) h += '  ·  Protractor: drag it to move, its blue rim to turn it, the red knob to read an angle. 360 opens it right round.';
+  if (S.ruler.on || S.prot.on) h += ' Hold Shift for 15° steps.';
   $('hint').textContent = S.doc ? h : 'Open a PDF or start with blank paper.';
 }
 function setTool(t) {
   if (editing) endEdit(true);
-  if (t !== 'text' && S.sel) S.sel = null;
+  if (t !== 'text' && t !== 'shape' && S.sel) S.sel = null;
   document.body.classList.toggle('links-on', t === 'hand'); S.tool = t; document.querySelectorAll('#bar [data-tool]').forEach(b => b.classList.toggle('on', b.dataset.tool === t));
-  $('compOpts').style.display = t === 'compass' ? 'flex' : 'none'; setHint(); redrawUI();
+  if (t === 'compass') placeCompass();       // picking it up puts a real pair on the page
+  setHint(); redrawUI();
 }
 function updateBar() {
   const g = G(), last = S.groups && S.groups[S.groups.length - 1];
@@ -1896,7 +2939,14 @@ function updateBar() {
 }
 function toggleRuler() {
   if (!S.doc) return; S.ruler.on = !S.ruler.on;
-  if (S.ruler.on) { const [cx, cy] = visibleCentre(); S.ruler.a = 0; S.ruler.L = Math.max(10, Math.min(50, Math.floor(S.pw / CM - 1))); S.ruler.x = cx - Math.min(S.ruler.L * CM, S.pw * 0.9) / 2; S.ruler.y = cy; }
+  if (S.ruler.on) {
+    // Four fifths of the page: long enough to be useful, short enough to sit on it whole.
+    const [cx, cy] = visibleCentre();
+    S.ruler.a = 0;
+    S.ruler.L = Math.max(6, Math.round(S.pw * 0.8 / CM * 2) / 2);
+    S.ruler.x = cx - S.ruler.L * CM / 2;
+    S.ruler.y = cy;
+  }
   updateBar(); redrawUI();
 }
 function toggleProt() {
@@ -1908,32 +2958,155 @@ function setColour(c) {
   S.color = c; rememberColour(c); let hit = false; document.querySelectorAll('#colours .sw').forEach(b => { const on = b.dataset.c === c; hit = hit || on; b.classList.toggle('on', on); }); const cp = document.querySelector('.cp'); if (cp) { cp.classList.toggle('on', !hit); if (!hit) cp.style.background = c; } redrawUI();
 }
 
-$('openBtn').onclick = $('openBtn2').onclick = () => $('file').click();
+/* Open and New are one door: the same panel the Presenter opens with, which offers a
+   file or a blank page of whatever paper. */
+function openStart() { $('empty').classList.add('over'); $('empty').style.display = 'flex'; }
+function closeStart() { $('empty').classList.remove('over'); if (S.doc) $('empty').style.display = 'none'; }
+$('emptyX').onclick = closeStart;
+$('empty').addEventListener('pointerdown', e => { if (e.target.id === 'empty' && S.doc) closeStart(); });
+$('openBtn').onclick = () => { if (S.doc) openStart(); else $('file').click(); };
+$('openBtn2').onclick = () => { closeStart(); $('file').click(); };
 // The same two sheet makers the dock has, so a lesson can be topped up without leaving the page.
-$('fluBtn').onclick = () => { if (window.cc && cc.dock) cc.dock('flu'); else toast('Question sheets open in the ClassTools app.'); };
-$('extBtn').onclick = () => { if (window.cc && cc.dock) cc.dock('ext'); else toast('Question sheets open in the ClassTools app.'); };
 // The folder button on the dock opens this window straight into the file chooser.
 if (window.cc && cc.on) cc.on('doc-open', () => $('file').click());
 // The pencil case drives the tools from outside the window.
 if (window.cc && cc.on) cc.on('doc-tool', id => setTool(id));
 if (window.cc && cc.on) cc.on('doc-colour', c => setColour(c));
 $('file').onchange = e => { openFile(e.target.files[0]); e.target.value = ''; };
-$('newBtn').onclick = () => newBlank($('paper').value);
+/* ---------- choosing paper for a new document ---------- */
+const PAPERS = [
+  ['plain', 'Plain', false, 'none'], ['squared', 'Squared 1 cm', false, 'sq'], ['graph', 'Graph mm', false, 'gr'],
+  ['plainL', 'Plain landscape', true, 'none'], ['squaredL', 'Squared landscape', true, 'sq'], ['graphL', 'Graph landscape', true, 'gr']
+];
+function openPaper() {
+  const grid = $('paperGrid');
+  grid.innerHTML = PAPERS.map(([v, name, land, g]) => {
+    const w = land ? 56 : 40, h = land ? 40 : 56;
+    const bg = g === 'sq' ? 'background-image:linear-gradient(#cfd8e6 1px,transparent 1px),linear-gradient(90deg,#cfd8e6 1px,transparent 1px);background-size:8px 8px'
+             : g === 'gr' ? 'background-image:linear-gradient(#dde3ee 1px,transparent 1px),linear-gradient(90deg,#dde3ee 1px,transparent 1px);background-size:4px 4px' : '';
+    return `<button data-p="${v}"><i style="width:${w}px;height:${h}px;${bg}"></i>${name}</button>`;
+  }).join('');
+  $('paperWrap').classList.add('on');
+}
+$('paperX').onclick = () => $('paperWrap').classList.remove('on');
+$('paperWrap').addEventListener('pointerdown', e => { if (e.target.id === 'paperWrap') $('paperWrap').classList.remove('on'); });
+$('paperGrid').addEventListener('click', e => {
+  const b = e.target.closest('button[data-p]'); if (!b) return;
+  $('paperWrap').classList.remove('on'); $('paper').value = b.dataset.p; newBlank(b.dataset.p);
+});
+/* ---------- how much of the sidebar to show ----------
+   Full, a strip of icons, or away altogether. Tucked right away the pen would be a
+   trap - there would be nothing on screen to change it with - so it goes to the
+   pointer, which only moves things about. */
+const BAR_VIEWS = ['full', 'icons'];
+function setBarView(v) {
+  if (!BAR_VIEWS.includes(v)) v = 'full';
+  S.barView = v;
+  $('barIn').classList.toggle('icons', v === 'icons');
+  try { localStorage.setItem('cc-bar-view', v); } catch (e) {}
+  // The window beside the slides (the calculator) is placed from the sidebar's width,
+  // so tell the app what it is now, and refit the page into what is left.
+  requestAnimationFrame(() => {
+    fitBar(true);
+    if (S.doc) fitPage(); else layout();
+  });
+}
+function cycleBarView() { setBarView(BAR_VIEWS[(BAR_VIEWS.indexOf(S.barView || 'full') + 1) % BAR_VIEWS.length]); }
+$('viewBtn').onclick = cycleBarView;
+
+/* The narrow sidebar's stand-ins: three dots for thickness, one face for the reactions. */
+function paintWDots() {
+  for (const b of $('wDots').children) b.classList.toggle('on', Math.abs(+b.dataset.w - S.width) < 0.8);
+}
+$('wDots').addEventListener('click', e => {
+  const b = e.target.closest('button[data-w]'); if (!b) return;
+  S.width = +b.dataset.w; $('width').value = S.width; paintWDots(); setHint();
+});
+$('rxOne').onclick = () => {
+  const pop = $('rxPop');
+  if (pop.classList.contains('on')) { pop.classList.remove('on'); return; }
+  pop.classList.add('on');
+  const r = $('rxOne').getBoundingClientRect();
+  pop.style.left = popLeft(pop, r) + 'px';
+  pop.style.top = Math.round(Math.max(6, Math.min(innerHeight - pop.offsetHeight - 6, r.top - pop.offsetHeight / 2))) + 'px';
+};
+$('rxPop').addEventListener('click', e => {
+  const b = e.target.closest('[data-snd]'); if (!b) return;
+  $('rxPop').classList.remove('on');
+  playReaction(b.dataset.snd);
+});
+document.addEventListener('pointerdown', e => {
+  if ($('rxPop').classList.contains('on') && !e.target.closest('#rxPop') && !e.target.closest('#rxOne')) $('rxPop').classList.remove('on');
+}, true);
+try { setBarView(localStorage.getItem('cc-bar-view') || 'full'); } catch (e) { setBarView('full'); }
+
+/* ---------- every page at a glance ---------- */
+let pagesTok = 0;
+async function openPages() {
+  if (!S.doc) return;
+  const grid = $('pagesGrid'), tok = ++pagesTok;
+  $('pagesSub').textContent = S.n + (S.n === 1 ? ' page' : ' pages') + ' \u00b7 tap one to go there';
+  grid.innerHTML = '';
+  for (let n = 1; n <= S.n; n++) {
+    const b = document.createElement('button');
+    b.dataset.n = n; b.className = n === S.page ? 'on' : '';
+    const cv = document.createElement('canvas');
+    b.appendChild(cv); b.appendChild(Object.assign(document.createElement('span'), { textContent: n }));
+    grid.appendChild(b);
+  }
+  $('pagesWrap').classList.add('on');
+  // Drawn one at a time so a long document does not lock the board up.
+  for (let n = 1; n <= S.n; n++) {
+    if (tok !== pagesTok) return;
+    const cv = grid.children[n - 1].querySelector('canvas');
+    try {
+      const pg = await S.doc.getPage(n);
+      const v1 = pg.getViewport(vpOpts(pg, 1));
+      const scale = 148 / Math.max(v1.width, v1.height) * (devicePixelRatio || 1);
+      const vp = pg.getViewport(vpOpts(pg, scale));
+      cv.width = Math.max(1, Math.floor(vp.width)); cv.height = Math.max(1, Math.floor(vp.height));
+      const cx = cv.getContext('2d'); cx.fillStyle = '#fff'; cx.fillRect(0, 0, cv.width, cv.height);
+      await pg.render({ canvasContext: cx, viewport: vp }).promise;
+    } catch (e) { /* a page that will not draw just shows blank */ }
+  }
+}
+function closePages() { pagesTok++; $('pagesWrap').classList.remove('on'); }
+$('pagesX').onclick = closePages;
+$('pagesWrap').addEventListener('pointerdown', e => { if (e.target.id === 'pagesWrap') closePages(); });
+$('pagesGrid').addEventListener('click', e => {
+  const b = e.target.closest('button[data-n]'); if (!b) return;
+  closePages(); goPage(+b.dataset.n);
+});
+$('pageInfo').onclick = () => openPages();
+$('pageInfo').style.cursor = 'pointer';
+$('pageInfo').title = 'See every page';
 $('edgePrev').onclick = () => prevSlide();
 $('edgeNext').onclick = () => nextSlide();
 function nextSlide() { if (!S.doc) return; finishBuild(); let n = S.page + 1; while (n <= S.n && sameSlide(S.page, n)) n++; if (n <= S.n) slideTo(n, 1); }
 function prevSlide() { if (!S.doc) return; finishBuild(); let n = S.page; while (n > 1 && sameSlide(n - 1, S.page)) n--; n--; if (n >= 1) slideTo(n, -1); }
 $('addPageBtn').onclick = addPage;
-document.querySelectorAll('[data-blank]').forEach(b => b.onclick = () => { $('paper').value = b.dataset.blank; newBlank(b.dataset.blank); });
-document.querySelectorAll('#bar [data-tool]').forEach(b => b.onclick = () => { if (b.dataset.tool === 'shape') { if ($('shapeMenu').classList.contains('on')) $('shapeMenu').classList.remove('on'); else openShapeMenu(); return; } setTool(b.dataset.tool); });
+document.querySelectorAll('[data-blank]').forEach(b => b.onclick = () => { closeStart(); $('paper').value = b.dataset.blank; newBlank(b.dataset.blank); });
+document.querySelectorAll('#bar [data-tool]').forEach(b => b.onclick = () => {
+  if (b.dataset.tool === 'shape') { if ($('shapeMenu').classList.contains('on')) $('shapeMenu').classList.remove('on'); else openShapeMenu(); return; }
+  // The compass is an instrument as much as a tool: pressing its button while it is
+  // already out puts it away, the way the ruler and protractor do.
+  if (b.dataset.tool === 'compass' && S.tool === 'compass' && S.comp.placed) {
+    S.comp.placed = false; setTool('pen'); redrawUI(); return;
+  }
+  setTool(b.dataset.tool);
+});
 document.querySelectorAll('#colours .sw').forEach(b => b.onclick = () => setColour(b.dataset.c));
 $('colorPick').onclick = e => openColourPop(e.currentTarget, S.color, v => { if (v) setColour(v); });
 $('width').oninput = e => S.width = +e.target.value;
+$('traceBtn').onclick = () => {
+  if (traceOn()) { dropTrace(); return; }
+  addTrace();                       // the tool in hand is left alone: carry on drawing
+};
 $('rulerBtn').onclick = toggleRuler; $('protBtn').onclick = toggleProt;
 function hideTools() {
   drag = null; S.ruler.on = false; S.prot.on = false; S.comp.placed = false;
   if (S.tool === 'compass') setTool('pen');
-  updateBar(); redrawUI();
+  updateBar(); redrawUI(); setHint();
 }
 $('hideBtn').onclick = hideTools;
 $('undoBtn').onclick = () => restore(S.undo, S.redo); $('redoBtn').onclick = () => restore(S.redo, S.undo);
@@ -1969,7 +3142,65 @@ $('fitBtn').onclick = () => S.doc && fitPage();
 $('saveBtn').onclick = savePdf;
 $('rotBtn').onclick = () => rotateDoc(90);
 
-/* ---------- pictures ---------- */
+/* ---------- page background ----------
+   What the paper itself is. Drawn over the page but under your writing, with the colour
+   multiplied so print still reads through it - which means it works on a worksheet as
+   well as on a blank page.                                                             */
+const BG = {};                       // one setting per page: {kind, colour}
+function bgFor() { return BG[AK()] || { kind: 'plain', colour: '' }; }
+function setBg(part) {
+  BG[AK()] = { ...bgFor(), ...part };
+  drawBg(); paintBgPop(); S.dirty = true;
+}
+function drawBg() {
+  const cv = $('bg'); if (!cv || !S.doc) return;
+  const c = cv.getContext('2d'), s = sc() * dpr();
+  c.setTransform(1, 0, 0, 1, 0, 0); c.clearRect(0, 0, cv.width, cv.height);
+  const b = bgFor();
+  if (b.kind === 'plain' && !b.colour) return;
+  c.scale(s, s);
+  if (b.colour) { c.globalCompositeOperation = 'multiply'; c.fillStyle = b.colour; c.fillRect(0, 0, S.pw, S.ph); c.globalCompositeOperation = 'source-over'; }
+  const line = (x0, y0, x1, y1, w, col) => { c.strokeStyle = col; c.lineWidth = w; c.beginPath(); c.moveTo(x0, y0); c.lineTo(x1, y1); c.stroke(); };
+  if (b.kind === 'squared') {
+    for (let x = 0; x <= S.pw + 0.01; x += CM) line(x, 0, x, S.ph, 0.5, 'rgba(120,160,205,.55)');
+    for (let y = 0; y <= S.ph + 0.01; y += CM) line(0, y, S.pw, y, 0.5, 'rgba(120,160,205,.55)');
+  } else if (b.kind === 'graph') {
+    const mm2 = CM / 5;                                   // 2 mm divisions
+    for (let x = 0; x <= S.pw + 0.01; x += mm2) line(x, 0, x, S.ph, 0.3, 'rgba(150,185,220,.4)');
+    for (let y = 0; y <= S.ph + 0.01; y += mm2) line(0, y, S.pw, y, 0.3, 'rgba(150,185,220,.4)');
+    for (let x = 0; x <= S.pw + 0.01; x += CM) line(x, 0, x, S.ph, 0.7, 'rgba(90,140,195,.75)');
+    for (let y = 0; y <= S.ph + 0.01; y += CM) line(0, y, S.pw, y, 0.7, 'rgba(90,140,195,.75)');
+  } else if (b.kind === 'lined') {
+    for (let y = 0.8 * CM; y <= S.ph - 0.2 * CM; y += 0.8 * CM) line(0, y, S.pw, y, 0.6, 'rgba(120,160,205,.6)');
+    line(2 * CM, 0, 2 * CM, S.ph, 0.6, 'rgba(214,120,130,.55)');      // the margin
+  }
+}
+function paintBgPop() {
+  const b = bgFor();
+  for (const el of $('bgPop').querySelectorAll('[data-bg]')) el.classList.toggle('on', el.dataset.bg === b.kind);
+  $('bgColDot').style.background = b.colour || '#fff';
+  $('bgBtn').classList.toggle('on', b.kind !== 'plain' || !!b.colour);
+}
+$('bgBtn').onclick = () => {
+  const pop = $('bgPop');
+  if (pop.classList.contains('on')) { pop.classList.remove('on'); return; }
+  paintBgPop(); pop.classList.add('on');
+  const r = $('bgBtn').getBoundingClientRect();
+  pop.style.left = popLeft(pop, r) + 'px';
+  pop.style.top = Math.round(Math.max(6, Math.min(innerHeight - pop.offsetHeight - 6, r.top))) + 'px';
+};
+$('bgPop').addEventListener('click', e => {
+  const b = e.target.closest('[data-bg]'); if (b) setBg({ kind: b.dataset.bg });
+});
+$('bgCol').addEventListener('click', e => {
+  openColourPop(e.currentTarget, bgFor().colour, v => setBg({ colour: v }), true);
+});
+document.addEventListener('pointerdown', e => {
+  if ($('bgPop').classList.contains('on') && !e.target.closest('#bgPop') && !e.target.closest('#bgBtn') && !e.target.closest('#colPop')) $('bgPop').classList.remove('on');
+}, true);
+
+/* ---------- pictures ----------
+   There is no button for this any more: a picture comes in by being pasted or dropped. */
 /** Drops a picture onto the middle of what you can see, sized to fit the page. */
 function addImage(src) {
   if (!S.doc) return toast('Open a document first');
@@ -2000,12 +3231,6 @@ function imageFromFile(file) {
   return true;
 }
 
-$('imgBtn').onclick = () => {
-  const inp = document.createElement('input');
-  inp.type = 'file'; inp.accept = 'image/*';
-  inp.onchange = () => { if (inp.files && inp.files[0]) imageFromFile(inp.files[0]); };
-  inp.click();
-};
 
 document.addEventListener('paste', e => {
   if (editing) return;                       // typing into a text box pastes text, as you would expect
@@ -2083,17 +3308,31 @@ $('fontMenu').addEventListener('click', e => {
   $('fontMenu').classList.remove('on');
 });
 /* ---------- size the tools to the screen ---------- */
-let barW = 0;
-function fitBar() {
-  const bar = $('bar'), inn = $('barIn');
+let barW = 0, insL = 0, insB = 0;
+/* The tools fill the height of the bar and never scroll: the scale comes from the bar's
+   own height, so the calculator arriving beside the slides leaves the tools alone. */
+function fitBar(force) {
+  const bar = $('bar'), inn = $('barIn'), icons = inn.classList.contains('icons');
   inn.classList.remove('cols2'); inn.style.zoom = 1;
-  const A = bar.clientHeight - 2; let H = inn.scrollHeight, z;
-  if (H * 0.8 <= A) z = Math.min(1.3, A / H);                 // shrink (not below 80%) or grow a little on big screens
-  else { inn.classList.add('cols2'); H = inn.scrollHeight; z = Math.max(0.6, Math.min(1, A / H)); }   // short screens: two columns
-  z = Math.floor(z * 100) / 100; inn.style.zoom = z;
+  const A = bar.clientHeight - 2; let H = inn.scrollHeight, z = A / H;
+  if (z < 0.78 && !icons) { inn.classList.add('cols2'); H = inn.scrollHeight; z = A / H; }  // short screens: two columns
+  z = Math.max(0.55, Math.min(icons ? 1.5 : 1.3, Math.floor(z * 100) / 100));
+  inn.style.zoom = z;
   const w = Math.round(bar.getBoundingClientRect().width);
-  if (w !== barW) { barW = w; if (window.cc && cc.docSidebar) cc.docSidebar(w); }
-  const m = $('shapeMenu'); if (m.classList.contains('on')) m.style.left = (bar.getBoundingClientRect().right + 8) + 'px';
+  if (w !== barW || force) { barW = w; if (window.cc && cc.docSidebar) cc.docSidebar(w); }
+  const m = $('shapeMenu'); if (m.classList.contains('on')) m.style.left = popLeft(m) + 'px';
+}
+/* The calculator parks in the strip just right of the tools, so menus opened from the
+   sidebar have to clear it or they open behind it and you never see them. */
+function popClear(x, w) {
+  const r = $('bar').getBoundingClientRect();
+  if (insL > 0 && x + w > r.right && x < r.right + insL) x = r.right + insL + 8;
+  return Math.round(Math.max(6, Math.min(innerWidth - w - 6, x)));
+}
+window.ctPopClear = popClear;
+function popLeft(el, from) {
+  const r = $('bar').getBoundingClientRect();
+  return popClear((from ? from.right : r.right) + 8, el.offsetWidth || 300);
 }
 let fitBarT; addEventListener('resize', () => { clearTimeout(fitBarT); fitBarT = setTimeout(fitBar, 60); });
 /* ---------- coloured reading overlay ---------- */
@@ -2109,7 +3348,7 @@ function applyTint() {
 }
 $('tintBtn').onclick = e => {
   e.stopPropagation(); const m = $('tintMenu');
-  if (m.classList.toggle('on')) { const b = $('tintBtn').getBoundingClientRect(); m.style.left = ($('bar').getBoundingClientRect().right + 8) + 'px'; m.style.top = Math.max(6, Math.min(b.top - 20, innerHeight - m.offsetHeight - 6)) + 'px'; }
+  if (m.classList.toggle('on')) { const b = $('tintBtn').getBoundingClientRect(); m.style.left = popLeft(m) + 'px'; m.style.top = Math.max(6, Math.min(b.top - 20, innerHeight - m.offsetHeight - 6)) + 'px'; }
 };
 $('tintMenu').addEventListener('click', e => { e.stopPropagation(); const b = e.target.closest('.tsw[data-t]'); if (b) { TINT.c = b.dataset.t; applyTint(); } });
 $('tintPick').onclick = e => openColourPop(e.currentTarget, TINT.c, v => { if (v) { TINT.c = v; applyTint(); } });
@@ -2120,8 +3359,6 @@ fitBar(); setTimeout(fitBar, 300);
 $('shapesBtn').onclick = () => { if (window.cc && cc.dock) cc.dock('shapes'); else toast('ShapeXplorer opens in the ClassTools app.'); };
 $('calcBtn').onclick = () => { if (window.cc && cc.dock) cc.dock('calc'); else toast('The calculator opens in the ClassTools app.'); };
 if (window.cc) cc.on('calc-open', on => $('calcBtn').classList.toggle('on', !!on));
-$('radius').onchange = e => { const v = parseFloat(e.target.value); if (v > 0) { S.comp.r = v * CM; if (!S.comp.placed) { const [cx, cy] = visibleCentre(); S.comp.cx = cx - S.comp.r / 2; S.comp.cy = cy; S.comp.ang = 0; S.comp.placed = true; } setHint(); redrawUI(); } };
-$('recentre').onclick = () => { S.comp.placed = false; setHint(); redrawUI(); };
 
 document.addEventListener('keydown', e => {
   if (e.target.matches('input,select,textarea')) return;
@@ -2131,7 +3368,11 @@ document.addEventListener('keydown', e => {
   if ((e.ctrlKey || e.metaKey) && k === 's') { e.preventDefault(); savePdf(); return; }
   if ((e.ctrlKey || e.metaKey) && k === 'r') { e.preventDefault(); rotateDoc(90); return; }
   if (e.ctrlKey || e.metaKey || e.altKey) return;
-  if (e.key === 'Delete' || e.key === 'Backspace') { if (S.sel) { e.preventDefault(); deleteSel(); } return; }
+  if (e.key === 'Delete' || e.key === 'Backspace') {
+    if (S.sel) { e.preventDefault(); deleteSel(); }
+    else if (traceOn() && S.trace.sel) { e.preventDefault(); dropTrace(); }
+    return;
+  }
   if (e.key === 'Escape' && S.sel) { e.preventDefault(); selectItem(null); return; }
   if (k === 's') { openShapeMenu(); return; }
   const map = { p: 'pen', g: 'hl', l: 'line', c: 'compass', e: 'eraser', h: 'hand', t: 'text' };
@@ -2174,21 +3415,28 @@ async function insertPdfPages(bytes, msg) {
 /* room for the calculator (left) and the objective ticker (bottom) */
 if (window.cc) window.cc.on('insets', o => {
   const L = Math.max(0, o.left | 0), B = Math.max(0, o.bottom | 0);
-  if ($('main').style.marginLeft === L + 'px' && document.body.style.paddingBottom === B + 'px') return;
+  if (L === insL && B === insB) return;
+  const taller = B !== insB; insL = L; insB = B;
   $('main').style.marginLeft = L + 'px'; document.body.style.paddingBottom = B + 'px';
-  fitBar();
+  // The bar's new height only lands after the frame, so re-scale the tools on the next one.
+  if (taller) setTimeout(() => fitBar(true), 80);
   setTimeout(() => { if (S.doc) fitPage(); }, 200);
 });
 /* reaction sounds */
 let rxAudio = null, rxBtn = null;
-$('reactions').addEventListener('click', e => {
-  const b = e.target.closest('.rx'); if (!b) return;
+/** Plays a reaction, or stops it if that one is already going. */
+function playReaction(snd, b) {
+  b = b || $('reactions').querySelector(`.rx[data-snd="${snd}"]`);
+  if (!b) return;
   const same = rxBtn === b && rxAudio && !rxAudio.paused;
   if (rxAudio) { rxAudio.pause(); rxAudio = null; } if (rxBtn) rxBtn.classList.remove('playing'); rxBtn = null;
   if (same) return;                                  // tap again to stop
-  const a = new Audio(`sounds/${b.dataset.snd}.mp3`); rxAudio = a; rxBtn = b; b.classList.add('playing');
+  const a = new Audio(`sounds/${snd}.mp3`); rxAudio = a; rxBtn = b; b.classList.add('playing');
   a.onended = () => { if (rxBtn === b) { b.classList.remove('playing'); rxBtn = null; rxAudio = null; } };
   a.play().catch(() => { b.classList.remove('playing'); toast('Could not play that sound'); });
+}
+$('reactions').addEventListener('click', e => {
+  const b = e.target.closest('.rx'); if (b) playReaction(b.dataset.snd, b);
 });
 setTool('pen'); updateBar();
 })();
