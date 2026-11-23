@@ -25,15 +25,6 @@ html,body{margin:0;height:100%;background:radial-gradient(circle at 50% 30%,#eef
 .calc{--case:#9c9d9a;--case2:#82837f;--key:#f2f2f0;--key2:#d6d6d3;--keyt:#2d2e30;--label:#fff;--shiftc:#ffd04d;--shiftkey:#f4b021;--bezel:#727370;
   width:420px;height:960px;border-radius:40px;background:linear-gradient(160deg,var(--case),var(--case2));
   box-shadow:0 30px 60px #0005,inset 0 2px 0 #ffffff55,inset 0 -6px 12px #0003;padding:20px 24px 24px;position:relative}
-.calc.black{--case:#2d2e31;--case2:#1e1f22;--key:#55575c;--key2:#3e4045;--keyt:#f4f4f4;--bezel:#1a1b1d}
-.calc.blue{--case:#3b79d9;--case2:#2a5cb1;--bezel:#1e4380}
-.calc.pink{--case:#f0c3cc;--case2:#dda5b2;--label:#5b3640;--shiftc:#a65800;--bezel:#c28995}
-.calc.atomic{--key:rgba(228,255,236,.78);--key2:rgba(140,215,165,.72);--keyt:#0b3a1d;--label:#eafff0;--shiftc:#d8ff5e;--shiftkey:#bdf03a;--bezel:rgba(6,40,20,.72);
-  background:linear-gradient(160deg,rgba(150,255,185,.42),rgba(30,130,65,.5) 40%,rgba(6,70,32,.68)),url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cg fill='none' stroke='%2390f0b0' stroke-opacity='.32' stroke-width='2'%3E%3Cpath d='M0 20h40l15 15h40l10-10h35M20 0v30l20 20v40M90 140v-30l-15-15H40M140 80h-30l-12 12v48M60 60h30v30M0 110h25l10 10v20'/%3E%3C/g%3E%3Cg fill='%23c8ffd8' fill-opacity='.4'%3E%3Ccircle cx='40' cy='20' r='3.5'/%3E%3Ccircle cx='105' cy='25' r='3.5'/%3E%3Ccircle cx='40' cy='90' r='3.5'/%3E%3Ccircle cx='98' cy='92' r='3.5'/%3E%3Ccircle cx='25' cy='110' r='3.5'/%3E%3C/g%3E%3Crect x='56' y='56' width='38' height='38' rx='3' fill='%23041a0d' fill-opacity='.45' stroke='%2390f0b0' stroke-opacity='.3'/%3E%3C/svg%3E"),linear-gradient(#123f26,#0a2a17);
-  box-shadow:0 30px 60px #0006,inset 0 0 0 2px rgba(190,255,210,.45),inset 0 3px 0 rgba(255,255,255,.55),inset 0 -10px 18px rgba(0,30,10,.45),inset 18px 0 30px rgba(190,255,210,.12)}
-.calc.atomic .key{box-shadow:0 3px 0 rgba(0,40,15,.5),0 4px 8px rgba(0,0,0,.3),inset 0 1px 0 #fff,inset 0 -3px 5px rgba(0,90,35,.25)}
-.calc.atomic .plate:before,.calc.atomic .plate:after{background:rgba(190,255,210,.14)}
-.calc.atomic .lcd{background:linear-gradient(rgba(214,236,220,.94),rgba(196,222,204,.94))}
 .brand{display:flex;flex-direction:column;margin:0 12px 10px;color:var(--label);line-height:1.25}
 .brand b{font-size:17px;letter-spacing:.2em}
 .brand span{font-size:10px;letter-spacing:.12em;opacity:.9}
@@ -217,6 +208,19 @@ body.pip{background:#2b2d30}
 .calc.m-tv .rpad:before{left:32%;right:32%;top:0;bottom:0}
 .calc.m-tv .rpad:after{top:32%;bottom:32%;left:0;right:0}
 .calc.m-tv .rpad button{z-index:1;color:#d7dbe2}
+
+/* The colour themes come after the model styling on purpose: a model sets out the
+   keys and the case, and the colour chosen then paints over it. Declared the other
+   way round, only the first model in the list would change colour. */
+.calc.black{--case:#2d2e31;--case2:#1e1f22;--key:#55575c;--key2:#3e4045;--keyt:#f4f4f4;--bezel:#1a1b1d}
+.calc.blue{--case:#3b79d9;--case2:#2a5cb1;--bezel:#1e4380}
+.calc.pink{--case:#f0c3cc;--case2:#dda5b2;--label:#5b3640;--shiftc:#a65800;--bezel:#c28995}
+.calc.atomic{--key:rgba(228,255,236,.78);--key2:rgba(140,215,165,.72);--keyt:#0b3a1d;--label:#eafff0;--shiftc:#d8ff5e;--shiftkey:#bdf03a;--bezel:rgba(6,40,20,.72);
+  background:linear-gradient(160deg,rgba(150,255,185,.42),rgba(30,130,65,.5) 40%,rgba(6,70,32,.68)),url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cg fill='none' stroke='%2390f0b0' stroke-opacity='.32' stroke-width='2'%3E%3Cpath d='M0 20h40l15 15h40l10-10h35M20 0v30l20 20v40M90 140v-30l-15-15H40M140 80h-30l-12 12v48M60 60h30v30M0 110h25l10 10v20'/%3E%3C/g%3E%3Cg fill='%23c8ffd8' fill-opacity='.4'%3E%3Ccircle cx='40' cy='20' r='3.5'/%3E%3Ccircle cx='105' cy='25' r='3.5'/%3E%3Ccircle cx='40' cy='90' r='3.5'/%3E%3Ccircle cx='98' cy='92' r='3.5'/%3E%3Ccircle cx='25' cy='110' r='3.5'/%3E%3C/g%3E%3Crect x='56' y='56' width='38' height='38' rx='3' fill='%23041a0d' fill-opacity='.45' stroke='%2390f0b0' stroke-opacity='.3'/%3E%3C/svg%3E"),linear-gradient(#123f26,#0a2a17);
+  box-shadow:0 30px 60px #0006,inset 0 0 0 2px rgba(190,255,210,.45),inset 0 3px 0 rgba(255,255,255,.55),inset 0 -10px 18px rgba(0,30,10,.45),inset 18px 0 30px rgba(190,255,210,.12)}
+.calc.atomic .key{box-shadow:0 3px 0 rgba(0,40,15,.5),0 4px 8px rgba(0,0,0,.3),inset 0 1px 0 #fff,inset 0 -3px 5px rgba(0,90,35,.25)}
+.calc.atomic .plate:before,.calc.atomic .plate:after{background:rgba(190,255,210,.14)}
+.calc.atomic .lcd{background:linear-gradient(rgba(214,236,220,.94),rgba(196,222,204,.94))}
 .lbsm .sl,.lbsm .al{font-size:8.5px!important;letter-spacing:-.02em}
 .bstack{display:flex;flex-direction:column;line-height:1.15}.bstack i{font-style:italic;font-weight:800;font-size:14px;letter-spacing:.06em;font-family:inherit}
 .bside{font-family:Georgia,serif;font-size:19px!important;font-weight:700}
@@ -250,6 +254,38 @@ html.desk #stage{align-items:flex-start}
 #help td{padding:3px 6px;border-bottom:1px solid #eee}
 .mdl{font:inherit;font-size:13px;padding:5px 10px;border-radius:8px;border:1.5px solid #ccc;background:#f6f6f6;cursor:pointer;margin:2px}.mdl.on{border-color:#4f7cff;background:#e8eefc;color:#1d3fae;font-weight:700}
 #help kbd{background:#f0f0f0;border-radius:4px;padding:1px 6px;border:1px solid #ccc;font-family:inherit}
+/* ---------- basic desk calculator (cc-8F) ---------- */
+.calc.m-ms{--case:#2b2e34;--case2:#16181c;--key:#4b5059;--key2:#34383f;--keyt:#fff;--label:#eef1f6;--bezel:#1b1d21;
+  width:420px;height:700px;border-radius:24px;padding:18px 20px 22px}
+.calc.m-ms #brand,.calc.m-ms .screenframe,.calc.m-ms .top,.calc.m-ms .fn,.calc.m-ms .np,.calc.m-ms .tagline{display:none}
+.ms{display:none;flex-direction:column;height:100%;gap:14px}
+.calc.m-ms .ms{display:flex}
+.mshead{display:flex;align-items:center;justify-content:space-between;padding:0 4px}
+.msbrand{display:flex;flex-direction:column;color:var(--label);line-height:1.2}
+.msbrand b{font-size:16px;letter-spacing:.2em}
+.msbrand span{font-size:10px;letter-spacing:.14em;opacity:.85}
+.solar{display:flex;gap:3px;background:#2a1d0c;border-radius:4px;padding:4px 5px;box-shadow:inset 0 1px 3px #000a}
+.solar i{display:block;width:14px;height:20px;background:linear-gradient(160deg,#6b4a18,#3a2709);border-radius:1px}
+.msscreen{background:#cfd8d4;border-radius:7px;padding:7px 14px 10px;box-shadow:inset 0 2px 7px #0006,0 1px 0 #ffffff22;
+  border:3px solid #1b1d21;display:flex;flex-direction:column}
+.msind{display:flex;gap:14px;font-size:11px;font-weight:800;letter-spacing:.1em;color:#2b3330;height:13px}
+.msind span{opacity:0}
+.msind span.on{opacity:1}
+.msnum{text-align:right;font:800 50px/1.08 "Segoe UI",system-ui,sans-serif;color:#15181a;overflow:hidden;white-space:nowrap;
+  font-variant-numeric:tabular-nums;padding-right:4px}
+.msnum i{display:inline-block;transform:skewX(-7deg);font-style:normal}
+.msgrid{flex:1;display:grid;grid-template-columns:repeat(5,1fr);grid-template-rows:30px repeat(5,1fr);gap:9px}
+.mskey{border:0;cursor:pointer;font-family:inherit;font-weight:700;font-size:21px;color:var(--keyt);border-radius:9px;
+  background:linear-gradient(var(--key),var(--key2));box-shadow:0 3px 0 #000a,0 4px 7px #0006,inset 0 1px 0 #ffffff26;
+  display:flex;align-items:center;justify-content:center;position:relative;padding:0;transition:transform .05s}
+.mskey:active,.mskey.pressed{transform:translateY(2px);box-shadow:0 1px 0 #000a,inset 0 1px 0 #ffffff26}
+.mskey.sm{font-size:15px}
+.mskey.tax{font-size:13px;border-radius:7px}
+.mskey.blue{background:linear-gradient(#4a79c7,#2f5ba3)}
+.mskey.wide{font-size:26px}
+.mskey .tt{position:absolute;top:-13px;left:50%;transform:translateX(-50%);font-size:9px;font-weight:700;color:var(--label);
+  letter-spacing:.06em;white-space:nowrap;opacity:.85}
+.mskey .tt.on{left:auto;right:4px;transform:none}
 </style>
 </head>
 <body>
@@ -271,6 +307,13 @@ html.desk #stage{align-items:flex-start}
   <div class="top" id="top"></div>
   <div class="fn" id="fn"></div>
   <div class="np" id="np"></div>
+  <div class="ms" id="ms">
+    <div class="mshead"><div class="msbrand"><b>CLASSTOOLS</b><span>cc-8F</span></div>
+      <div class="solar"><i></i><i></i><i></i><i></i></div></div>
+    <div class="msscreen"><div class="msind"><span id="msM">M</span><span id="msR">RATE</span><span id="msE">E</span></div>
+      <div class="msnum" id="msNum"><i>0</i></div></div>
+    <div class="msgrid" id="msGrid"></div>
+  </div>
 </div></div></div>
 
 <div id="sett"><div class="card">
@@ -278,7 +321,10 @@ html.desk #stage{align-items:flex-start}
   <div class="grp"><b>Calculator model</b>
     <button class="mdl" data-model="cw">CW (current)</button>
     <button class="mdl" data-model="plus">PLUS (natural display)</button>
-    <button class="mdl" data-model="tv">595 style (natural display)</button></div>
+    <button class="mdl" data-model="tv">595 style (natural display)</button>
+    <button class="mdl" data-model="ms">Basic (four function, non-scientific)</button>
+    <label style="display:block;margin-top:8px;font-size:13px">Tax rate for the basic calculator:
+      <input id="msRate" type="number" min="0" max="99" step="0.5" style="font:inherit;width:72px;padding:4px 6px;border-radius:7px;border:1.5px solid #ccc"> %</label></div>
   <div class="grp"><b>Case colour</b>
     <button class="sw" data-theme="grey" style="background:#9c9d9a" title="Grey"></button><button class="sw" data-theme="black" style="background:#2d2e31" title="Black"></button><button class="sw" data-theme="blue" style="background:#3b79d9" title="Blue"></button><button class="sw" data-theme="pink" style="background:#f0c3cc" title="Pink"></button><button class="sw" data-theme="atomic" style="background:linear-gradient(135deg,#8fe9ad,#1f8a4a 55%,#0b4a26)" title="Atomic green"></button></div>
   <div class="grp">
@@ -347,9 +393,9 @@ function k(v){return{t:'k',v};}
 function clone(x){return JSON.parse(JSON.stringify(x));}
 
 /* persistence (settings + variables only) */
-function save(){try{localStorage.setItem('classcalc83',JSON.stringify({angle:S.angle,io:S.io,nf:S.nf,fracRes:S.fracRes,vars:S.vars,ans:S.ans,theme:currentTheme,model:MODEL}));}catch(e){}}
+function save(){try{localStorage.setItem('classcalc83',JSON.stringify({angle:S.angle,io:S.io,nf:S.nf,fracRes:S.fracRes,vars:S.vars,ans:S.ans,theme:currentTheme,model:MODEL,msrate:MS.rate}));}catch(e){}}
 let currentTheme='grey',MODEL='cw';
-function load(){try{const d=JSON.parse(localStorage.getItem('classcalc83')||'null');if(!d)return;Object.assign(S,{angle:d.angle||'Deg',io:d.io||'MathO',nf:d.nf||{type:'norm1',n:0},fracRes:d.fracRes||'imp',ans:+d.ans||0});if(d.vars)Object.assign(S.vars,d.vars);if(d.theme)currentTheme=d.theme;if(d.model&&['cw','plus','tv','lin'].includes(d.model))MODEL=d.model==='lin'?'tv':d.model;}catch(e){}}
+function load(){try{const d=JSON.parse(localStorage.getItem('classcalc83')||'null');if(!d)return;Object.assign(S,{angle:d.angle||'Deg',io:d.io||'MathO',nf:d.nf||{type:'norm1',n:0},fracRes:d.fracRes||'imp',ans:+d.ans||0});if(d.vars)Object.assign(S.vars,d.vars);if(d.theme)currentTheme=d.theme;if(isFinite(+d.msrate))MS.rate=+d.msrate;if(d.model&&['cw','plus','tv','lin','ms'].includes(d.model))MODEL=d.model==='lin'?'tv':d.model;}catch(e){}}
 
 /* =====================================================================
    EDITOR (natural display tree)
@@ -1182,6 +1228,107 @@ function press(id){
    SCREEN RENDER
    ===================================================================== */
 const lcd=document.getElementById('lcd'),calcEl=document.getElementById('calc');
+/* =====================================================================
+   BASIC DESK CALCULATOR (model 'ms')
+   A plain four-function calculator with memory, percent and tax keys -
+   immediate execution, 8 digits, exactly like the one on a desk. It runs
+   on its own little state machine; none of the scientific engine above.
+   ===================================================================== */
+const MS = {d:'0', acc:null, op:null, fresh:true, mem:0, rate:20, lastOp:null, lastArg:null, mrc:false, err:false, rateFlash:0};
+const MSKEYS = [
+  ['taxm','TAX','−',4,1,1,'tax'],['taxp','TAX','+',5,1,1,'tax','TAX RATE'],
+  ['mrc','MRC','',1,2,1,'sm','C3'],['msub','M−','',2,2,1,'sm','C2'],['madd','M+','',3,2,1,'sm','C1'],
+  ['pct','%','',4,2,1,'sm','SET'],['div','÷',''  ,5,2],
+  ['mex','M/EX','',1,3,1,'sm','MODE'],['d7','7','',2,3],['d8','8','',3,3],['d9','9','',4,3],['mul','×','',5,3],
+  ['sign','+/−','',1,4,1,'sm'],['d4','4','',2,4],['d5','5','',3,4],['d6','6','',4,4],['sub','−','',5,4],
+  ['ce','C','',1,5,1,'blue'],['d1','1','',2,5],['d2','2','',3,5],['d3','3','',4,5],['add','+','',5,5,2,'wide'],
+  ['ac','AC','',1,6,1,'blue','ON'],['d0','0','',2,6],['dot','·','',3,6],['eq','=','',4,6]
+];
+function buildMS() {
+  const g = document.getElementById('msGrid'); if (!g || g.childElementCount) return;
+  MSKEYS.forEach(([id, t, sup, c, r, rs, cls, top]) => {
+    const b = document.createElement('button');
+    b.className = 'mskey' + (cls ? ' ' + cls : ''); b.dataset.ms = id;
+    b.style.gridColumn = c; b.style.gridRow = r + '/' + (r + (rs || 1));
+    b.innerHTML = (top ? `<span class="tt${id === 'ac' ? ' on' : ''}">${top}</span>` : '') + t + (sup ? `<small>${sup}</small>` : '');
+    b.addEventListener('pointerdown', e => { e.preventDefault(); msPress(id); b.classList.add('pressed'); });
+    b.addEventListener('pointerup', () => b.classList.remove('pressed'));
+    b.addEventListener('pointerleave', () => b.classList.remove('pressed'));
+    g.appendChild(b);
+  });
+}
+function msNum() { return parseFloat(MS.d.replace(/,/g, '')) || 0; }
+/* 8 digits, and anything bigger than the window is an error, like the real thing */
+function msStr(v) {
+  if (!isFinite(v) || Math.abs(v) >= 1e8) return null;
+  const neg = v < 0; const a = Math.abs(v);
+  const ip = Math.floor(a).toString(); const room = 8 - ip.length;
+  let s = room > 0 ? a.toFixed(room).replace(/0+$/, '').replace(/\.$/, '') : ip;
+  if (+s === 0) return '0';
+  return (neg ? '-' : '') + s;
+}
+function msShow(v) { const s = msStr(v); if (s === null) { MS.err = true; MS.d = '0'; } else MS.d = s; MS.fresh = true; }
+function msCalc(a, o, b) { return o === '+' ? a + b : o === '-' ? a - b : o === '*' ? a * b : b === 0 ? NaN : a / b; }
+function msDigits(s) { return s.replace(/[-.]/g, '').length; }
+function msPress(id) {
+  if (MS.err && id !== 'ac' && id !== 'ce') return;
+  if (id !== 'mrc') MS.mrc = false;
+  if (/^d[0-9]$/.test(id)) {
+    const d = id[1];
+    if (MS.fresh) { MS.d = d; MS.fresh = false; }
+    else if (msDigits(MS.d) < 8) MS.d = MS.d === '0' ? d : MS.d === '-0' ? '-' + d : MS.d + d;
+  } else if (id === 'dot') {
+    if (MS.fresh) { MS.d = '0.'; MS.fresh = false; } else if (!MS.d.includes('.')) MS.d += '.';
+  } else if (id === 'sign') {
+    MS.d = MS.d.startsWith('-') ? MS.d.slice(1) : '-' + MS.d;
+  } else if (id === 'add' || id === 'sub' || id === 'mul' || id === 'div') {
+    const o = { add: '+', sub: '-', mul: '*', div: '/' }[id];
+    if (MS.op !== null && !MS.fresh) msShow(msCalc(MS.acc, MS.op, msNum()));
+    MS.acc = msNum(); MS.op = o; MS.fresh = true; MS.lastOp = null;
+  } else if (id === 'eq') {
+    if (MS.op !== null) { MS.lastOp = MS.op; MS.lastArg = msNum(); const a = MS.acc; MS.op = null; msShow(msCalc(a, MS.lastOp, MS.lastArg)); }
+    else if (MS.lastOp) msShow(msCalc(msNum(), MS.lastOp, MS.lastArg));
+    MS.acc = msNum();
+  } else if (id === 'pct') {
+    const v = msNum();
+    if (MS.op === '+' || MS.op === '-') { const b = MS.acc * v / 100; const a = MS.acc, o = MS.op; MS.op = null; msShow(msCalc(a, o, b)); }
+    else if (MS.op === '*') { const a = MS.acc; MS.op = null; msShow(a * v / 100); }
+    else if (MS.op === '/') { const a = MS.acc; MS.op = null; msShow(v === 0 ? NaN : a / (v / 100)); }
+    else msShow(v / 100);
+    MS.acc = msNum();
+  } else if (id === 'taxp' || id === 'taxm') {
+    const v = msNum(), r = 1 + MS.rate / 100;
+    msShow(id === 'taxp' ? v * r : v / r); MS.rateFlash = Date.now();
+  } else if (id === 'madd' || id === 'msub') {
+    if (MS.op !== null && !MS.fresh) { const a = MS.acc, o = MS.op; MS.op = null; msShow(msCalc(a, o, msNum())); }
+    MS.mem += (id === 'madd' ? 1 : -1) * msNum(); MS.fresh = true;
+  } else if (id === 'mrc') {
+    if (MS.mrc) { MS.mem = 0; MS.mrc = false; } else { msShow(MS.mem); MS.mrc = true; }
+  } else if (id === 'mex') {
+    const v = msNum(); msShow(MS.mem); MS.mem = v;
+  } else if (id === 'ce') {
+    MS.d = '0'; MS.fresh = true; MS.err = false;
+  } else if (id === 'ac') {
+    MS.d = '0'; MS.acc = null; MS.op = null; MS.lastOp = null; MS.fresh = true; MS.err = false;
+  }
+  msRender();
+}
+function msRender() {
+  const n = document.getElementById('msNum'); if (!n) return;
+  let t = MS.err ? 'E' : MS.d;
+  if (!MS.err) {                                     // thousands separators, like the display on a desk calculator
+    const neg = t.startsWith('-'); if (neg) t = t.slice(1);
+    const [i, f] = t.split('.');
+    t = (neg ? '-' : '') + i.replace(/\B(?=(\d{3})+(?!\d))/g, ',') + (f !== undefined ? '.' + f : '');
+  }
+  n.innerHTML = '<i>' + t + '</i>';
+  document.getElementById('msM').classList.toggle('on', Math.abs(MS.mem) > 1e-12);
+  document.getElementById('msE').classList.toggle('on', MS.err);
+  document.getElementById('msR').classList.toggle('on', Date.now() - MS.rateFlash < 1500);
+  if (Date.now() - MS.rateFlash < 1500) setTimeout(msRender, 1600);
+}
+const MSKB = {'0':'d0','1':'d1','2':'d2','3':'d3','4':'d4','5':'d5','6':'d6','7':'d7','8':'d8','9':'d9','.':'dot',
+  '+':'add','-':'sub','*':'mul','/':'div','=':'eq','Enter':'eq','%':'pct','Escape':'ac','Delete':'ac','Backspace':'ce','c':'ce'};
 function statusBar(){
   const ang={Deg:'D',Rad:'R',Gra:'G'}[S.angle];
   const nf=S.nf.type==='fix'?'<span>FIX</span>':S.nf.type==='sci'?'<span>SCI</span>':'';
@@ -1265,6 +1412,7 @@ function renderTable(){
   return h;
 }
 function render(){
+  if(MODEL==='ms'){msRender();return;}
   let body;
   if(S.menus.length)body=renderMenu(S.menus.at(-1));
   else if(S.app==='calc'){ed=S.calc.ed;body=renderCalc();}
@@ -1362,6 +1510,7 @@ const topEl=document.getElementById('top'),fnEl=document.getElementById('fn'),np
 function buildKeys(){
   for(const k in keyEls)delete keyEls[k];
   topEl.innerHTML='';fnEl.innerHTML='';npEl.innerHTML='';
+  if(MODEL==='ms'){buildMS();const tg=document.getElementById('tagline');if(tg)tg.style.display='none';return;}
   const brand=document.getElementById('brand'),wm=document.getElementById('wm'),tag=document.getElementById('tagline');
   if(MODEL==='cw'){
     topEl.className='top';fnEl.className='fn';npEl.className='np';
@@ -1382,8 +1531,9 @@ function buildKeys(){
 }
 function setModel(m){
   if(m==='lin')m='tv';
-  if(!['cw','plus','tv'].includes(m))m='cw';
-  MODEL=m;S.alpha=S.rcl=S.sto=S.hyp=S.off=false;closeMenus();
+  if(!['cw','plus','tv','ms'].includes(m))m='cw';
+  if(m==='ms')buildMS();
+  MODEL=m;S.alpha=S.rcl=S.sto=S.hyp=S.off=false;closeMenus();setSize();
   if(m==='lin'){S.calc.ed=newEd();ed=S.calc.ed;S.calc.mode='edit';if(S.app==='table'||S.app==='ratio')S.app='calc';}
   if(NAT()&&S.app==='ratio')S.app='calc';
   if(S.calc.mode==='result'&&S.calc.res)S.calc.res.view='std';
@@ -1402,6 +1552,7 @@ const KB={'0':'d0','1':'d1','2':'d2','3':'d3','4':'d4','5':'d5','6':'d6','7':'d7
 function onKey(e){
   if(document.getElementById('help').classList.contains('on')){if(e.key==='Escape')hideHelp();return;}
   if(e.ctrlKey||e.metaKey||e.altKey)return;
+  if(MODEL==='ms'){const k=MSKB[e.key];if(k){e.preventDefault();msPress(k);}return;}
   if(e.key===','){e.preventDefault();S.shift=true;press('rp');flash('rp');return;}
   if(e.key==='!'){e.preventDefault();S.shift=true;press('inv');return;}
   let id=KB[e.key];
@@ -1416,6 +1567,8 @@ function flash(id){const b=keyEls[id];if(!b)return;b.classList.add('pressed');se
 function setTheme(t){currentTheme=t;applyClasses();document.querySelectorAll('.sw').forEach(s=>s.classList.toggle('on',s.dataset.theme===t));save();render();}
 document.querySelectorAll('.sw').forEach(s=>s.addEventListener('click',()=>setTheme(s.dataset.theme)));
 document.querySelectorAll('.mdl').forEach(b=>b.addEventListener('click',()=>setModel(b.dataset.model)));
+const msRateIn=document.getElementById('msRate');
+if(msRateIn){msRateIn.value=MS.rate;msRateIn.addEventListener('input',()=>{const v=parseFloat(msRateIn.value);if(isFinite(v)&&v>=0&&v<100){MS.rate=v;save();}});}
 function showHelp(){document.getElementById('help').classList.add('on');}
 function hideHelp(){document.getElementById('help').classList.remove('on');}
 document.getElementById('helpBtn').onclick=showHelp;document.getElementById('helpClose').onclick=hideHelp;
@@ -1423,9 +1576,11 @@ document.getElementById('help').addEventListener('click',e=>{if(e.target.id==='h
 document.getElementById('fsBtn').onclick=()=>{try{if(document.fullscreenElement)document.exitFullscreen();else document.documentElement.requestFullscreen().catch(()=>{});}catch(e){}};
 
 /* scale to fit window */
-const W=420,H=960;
+let W=420,H=960;
+function setSize(){W=420;H=MODEL==='ms'?700:960;}   // the basic calculator is a desk shape, not a handheld one
 let pipWin=null;
 const DESK=!!window.classcalc;if(DESK)document.documentElement.classList.add('desk');
+
 function fit(){
   const win=pipWin||window,pad=DESK?0:pipWin?6:24;
   const s=Math.min((win.innerHeight-pad)/H,(win.innerWidth-(DESK?0:pipWin?6:16))/W,DESK?9:2.4);
@@ -1478,7 +1633,7 @@ document.getElementById('popBtn').onclick=popOut;
 document.getElementById('bringBack').onclick=()=>{if(pipWin)pipWin.close();};
 document.querySelectorAll('.closepop').forEach(b=>b.onclick=()=>document.getElementById('pophelp').classList.remove('on'));
 addEventListener('resize',fit);
-load();setModel(MODEL);setTheme(currentTheme);fit();render();
+load();setSize();setModel(MODEL);setTheme(currentTheme);fit();render();
 window.__CC={S,press,evaluate,resultHTML};
 </script>
 <script src="press-glow.js"></script>

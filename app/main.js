@@ -172,7 +172,21 @@ function showCalc() {
   W.calc.setBounds(calcBounds());
   W.calc.show(); W.calc.focus();
   W.calc.webContents.send('mode', 'expanded');
-  relayout();
+  syncCalcLevel(); relayout();
+}
+/* Beside the slides the calculator belongs to the Presenter: it rides above that
+   window and nothing else, so it no longer floats over whatever else is open.
+   Out on its own, over PowerPoint, it goes back to sitting on top. */
+let calcDockedLevel = null;
+function syncCalcLevel() {
+  if (!W.calc || W.calc.isDestroyed()) return;
+  const docked = calcDocked();
+  if (docked === calcDockedLevel) return;
+  calcDockedLevel = docked;
+  try {
+    if (docked) { W.calc.setAlwaysOnTop(false); W.calc.setParentWindow(W.pdf); }
+    else { W.calc.setParentWindow(null); W.calc.setAlwaysOnTop(true, 'screen-saver'); }
+  } catch (e) {}
 }
 function hideCalc() { hiddenAt.calc = Date.now(); W.calc.hide(); W.calc.webContents.send('mode', 'compact'); relayout(); }
 function toggleCalc() {
@@ -353,7 +367,7 @@ function createPdf() {
   const a = dockArea();
   W.pdf = new BrowserWindow({
     x: a.x + 40, y: a.y + 30, width: Math.min(1280, a.width - 80), height: a.height - 60, show: false,
-    title: 'ClassTools – Page & Document Pen', autoHideMenuBar: true, icon: path.join(__dirname, 'icon.png'),
+    title: 'ClassTools Presenter', autoHideMenuBar: true, icon: path.join(__dirname, 'icon.png'),
     webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true }
   });
   W.pdf.setMenu(null);
@@ -391,7 +405,7 @@ async function pdfDirty() {
 async function confirmQuit() {
   if (await pdfDirty()) {
     const r = await dialog.showMessageBox({ type: 'question', buttons: ['Quit anyway', 'Cancel'], defaultId: 1, cancelId: 1,
-      title: 'ClassTools', message: 'You have unsaved writing in the document pen.', detail: 'Quit and lose it?' });
+      title: 'ClassTools', message: 'You have unsaved writing in ClassTools Presenter.', detail: 'Quit and lose it?' });
     if (r.response !== 0) return;
   }
   quitting = true; app.quit();
@@ -403,11 +417,11 @@ function popup(win, tpl) {
 const themes = () => ['grey', 'black', 'blue', 'pink', 'atomic'].map(t => ({
   label: { grey: 'Grey', black: 'Black', blue: 'Blue', pink: 'Pink', atomic: 'Atomic green (see-through)' }[t],
   click: () => W.calc.webContents.send('theme', t) }));
-const models = () => [['cw', 'CW (current calculator)'], ['plus', 'PLUS (natural display)'], ['tv', '595 style (natural display)']].map(([m, l]) => ({
+const models = () => [['cw', 'CW (current calculator)'], ['plus', 'PLUS (natural display)'], ['tv', '595 style (natural display)'], ['ms', 'Basic (four function)']].map(([m, l]) => ({
   label: l, click: () => { W.calc.webContents.send('model', m); if (!W.calc.isVisible()) showCalc(); } }));
 function dockMenu() {
   popup(W.dock, [
-    { label: 'Calculator', click: toggleCalc }, { label: 'Open a document…', click: openDocs }, { label: 'Page / document pen', click: togglePdf }, { label: 'Screen pen tools…', click: toggleRadial }, { label: 'Clear screen drawings', click: clearAnnot }, { label: 'Timer', click: toggleTimer }, { label: 'ShapeXplorer', click: toggleShapes }, { label: 'Objective ticker', type: 'checkbox', checked: tickerOn(), click: () => setTicker(!tickerOn()) }, { label: 'Cancel timer', click: () => W.timer.webContents.send('timer-cancel') },
+    { label: 'Calculator', click: toggleCalc }, { label: 'Open a document…', click: openDocs }, { label: 'ClassTools Presenter', click: togglePdf }, { label: 'Screen pen tools…', click: toggleRadial }, { label: 'Clear screen drawings', click: clearAnnot }, { label: 'Timer', click: toggleTimer }, { label: 'ShapeXplorer', click: toggleShapes }, { label: 'Objectives', type: 'checkbox', checked: tickerOn(), click: () => setTicker(!tickerOn()) }, { label: 'Cancel timer', click: () => W.timer.webContents.send('timer-cancel') },
     { label: 'Extension questions', click: () => togglePicker('ext') }, { label: 'Fluency starter', click: () => togglePicker('flu') },
     { type: 'separator' },
     { label: 'Tuck dock into the side when not in use', type: 'checkbox', checked: autoTuck(), click: () => { cfg.autoTuck = !autoTuck(); saveCfg(); if (autoTuck()) armTuck(); else setTucked(false); } },
@@ -476,7 +490,7 @@ function tickerBounds() {
 }
 function placeTicker() { if (W.ticker && !W.ticker.isDestroyed()) W.ticker.setBounds(tickerBounds()); }
 function createTicker() {
-  W.ticker = floating({ ...tickerBounds(), focusable: false, skipTaskbar: true, title: 'Objective ticker' });
+  W.ticker = floating({ ...tickerBounds(), focusable: false, skipTaskbar: true, title: 'Objectives' });
   W.ticker.loadFile(path.join(__dirname, 'ticker.html'));
   W.ticker.webContents.on('did-finish-load', () => { W.ticker.webContents.setVisualZoomLevelLimits(1, 1).catch(() => {}); if (objVisible === null) objVisible = objStart() !== 'off'; W.ticker.webContents.send('obj-style', objStyle()); W.ticker.webContents.send('obj-list', objList()); if (objStart() === 'ask' && !W.ticker._asked) { W.ticker._asked = true; W.ticker.webContents.send('obj-ask', { count: objList().length }); } if (tickerOn()) { W.ticker.showInactive(); raiseFloaters(); } sendDockObj(); relayout(); });
   W.objp = floating({ width: 700, height: 300, skipTaskbar: true, title: 'Lesson objectives' });
@@ -528,11 +542,13 @@ ipcMain.on('obj', (e, cmd, data) => {
   else if (cmd === 'style') { const { start, ...st } = data || {}; cfg.objStyle = { ...objStyle(), ...st }; if (start) cfg.objStart = start; saveCfg(); W.ticker.webContents.send('obj-style', cfg.objStyle); }
   else if (cmd === 'start-keep') W.ticker.webContents.send('obj-list', objList());
   else if (cmd === 'start-new') { W.ticker.webContents.send('obj-list', objList()); openObjPanel(true); }
+  // The same thing the dock's own button does, offered where the lesson starts.
+  else if (cmd === 'start-doc') openDocs();     // straight to the file picker, then into the Presenter
   else if (cmd === 'start-close') { W.ticker.webContents.send('obj-list', objList()); setTicker(false); }
   else if (cmd === 'start-never') { cfg.objStart = 'off'; saveCfg(); W.ticker.webContents.send('obj-list', objList()); setTicker(false); }
   else if (cmd === 'hide-ticker') setTicker(false);
 });
-/* keep the document pen above the ticker instead of underneath it */
+/* keep the Presenter above the ticker instead of underneath it */
 /* ---------- the document window: maximised, with the calculator and ticker fitted around the slides ---------- */
 let DOC_SIDEBAR = 142;
 ipcMain.on('doc-sidebar', (e, w) => { w = Math.round(+w || 0); if (w > 40 && w < 800 && w !== DOC_SIDEBAR) { DOC_SIDEBAR = w; relayout(); } });
@@ -545,6 +561,7 @@ function relayout() {
   clearTimeout(relayT);
   relayT = setTimeout(() => {
     placeTicker();
+    syncCalcLevel();
     if (W.calc && W.calc.isVisible()) W.calc.setBounds(calcBounds());
     if (W.pdf && !W.pdf.isDestroyed()) {
       const cb = calcDocked() ? W.calc.getBounds() : null;
@@ -555,7 +572,7 @@ function relayout() {
 }
 
 
-/* ---------- Word / PowerPoint → PDF for the document pen ---------- */
+/* ---------- Word / PowerPoint → PDF for the Presenter ---------- */
 const { execFile } = require('child_process');
 const { pathToFileURL } = require('url');
 const runCmd = (cmd, args, opts) => new Promise(res => { try { execFile(cmd, args, { windowsHide: true, timeout: 90000, maxBuffer: 4 << 20, ...opts }, (err, so, se) => res({ err, so: String(so || ''), se: String(se || '') })); } catch (err) { res({ err }); } });
@@ -755,7 +772,7 @@ app.whenReady().then(() => {
       tray.setToolTip('ClassTools');
       tray.setContextMenu(Menu.buildFromTemplate([
         { label: 'Show dock', click: () => { W.dock.show(); setTucked(false); } },
-        { label: 'Calculator', click: toggleCalc }, { label: 'Page / document pen', click: togglePdf }, { label: 'Screen pen tools…', click: toggleRadial }, { label: 'Clear screen drawings', click: clearAnnot }, { label: 'Timer', click: toggleTimer },
+        { label: 'Calculator', click: toggleCalc }, { label: 'ClassTools Presenter', click: togglePdf }, { label: 'Screen pen tools…', click: toggleRadial }, { label: 'Clear screen drawings', click: clearAnnot }, { label: 'Timer', click: toggleTimer },
         { label: 'Reset positions', click: () => { cfg.dock = null; cfg.clock = null; saveCfg(); setTucked(false); W.dock.show(); } },
         { type: 'separator' }, { label: 'Quit ClassTools', click: confirmQuit }]));
       tray.on('click', () => { W.dock.show(); setTucked(false); });
