@@ -1352,7 +1352,10 @@ function eraseAt(x, y) {
   if (keep.length !== list.length) { if (!drag.erased) { snapshot(); drag.erased = true; } S.ann[AK()] = keep; redrawInk(); }
 }
 function lineEndpoints() {
-  const out = []; for (const k of (S.ann[AK()] || [])) if (!k.sm) { out.push([k.p[0], k.p[1]]); out.push([k.p[k.p.length - 2], k.p[k.p.length - 1]]); }
+  // Only drawn lines have ends to snap to. A text box or a picture has no points at all,
+  // and reaching for them here threw the moment the line tool was used on a page that had
+  // one - which left no line, just the dot where the stroke began.
+  const out = []; for (const k of (S.ann[AK()] || [])) if (!k.sm && !k.kind && k.p && k.p.length >= 4) { out.push([k.p[0], k.p[1]]); out.push([k.p[k.p.length - 2], k.p[k.p.length - 1]]); }
   if (S.comp.placed) out.push([S.comp.cx, S.comp.cy]);
   return out;
 }
