@@ -402,8 +402,9 @@
       <button class="tile" id="protBtn" title="Protractor (A)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 18h20A10 10 0 0 0 2 18z"/><path d="M12 18l5-6"/></svg><span>Protractor</span></button>
       <button class="tile" id="traceBtn" title="Tracing paper – a see-through sheet you can draw on, then turn and move"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h12l4 4v10H4z"/><path d="M16 5v4h4"/><path d="M7 15c2-4 5-4 7 0"/></svg><span>Tracing Paper</span></button>
       <button class="tile" data-tool="compass" title="Compass (C)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="4" r="2"/><path d="M11 6L6 21M13 6l5 15"/><path d="M4 16a9 6 0 0 0 16 0" stroke-dasharray="2 2"/></svg><span>Compass</span></button>
+      <button class="tile" id="mirrorBtn" title="Mirror – the green edge is the mirror line; what sits on its far side shows reflected in the glass"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v18"/><path d="M10 8L5 12l5 4z"/><path d="M14 8l5 4-5 4z" stroke-dasharray="2.5 2.5"/></svg><span>Mirror</span></button>
       <button class="tile" id="calcBtn" title="Open / close the calculator beside the slide"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="2.5" width="14" height="19" rx="2.5"/><rect x="8" y="5.5" width="8" height="4" rx="1"/><path d="M8.5 13h.01M12 13h.01M15.5 13h.01M8.5 16.5h.01M12 16.5h.01M15.5 16.5h.01"/></svg><span>Calculator</span></button>
-      <button class="tile" id="hideBtn" title="Put away the ruler, protractor and compass (Esc)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3l18 18M10.6 6.1A9.8 9.8 0 0 1 12 6c5 0 9 6 9 6a17 17 0 0 1-3 3.4M6.6 6.6C4.3 8.2 3 12 3 12s4 6 9 6c1.6 0 3-.4 4.3-1.1"/></svg><span>Put Away</span></button>
+      <button class="tile span2" id="hideBtn" title="Put away the ruler, protractor and compass (Esc)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3l18 18M10.6 6.1A9.8 9.8 0 0 1 12 6c5 0 9 6 9 6a17 17 0 0 1-3 3.4M6.6 6.6C4.3 8.2 3 12 3 12s4 6 9 6c1.6 0 3-.4 4.3-1.1"/></svg><span>Put Away</span></button>
       <button class="tile span2" id="shapesBtn" title="Open ShapeXplorer (3D solids and 2D shapes)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2.5l8.5 4.8v9.4L12 21.5l-8.5-4.8V7.3z"/><path d="M3.5 7.3L12 12.1l8.5-4.8M12 12.1v9.4"/></svg><span>ShapeXplorer</span></button>
     </div>
   </div>
@@ -582,6 +583,7 @@ const S = {
   ruler: { on: false, x: 0, y: 0, a: 0, L: 30, unit: 'cm' },
   prot: { on: false, x: 0, y: 0, a: 0, arm: 60, full: false },
   comp: { placed: false, cx: 0, cy: 0, r: 4 * CM, ang: 0 },
+  mirror: { on: false, x: 0, y: 0, a: 0, w: 7 * CM, h: 9 * CM },
 };
 window.__isDirty = () => S.dirty;
 window.__t = { MARGIN, CM, compPencil: () => compPencil(), compHinge: () => compHinge(), trace: { handles: () => traceHandles(), toPage: (a,b) => traceToPage(a,b), toLocal: (a,b) => tracePageToLocal(a,b) }, dragMode: () => (drag ? drag.m : null), scale: () => sc(), pick: pickShape, menu: buildShapeMenu, custom: { open: () => openCustom(), st: () => CU, draw: () => cuDraw(), use: () => cuUse() }, join: joinLines, snapLines: snapToLines, shapes: { isShape, bar: () => $('shapeBar'), sync: syncShapeBar, box: itemBox, at: itemAt, select: selectItem, turned: turnedPts }, colours: { open: openColourPop, recent: () => window.recentColours(), remember: c => window.rememberColour(c), pop: () => document.getElementById('colPop') }, dashFor, renderPts, S, save: () => savePdf(), build: () => buildAnnotated(), rotate: q => rotateDoc(q), load: (b, n) => loadBytes(b, n), tool: t => setTool(t), addImage, redraw: () => { redrawInk(); redrawUI(); }, items: () => S.ann[AK()] || [], handles: () => selHandles(), handlePt, fit: fitText, lines: k=>textLayout(k) };   // test hook
@@ -1220,6 +1222,7 @@ function drawItem(c, k) {
 }
 
 function redrawInk() {
+  mirDirty = true;                      // whatever the glass is showing has just changed
   const s = sc(), d = dpr();
   inkX.setTransform(1, 0, 0, 1, 0, 0); inkX.clearRect(0, 0, inkC.width, inkC.height);
   inkX.setTransform(s * d, 0, 0, s * d, 0, 0);
@@ -1619,6 +1622,13 @@ function hitInstrument(x, y) {
     if (full ? rr <= PR.R : (rr <= PR.R && ly <= PR.b) || (Math.abs(lx) <= PR.R && ly >= 0 && ly <= PR.b))
       return { m: 'protMove', ox: x - P.x, oy: y - P.y };
   }
+  if (S.mirror.on) {
+    const M = S.mirror, [u, v] = toLocal(M, x, y);
+    const [rx, ry] = mirRotPt(), [gx, gy] = mirSizePt();
+    if (dist(u, v, rx, ry) < Math.max(T, 0.52 * CM)) return { m: 'mirRot', a0: M.a, g0: Math.atan2(y - M.y, x - M.x) };
+    if (dist(u, v, gx, gy) < Math.max(T, 0.45 * CM)) return { m: 'mirSize', u0: u, v0: v, w0: M.w, h0: M.h };
+    if (u >= -0.3 * CM && u <= M.w && v >= 0 && v <= M.h) return { m: 'mirMove', ox: x - M.x, oy: y - M.y };
+  }
   if (S.ruler.on) {
     const R = S.ruler; const [u, v] = toLocal(R, x, y);
     const inRuler = u >= -RUL.m && u <= R.L * CM + RUL.m && v >= 0 && v <= RUL.W;
@@ -1686,6 +1696,81 @@ function turnArc(c, x, y, r, lw, col) {
 function turnGlyph(c, x, y, r, col) {
   c.save(); turnArc(c, x, y, r, r * 0.34, col); c.restore();
 }
+/* =====================================================================
+   MIRROR
+   A rectangle of glass whose left edge, the glowing green line, is the
+   mirror line. Whatever sits on the far side of that line is shown
+   reflected in the glass, the same size, with a cold blue cast to it.
+   Drag it to move, the knob to turn it, the corner to resize.
+   ===================================================================== */
+const MIR = { edge: 2.4, glow: 9, tint: 'rgba(96,156,255,.20)' };
+let mirComp = null, mirDirty = true;
+/** One flat picture of the page - paper, background and ink - for the glass to reflect. */
+function mirrorSource() {
+  const bgC = $('bg');
+  const W = inkC.width, H = inkC.height;
+  if (!W || !H) return null;
+  if (!mirComp) mirComp = document.createElement('canvas');
+  if (mirComp.width !== W || mirComp.height !== H) { mirComp.width = W; mirComp.height = H; mirDirty = true; }
+  if (mirDirty) {
+    const g = mirComp.getContext('2d');
+    g.setTransform(1, 0, 0, 1, 0, 0);
+    g.fillStyle = '#ffffff'; g.fillRect(0, 0, W, H);
+    for (const cv of [pdfC, bgC, inkC]) if (cv && cv.width) g.drawImage(cv, 0, 0, W, H);
+    mirDirty = false;
+  }
+  return mirComp;
+}
+const mirRotPt = () => [S.mirror.w + 0.75 * CM, -0.75 * CM];      // in the mirror's own frame
+const mirSizePt = () => [S.mirror.w, S.mirror.h];
+function drawMirror(c) {
+  const M = S.mirror, s = sc(), src = mirrorSource();
+  c.save();
+  c.translate(M.x, M.y); c.rotate(M.a);
+
+  c.save();
+  c.beginPath(); c.rect(0, 0, M.w, M.h); c.clip();
+  c.fillStyle = '#fbfdff'; c.fillRect(0, 0, M.w, M.h);          // glass is not see-through
+  if (src) {
+    // Reflect about the green line, then draw the page where it actually is: what
+    // lands in the glass is the page's own mirror image, point for point.
+    c.save();
+    c.scale(-1, 1); c.rotate(-M.a); c.translate(-M.x, -M.y);
+    c.drawImage(src, 0, 0, S.pw, S.ph);
+    c.restore();
+  }
+  c.fillStyle = MIR.tint; c.fillRect(0, 0, M.w, M.h);
+  c.restore();
+
+  // the frame
+  c.strokeStyle = 'rgba(40,70,130,.55)'; c.lineWidth = 1.2 / s;
+  c.strokeRect(0, 0, M.w, M.h);
+
+  // the reflective edge, glowing
+  c.save();
+  c.lineCap = 'round';
+  c.shadowColor = 'rgba(34,240,110,.95)'; c.shadowBlur = MIR.glow;
+  c.strokeStyle = '#2bf06e'; c.lineWidth = MIR.edge / s;
+  c.beginPath(); c.moveTo(0, 0); c.lineTo(0, M.h); c.stroke(); c.stroke();
+  c.restore();
+
+  // handles: one to turn it, one to resize it
+  const [rx, ry] = mirRotPt(), [sx, sy] = mirSizePt();
+  handleKnob(c, rx, ry, 0.42 * CM, drag && drag.m === 'mirRot');
+  c.fillStyle = drag && drag.m === 'mirSize' ? 'rgba(36,87,214,.95)' : 'rgba(36,87,214,.78)';
+  roundRect(c, sx - 0.3 * CM, sy - 0.3 * CM, 0.6 * CM, 0.6 * CM, 0.12 * CM); c.fill();
+  c.restore();
+}
+function toggleMirror() {
+  if (!S.doc) return; S.mirror.on = !S.mirror.on;
+  if (S.mirror.on) {
+    const M = S.mirror, [cx, cy] = visibleCentre();
+    M.w = Math.min(8 * CM, S.pw * 0.3); M.h = Math.min(10 * CM, S.ph * 0.4); M.a = 0;
+    M.x = cx; M.y = cy - M.h / 2;                 // the line through the middle, glass to its right
+  }
+  updateBar(); redrawUI(); setHint();
+}
+
 function drawRuler(c) {
   const R = S.ruler, L = R.L * CM, s = sc(), U = rulerUnit();
   c.save(); c.translate(R.x, R.y); c.rotate(R.a);
@@ -2149,12 +2234,13 @@ function paintUI() {
   // sheet's own frame - painting it here as well left a ghost copy on the page.
   if (drag && drag.k && !drag.k.kind && drag.m !== 'tracePen') drawStroke(c, drag.k);
   drawTrace(c, drag && drag.m === 'tracePen' ? drag.k : null);
+  if (S.mirror.on) drawMirror(c);
   if (S.ruler.on) drawRuler(c);
   if (S.prot.on) drawProt(c);
   if (S.tool === 'compass') drawCompass(c);
   if (drag && drag.k && drag.label) pill(c, drag.label, drag.lx, drag.ly);
   if (drag && drag.snapMark) { c.beginPath(); c.arc(drag.snapMark[0], drag.snapMark[1], 6 / s, 0, Math.PI * 2); c.strokeStyle = '#2457d6'; c.lineWidth = 2 / s; c.stroke(); }
-  if (drag && (drag.m === 'rulRot' || drag.m === 'protRot')) { const o = drag.m === 'rulRot' ? S.ruler : S.prot; pill(c, mathDeg(o.a).toFixed(1) + '°', o.x, o.y - 22 / s); }
+  if (drag && (drag.m === 'rulRot' || drag.m === 'protRot' || drag.m === 'mirRot')) { const o = drag.m === 'rulRot' ? S.ruler : drag.m === 'protRot' ? S.prot : S.mirror; pill(c, mathDeg(o.a).toFixed(1) + '°', o.x, o.y - 22 / s); }
   if (S.tool === 'eraser' && hover) { c.beginPath(); c.arc(hover[0], hover[1], 16 / s, 0, Math.PI * 2); c.fillStyle = 'rgba(255,255,255,.4)'; c.fill(); c.strokeStyle = 'rgba(0,0,0,.6)'; c.lineWidth = 1.5 / s; c.stroke(); }
   if (S.tool === 'compass' && !S.comp.placed && !drag && hover) pill(c, 'Press on the centre point, drag out the radius', hover[0], hover[1] - 24 / s);
   if (S.sel) drawSelection(c);
@@ -2613,6 +2699,16 @@ ui.addEventListener('pointermove', e => {
     for (const k of S.trace.ink) for (let i = 0; i < k.p.length; i += 2) { k.p[i] *= fx; k.p[i + 1] *= fy; }
     S.trace.w = nw; S.trace.h = nh;
   }
+  else if (m === 'mirMove') { S.mirror.x = x - drag.ox; S.mirror.y = y - drag.oy; }
+  else if (m === 'mirRot') {
+    let a = drag.a0 + (Math.atan2(y - S.mirror.y, x - S.mirror.x) - drag.g0);
+    if (e.shiftKey) a = Math.round(a / (Math.PI / 12)) * (Math.PI / 12); S.mirror.a = a;
+  }
+  else if (m === 'mirSize') {
+    const [u, v] = toLocal(S.mirror, x, y);
+    S.mirror.w = Math.max(1.5 * CM, drag.w0 + (u - drag.u0));
+    S.mirror.h = Math.max(1.5 * CM, drag.h0 + (v - drag.v0));
+  }
   else if (m === 'rulMove') { S.ruler.x = x - drag.ox; S.ruler.y = y - drag.oy; }
   else if (m === 'rulLen') {
     const [u] = toLocal(S.ruler, x, y);
@@ -2919,6 +3015,7 @@ function setHint() {
   if (S.tool === 'compass' && S.comp.placed) h = 'Compass set: drag anywhere around the pin to draw an arc. Drag the pin to move it, drag the pencil tip to change the radius, or type an exact radius above.';
   if (S.ruler.on) h += '  ·  Ruler: drag it to move, the blue strip to turn it, the dark end to make it longer or shorter. Tap it to change the units.';
   if (S.prot.on) h += '  ·  Protractor: drag it to move, its blue rim to turn it, the red knob to read an angle. 360 opens it right round.';
+  if (S.mirror.on) h += '  ·  Mirror: the green edge is the mirror line \u2013 whatever sits on its far side shows reflected in the glass. Drag to move, the knob to turn, the corner to resize.';
   if (S.ruler.on || S.prot.on) h += ' Hold Shift for 15° steps.';
   $('hint').textContent = S.doc ? h : 'Open a PDF or start with blank paper.';
 }
@@ -2939,6 +3036,7 @@ function updateBar() {
   document.body.classList.toggle('multi', !!S.doc && S.n > 1);
   $('undoBtn').disabled = !S.undo.length; $('redoBtn').disabled = !S.redo.length;
   $('rulerBtn').classList.toggle('on', S.ruler.on); $('protBtn').classList.toggle('on', S.prot.on);
+  $('mirrorBtn').classList.toggle('on', S.mirror.on);
   setHint();
 }
 function toggleRuler() {
@@ -3106,9 +3204,9 @@ $('traceBtn').onclick = () => {
   if (traceOn()) { dropTrace(); return; }
   addTrace();                       // the tool in hand is left alone: carry on drawing
 };
-$('rulerBtn').onclick = toggleRuler; $('protBtn').onclick = toggleProt;
+$('rulerBtn').onclick = toggleRuler; $('protBtn').onclick = toggleProt; $('mirrorBtn').onclick = toggleMirror;
 function hideTools() {
-  drag = null; S.ruler.on = false; S.prot.on = false; S.comp.placed = false;
+  drag = null; S.ruler.on = false; S.prot.on = false; S.comp.placed = false; S.mirror.on = false;
   if (S.tool === 'compass') setTool('pen');
   if (window.cc && cc.dock && $('calcBtn').classList.contains('on')) cc.dock('calc');   // the calculator goes away with the rest
   updateBar(); redrawUI(); setHint();
