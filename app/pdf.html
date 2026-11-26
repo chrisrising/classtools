@@ -16,6 +16,9 @@
   body{display:flex;flex-direction:row;overflow:hidden;box-sizing:border-box;height:100vh}
   #bar{flex:none;background:linear-gradient(180deg,#f8f9fc,#eef1f7);border-right:1px solid var(--line);z-index:5;box-shadow:2px 0 8px rgba(0,0,0,.05);overflow:hidden}
   #barIn{width:142px;box-sizing:border-box;display:flex;flex-direction:column;gap:2px;padding:8px 8px 10px}
+  #calcPane{flex:none;width:0;display:none;border-left:1px solid var(--line);background:#111418;z-index:4}
+  #calcPane.on{display:block;width:min(420px,38vw)}
+  #calcPane iframe{width:100%;height:100%;border:0;display:block}
   #barIn .g2>*,#barIn .g3>*,#reactions>*,#colours>*{min-width:0}
   #bar button.rx{padding:3px 0!important}
   #barIn .sec{min-width:0}
@@ -556,6 +559,9 @@
     </div>
   </div>
 </div>
+<!-- In a browser the calculator cannot be its own always-on-top window, so it rides
+     here beside the slides instead. Never shown in the desktop app. -->
+<div id="calcPane"><iframe id="calcFrame" title="Calculator"></iframe></div>
 <div id="unitPop">
   <p>Ruler marked in</p>
   <button data-u="mm">mm</button><button data-u="cm">cm</button><button data-u="m">m</button><button data-u="in">inches</button>
@@ -3311,7 +3317,8 @@ $('rulerBtn').onclick = toggleRuler; $('protBtn').onclick = toggleProt; $('mirro
 function hideTools() {
   drag = null; S.ruler.on = false; S.prot.on = false; S.comp.placed = false; S.mirror.on = false;
   if (S.tool === 'compass') setTool('pen');
-  if (window.cc && cc.dock && $('calcBtn').classList.contains('on')) cc.dock('calc');   // the calculator goes away with the rest
+  if (window.cc && cc.dock) { if ($('calcBtn').classList.contains('on')) cc.dock('calc'); }   // the calculator goes away with the rest
+  else if ($('calcPane').classList.contains('on')) toggleCalcPane();
   updateBar(); redrawUI(); setHint();
 }
 $('hideBtn').onclick = hideTools;
@@ -3562,8 +3569,16 @@ $('tintOp').oninput = e => { TINT.op = +e.target.value; applyTint(); };
 document.addEventListener('pointerdown', e => { if (!e.target.closest('#tintMenu,#tintBtn')) $('tintMenu').classList.remove('on'); });
 applyTint();
 fitBar(); setTimeout(fitBar, 300);
-$('shapesBtn').onclick = () => { if (window.cc && cc.dock) cc.dock('shapes'); else toast('ShapeXplorer opens in the ClassTools app.'); };
-$('calcBtn').onclick = () => { if (window.cc && cc.dock) cc.dock('calc'); else toast('The calculator opens in the ClassTools app.'); };
+$('shapesBtn').onclick = () => { if (window.cc && cc.dock) cc.dock('shapes'); else window.open('shapes/index.html', '_blank'); };
+$('calcBtn').onclick = () => { if (window.cc && cc.dock) cc.dock('calc'); else toggleCalcPane(); };
+/** The browser's calculator: a panel beside the slides rather than a window of its own. */
+function toggleCalcPane() {
+  const pane = $('calcPane'), f = $('calcFrame');
+  const on = pane.classList.toggle('on');
+  if (on && !f.getAttribute('src')) f.setAttribute('src', 'calc.html');
+  $('calcBtn').classList.toggle('on', on);
+  requestAnimationFrame(() => { fitBar(true); if (S.doc) fitPage(); else layout(); });
+}
 if (window.cc) cc.on('calc-open', on => $('calcBtn').classList.toggle('on', !!on));
 
 document.addEventListener('keydown', e => {
