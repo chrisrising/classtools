@@ -2492,11 +2492,65 @@ function pinchMid() {
   const [a, b] = [...pinch.pts.values()];
   return [(a.x + b.x) / 2, (a.y + b.y) / 2];
 }
+/* ---------- two fingers to turn ----------
+   On a board, two fingers on an instrument and a twist of the wrist should turn it,
+   the way you would turn a real protractor on a desk. Everything that has a place
+   and an angle is handled the same way: the pair of fingers carries it along, and
+   the twist between them turns it. Two fingers on bare paper still zoom the page. */
+const twist = { on: false, t: null, acc: 0, prev: 0, mx0: 0, my0: 0 };
+function pagePt(cx, cy) { const r = ui.getBoundingClientRect(), s = sc(); return [(cx - r.left) / s - MARGIN, (cy - r.top) / s - MARGIN]; }
+function twistAngle() { const [a, b] = [...pinch.pts.values()]; return Math.atan2(b.y - a.y, b.x - a.x); }
+function twistMid() { const [mx, my] = pinchMid(); return pagePt(mx, my); }
+/** What is under the fingers, described as an anchor point, an angle, and a way to set both. */
+function twistTarget(x, y) {
+  if (traceOn() && overTrace(x, y)) {
+    const T = S.trace, [ox, oy] = traceToPage(0, 0);
+    return { ax: ox, ay: oy, a: T.a, ink: false, set(nx, ny, na) {
+      const cx = T.pin ? T.pin[0] * T.w : T.w / 2, cy = T.pin ? T.pin[1] * T.h : T.h / 2;
+      const co = Math.cos(na), si = Math.sin(na);
+      T.a = na; T.x = nx - cx + (cx * co - cy * si); T.y = ny - cy + (cx * si + cy * co);
+    } };
+  }
+  const h = hitInstrument(x, y);
+  if (h) {
+    const o = h.m.startsWith('mir') ? S.mirror : h.m.startsWith('rul') ? S.ruler : h.m.startsWith('prot') ? S.prot : null;
+    if (!o) return null;                                   // the compass turns about its own needle
+    return { ax: o.x, ay: o.y, a: o.a, ink: false, set(nx, ny, na) { o.x = nx; o.y = ny; o.a = na; } };
+  }
+  const k = itemAt(x, y);
+  if (!k) return null;
+  const b = itemBox(k), cx = b[0] + b[2] / 2, cy = b[1] + b[3] / 2;
+  const p0 = k.kind ? [k.x, k.y] : k.p.slice();
+  snapshot();
+  return { ax: cx, ay: cy, a: k.rot || 0, ink: true, set(nx, ny, na) {
+    k.rot = na; const dx = nx - cx, dy = ny - cy;          // measured from where it started, so nothing drifts
+    if (k.kind) { k.x = p0[0] + dx; k.y = p0[1] + dy; }
+    else { for (let i = 0; i < k.p.length; i += 2) { k.p[i] = p0[i] + dx; k.p[i + 1] = p0[i + 1] + dy; } delete k._wp; delete k._wk; }
+  } };
+}
+function twistStart(t) {
+  twist.on = true; twist.t = t; twist.acc = 0; twist.prev = twistAngle();
+  const [mx, my] = twistMid(); twist.mx0 = mx; twist.my0 = my;
+}
+function twistMove() {
+  const th = twistAngle(); let d = th - twist.prev;
+  while (d > Math.PI) d -= 2 * Math.PI; while (d < -Math.PI) d += 2 * Math.PI;
+  twist.acc += d; twist.prev = th;
+  const t = twist.t, co = Math.cos(twist.acc), si = Math.sin(twist.acc);
+  const dx = t.ax - twist.mx0, dy = t.ay - twist.my0, [mx, my] = twistMid();
+  t.set(twist.mx0 + dx * co - dy * si + (mx - twist.mx0),
+        twist.my0 + dx * si + dy * co + (my - twist.my0), t.a + twist.acc);
+  if (t.ink) { S.dirty = true; redrawInk(); }
+  redrawUI();
+}
 ui.addEventListener('pointerdown', e => {
   if (e.pointerType !== 'touch') return;
   pinch.pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
   if (pinch.pts.size === 2 && S.doc) {
     if (drag) { if (drag.m === 'pen' && drag.k) drag.k.p.length = 0; drag = null; redrawUI(); }
+    const f = [...pinch.pts.values()][0], [fx, fy] = pagePt(f.x, f.y);
+    const t = twistTarget(fx, fy);
+    if (t) { twistStart(t); redrawUI(); return; }
     const r = wrap.getBoundingClientRect(), [mx, my] = pinchMid();
     pinch.on = true; pinch.z0 = S.zoom; pinch.d0 = pinchDist() || 1;
     pinch.cx = mx - r.left; pinch.cy = my - r.top;
@@ -2506,6 +2560,7 @@ ui.addEventListener('pointerdown', e => {
 ui.addEventListener('pointermove', e => {
   if (e.pointerType !== 'touch' || !pinch.pts.has(e.pointerId)) return;
   pinch.pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
+  if (twist.on && pinch.pts.size === 2) { e.preventDefault(); e.stopPropagation(); twistMove(); return; }
   if (!pinch.on || pinch.pts.size !== 2) return;
   e.preventDefault(); e.stopPropagation();
   const f = pinchDist() / pinch.d0;
@@ -2521,6 +2576,7 @@ ui.addEventListener('pointermove', e => {
 for (const ev of ['pointerup', 'pointercancel']) ui.addEventListener(ev, e => {
   if (e.pointerType !== 'touch') return;
   pinch.pts.delete(e.pointerId);
+  if (pinch.pts.size < 2 && twist.on) { twist.on = false; twist.t = null; redrawUI(); }
   if (pinch.pts.size < 2 && pinch.on) { pinch.on = false; renderPage(); }
 }, true);
 
