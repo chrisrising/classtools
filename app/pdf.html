@@ -718,6 +718,7 @@ async function renderPage() {
   try { await pg.render({ canvasContext: ox, viewport: vp }).promise; } catch (e) { return; }
   if (tok !== renderTok) return;
   pdfC.width = off.width; pdfC.height = off.height; pdfC.getContext('2d').drawImage(off, 0, 0);
+  mirDirty = true; if (S.mirror.on) redrawUI();      // the page lands here, after the ink was drawn
   paintLinks(pg, tok);
 }
 // A page can be read a quarter turn round – handy for a portrait worksheet on a wide board, or a
@@ -1625,6 +1626,8 @@ function hitInstrument(x, y) {
   if (S.mirror.on) {
     const M = S.mirror, [u, v] = toLocal(M, x, y);
     const [rx, ry] = mirRotPt(), [gx, gy] = mirSizePt();
+    const [bx, by, bw, bh] = mirStampBox();
+    if (u >= bx && u <= bx + bw && v >= by && v <= by + bh) return { m: 'mirStamp' };
     if (dist(u, v, rx, ry) < Math.max(T, 0.52 * CM)) return { m: 'mirRot', a0: M.a, g0: Math.atan2(y - M.y, x - M.x) };
     if (dist(u, v, gx, gy) < Math.max(T, 0.45 * CM)) return { m: 'mirSize', u0: u, v0: v, w0: M.w, h0: M.h };
     if (u >= -0.3 * CM && u <= M.w && v >= 0 && v <= M.h) return { m: 'mirMove', ox: x - M.x, oy: y - M.y };
@@ -1704,7 +1707,7 @@ function turnGlyph(c, x, y, r, col) {
    Drag it to move, the knob to turn it, the corner to resize.
    ===================================================================== */
 const MIR = { edge: 2.4, glow: 9, tint: 'rgba(96,156,255,.20)' };
-let mirComp = null, mirDirty = true;
+let mirComp = null, mirDirty = true, mirKey = null;
 /** One flat picture of the page - paper, background and ink - for the glass to reflect. */
 function mirrorSource() {
   const bgC = $('bg');
@@ -1712,6 +1715,9 @@ function mirrorSource() {
   if (!W || !H) return null;
   if (!mirComp) mirComp = document.createElement('canvas');
   if (mirComp.width !== W || mirComp.height !== H) { mirComp.width = W; mirComp.height = H; mirDirty = true; }
+  // Turning the page leaves the canvases the same size, so the picture has to be
+  // thrown away by page as well, or the glass goes on showing the page before.
+  if (mirKey !== AK()) { mirKey = AK(); mirDirty = true; }
   if (mirDirty) {
     const g = mirComp.getContext('2d');
     g.setTransform(1, 0, 0, 1, 0, 0);
@@ -1723,6 +1729,38 @@ function mirrorSource() {
 }
 const mirRotPt = () => [S.mirror.w + 0.75 * CM, -0.75 * CM];      // in the mirror's own frame
 const mirSizePt = () => [S.mirror.w, S.mirror.h];
+const MIR_BTN = { w: 1.25 * CM, h: 0.66 * CM, cy: -0.95 * CM };
+const mirStampBox = () => [-MIR_BTN.w / 2, MIR_BTN.cy - MIR_BTN.h / 2, MIR_BTN.w, MIR_BTN.h];
+/** The button that stamps the mirror line: a dotted line, and a stamp coming down on it. */
+function drawStampBtn(c, active) {
+  const [bx, by, bw, bh] = mirStampBox(), s = sc();
+  c.save();
+  roundRect(c, bx, by, bw, bh, 0.13 * CM);
+  c.fillStyle = active ? 'rgba(20,120,60,.96)' : 'rgba(26,150,78,.92)'; c.fill();
+  c.strokeStyle = 'rgba(255,255,255,.75)'; c.lineWidth = 0.9 / s; c.stroke();
+  // the dotted line, on the left
+  const lx = bx + bw * 0.28;
+  c.strokeStyle = '#fff'; c.lineWidth = Math.max(1.4 / s, bh * 0.1); c.lineCap = 'round';
+  c.setLineDash([0.01, bh * 0.26]);
+  c.beginPath(); c.moveTo(lx, by + bh * 0.18); c.lineTo(lx, by + bh * 0.82); c.stroke();
+  c.setLineDash([]);
+  // the stamp, on the right: a handle, a stem and the block it presses with
+  const sx = bx + bw * 0.66;
+  c.fillStyle = '#fff';
+  c.beginPath(); c.arc(sx, by + bh * 0.26, bh * 0.13, 0, Math.PI * 2); c.fill();
+  c.fillRect(sx - bh * 0.045, by + bh * 0.3, bh * 0.09, bh * 0.2);
+  roundRect(c, sx - bh * 0.28, by + bh * 0.5, bh * 0.56, bh * 0.2, bh * 0.05); c.fill();
+  c.restore();
+}
+/** Leave the mirror line behind on the page, as a dotted line you can draw against. */
+function stampMirrorLine() {
+  const M = S.mirror, co = Math.cos(M.a), si = Math.sin(M.a);
+  snapshot();
+  const k = { c: '#157f45', w: Math.max(1.6, S.width), a: 1, sm: false, d: 'dot',
+              p: [M.x, M.y, M.x - si * M.h, M.y + co * M.h] };
+  (S.ann[AK()] = S.ann[AK()] || []).push(k);
+  S.dirty = true; redrawInk(); redrawUI(); toast('Mirror line stamped on the page');
+}
 function drawMirror(c) {
   const M = S.mirror, s = sc(), src = mirrorSource();
   c.save();
@@ -1756,6 +1794,7 @@ function drawMirror(c) {
 
   // handles: one to turn it, one to resize it
   const [rx, ry] = mirRotPt(), [sx, sy] = mirSizePt();
+  drawStampBtn(c, drag && drag.m === 'mirStamp');
   handleKnob(c, rx, ry, 0.42 * CM, drag && drag.m === 'mirRot');
   c.fillStyle = drag && drag.m === 'mirSize' ? 'rgba(36,87,214,.95)' : 'rgba(36,87,214,.78)';
   roundRect(c, sx - 0.3 * CM, sy - 0.3 * CM, 0.6 * CM, 0.6 * CM, 0.12 * CM); c.fill();
@@ -2512,6 +2551,7 @@ ui.addEventListener('pointerdown', e => {
   if (traceOn() && S.trace.sel && !overTrace(x, y)) { S.trace.sel = false; redrawUI(); }
   const h = e.button === 1 ? null : hitInstrument(x, y);
   if (h && h.m === 'compClose') { S.comp.placed = false; drag = null; setTool('pen'); redrawUI(); return; }
+  if (h && h.m === 'mirStamp') { stampMirrorLine(); drag = null; return; }
   if (h && h.m === 'rulUnit') { drag = h; drag.id = e.pointerId; redrawUI(); return; }
   if (h && h.m === 'protFull') { S.prot.full = !S.prot.full; if (!S.prot.full) S.prot.arm = Math.min(180, S.prot.arm); drag = null; redrawUI(); setHint(); return; }
   if (h) { drag = h; drag.id = e.pointerId; redrawUI(); return; }
